@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #ifndef _WIN32
 #include <pwd.h>
+#include <grp.h>
 #endif
 
 #ifndef S_ISUID
@@ -48,7 +49,7 @@ get_owner_name (struct stat *sb)
   return NULL;
 #else
   struct passwd *pw = getpwuid(sb->st_uid);
-  return passwd->pw_name;
+  return pw->pw_name;
 #endif
 }
 
