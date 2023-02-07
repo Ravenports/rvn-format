@@ -18,24 +18,18 @@ package Archive.Pack is
 
 private
 
-   subtype ownergroup is String (1 .. 32);
-
    type owngrp_count is range 0 .. 2 ** 8 - 1;
-   type File_Count is range 0 .. 2 ** 32 - 1;
+   type File_Count is range 0 .. 2 ** 31 - 1;
 
    package owngrp_crate is new CON.Vectors
      (Index_Type   => owngrp_count,
       Element_Type => ownergroup,
       "="          => "=");
 
-   type one_byte  is mod 2 ** 8;
-   type bits_16   is mod 2 ** 16;
-   type bits_40   is mod 2 ** 40;
-   type filetime  is mod 2 ** 64;
-   type max_path  is mod 2 ** 12;
-
    subtype A_filename is String (1 .. 256);
    subtype A_checksum is String (1 .. 32);
+
+   null_sum : constant A_checksum := (others => Character'Val (0));
 
    type File_Block is
       record
@@ -62,6 +56,7 @@ private
          files  : file_block_crate.Vector;
          level  : info_level := silent;
          dtrack : bits_16    := 0;
+         ftrack : File_Count := 0;
       end record;
 
    --  Given the string representation of the owner, return the index on the list.
@@ -83,5 +78,6 @@ private
      (AS        : in out Arc_Structure;
       dir_path  : String;
       dir_index : bits_16);
+
 
 end Archive.Pack;

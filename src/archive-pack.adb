@@ -4,12 +4,14 @@
 with Ada.Text_IO;
 with Ada.Exceptions;
 with Ada.Directories;
+with Archive.Unix;
 
 package body Archive.Pack is
 
    package TIO renames Ada.Text_IO;
    package DIR renames Ada.Directories;
    package EX  renames Ada.Exceptions;
+   package UNX renames Archive.Unix;
 
    ------------------------------------------------------------------------------------------
    --  integrate
@@ -38,7 +40,7 @@ package body Archive.Pack is
 
          --  The owner has never been seen.
          --  We need to add it, but we are capped at 255
-         if owngrp_count (AS.owners.Length) >= owngrp_count'Last then
+         if owngrp_count (AS.owners.Length) = owngrp_count'Last then
             raise Constraint_Error with "Archive cannot support more than 255 owners.";
          end if;
          AS.owners.Append (owner);
@@ -59,7 +61,7 @@ package body Archive.Pack is
 
          --  The group has never been seen.
          --  We need to add it, but we are capped at 255
-         if owngrp_count (AS.groups.Length) >= owngrp_count'Last then
+         if owngrp_count (AS.groups.Length) = owngrp_count'Last then
             raise Constraint_Error with "Archive cannot support more than 255 groups.";
          end if;
          AS.groups.Append (group);
@@ -107,6 +109,7 @@ package body Archive.Pack is
    is
       procedure walkdir   (item : DIR.Directory_Entry_Type);
       procedure walkfiles (item : DIR.Directory_Entry_Type);
+      function get_filename (item : DIR.Directory_Entry_Type) return A_filename;
 
       only_dirs : constant DIR.Filter_Type := (DIR.Directory => True, others => False);
       non_dirs  : constant DIR.Filter_Type := (DIR.Ordinary_File => True,
@@ -119,8 +122,28 @@ package body Archive.Pack is
            DIR.Simple_Name (item) /= ".."
          then
             AS.dtrack := AS.dtrack + 1;
-            --  TODO create file header record from directory here
-            AS.print (debug, DIR.Full_Name (item) & " (" & AS.dtrack'Img & ")");
+            declare
+               new_block : File_Block;
+               features  : UNX.File_Characteristics;
+            begin
+               features := UNX.get_charactistics (DIR.Full_Name (item));
+               new_block.filename     := get_filename (item);
+               new_block.blake_sum    := null_sum;
+               new_block.index_owner  := AS.get_owner_index (features.owner);
+               new_block.index_group  := AS.get_group_index (features.group);
+               new_block.type_of_file := directory;
+               new_block.permissions  := features.perms;
+               new_block.flat_size    := 0;
+               new_block.link_length  := 0;
+               new_block.modified     := features.mtime;
+               new_block.index_parent := AS.dtrack;
+
+               AS.files.Append (new_block);
+               AS.print (debug, DIR.Full_Name (item) & " (" & AS.dtrack'Img & ")");
+               AS.print (debug, "owner =" & new_block.index_owner'Img & "  group =" &
+                           new_block.index_group'Img);
+               AS.print (debug, "perms =" & features.perms'Img & "   mod =" & features.mtime'Img);
+            end;
             AS.scan_directory (DIR.Full_Name (item), AS.dtrack);
          end if;
       exception
@@ -136,6 +159,15 @@ package body Archive.Pack is
          when DIR.Name_Error =>
             AS.print (normal, "walkfiles: " & dir_path & " directory does not exist");
       end walkfiles;
+
+      function get_filename (item : DIR.Directory_Entry_Type) return A_filename
+      is
+         result : A_filename := (others => Character'Val (0));
+         sname  : constant String := DIR.Simple_Name (item);
+      begin
+         result (result'First .. result'First + sname'Length - 1) := sname;
+         return result;
+      end get_filename;
    begin
       DIR.Search (Directory => dir_path,
                   Pattern   => "*",

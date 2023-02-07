@@ -1,3 +1,5 @@
 *.stderr
 *.stdout
 obj/*
+lib/*.ali
+lib/libRvn.a
