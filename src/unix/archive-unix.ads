@@ -51,6 +51,12 @@ private
    function arc_get_group (sb : struct_stat_Access) return IC.Strings.chars_ptr;
    pragma Import (C, arc_get_group, "get_group_name");
 
+   function arc_get_owner_id (sb : struct_stat_Access) return IC.unsigned;
+   pragma Import (C, arc_get_owner_id, "get_owner_id");
+
+   function arc_get_group_id (sb : struct_stat_Access) return IC.unsigned;
+   pragma Import (C, arc_get_group_id, "get_group_id");
+
    function stat_ok (path : String; sb : struct_stat_Access) return Boolean;
 
    function file_modification_time (sb : struct_stat_Access) return filetime;
@@ -62,5 +68,7 @@ private
    function file_group (sb : struct_stat_Access) return ownergroup;
 
    function str2owngrp (name : String) return ownergroup;
+
+   function int2str (A : Integer) return String;
 
 end Archive.Unix;

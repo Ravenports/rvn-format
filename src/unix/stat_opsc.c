@@ -3,12 +3,12 @@
  * Reference: ../../License.txt
  */
 
+#ifndef _WIN32
+
 #include <sys/types.h>
 #include <sys/stat.h>
-#ifndef _WIN32
 #include <pwd.h>
 #include <grp.h>
-#endif
 
 #ifndef S_ISUID
 #define S_ISUID 0
@@ -45,21 +45,28 @@ extract_permissions (struct stat *sb)
 char *
 get_owner_name (struct stat *sb)
 {
-#ifdef _WIN32
-  return NULL;
-#else
   struct passwd *pw = getpwuid(sb->st_uid);
   return pw->pw_name;
-#endif
 }
 
 char *
 get_group_name (struct stat *sb)
 {
-#ifdef _WIN32
-  return NULL;
-#else
   struct group *gr = getgrgid(sb->st_gid);
   return gr->gr_name;
-#endif
 }
+
+
+uid_t
+get_owner_id (struct stat *sb)
+{
+  return sb->st_uid;
+}
+
+gid_t
+get_group_id (struct stat *sb)
+{
+  return sb->st_gid;
+}
+
+#endif /* __WIN32 */

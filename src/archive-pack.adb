@@ -87,7 +87,7 @@ package body Archive.Pack is
    ------------------------------------------------------------------------------------------
    procedure print (AS : Arc_Structure; msg_level : info_level; message : String)
    is
-      meets_criteria : constant Boolean := (msg_level >= AS.level);
+      meets_criteria : constant Boolean := (msg_level <= AS.level);
    begin
       if meets_criteria then
          if msg_level = debug then
@@ -184,7 +184,7 @@ package body Archive.Pack is
          AS.print (normal, "Searching " & dir_path & " directory is not supported");
       when failed : others =>
          AS.print (normal, "scan_directory: Unknown error - directory search");
-         AS.print (normal, EX.Exception_Information (failed));
+         AS.print (normal, "=> " & EX.Exception_Information (failed));
    end scan_directory;
 
 

@@ -89,9 +89,18 @@ package body Archive.Unix is
    ------------------------------------------------------------------------------------------
    function file_owner (sb : struct_stat_Access) return ownergroup
    is
+      use type IC.Strings.chars_ptr;
+
       c_owner : IC.Strings.chars_ptr;
    begin
       c_owner := arc_get_owner (sb);
+      if c_owner = IC.Strings.Null_Ptr then
+         declare
+            id : constant IC.unsigned := arc_get_owner_id (sb);
+         begin
+            return int2str (Integer (id));
+         end;
+      end if;
       declare
          owner : constant String := IC.Strings.Value (c_owner);
       begin
@@ -105,9 +114,18 @@ package body Archive.Unix is
    ------------------------------------------------------------------------------------------
    function file_group (sb : struct_stat_Access) return ownergroup
    is
+      use type IC.Strings.chars_ptr;
+
       c_group : IC.Strings.chars_ptr;
    begin
       c_group := arc_get_group (sb);
+      if c_group = IC.Strings.Null_Ptr then
+         declare
+            id : constant IC.unsigned := arc_get_group_id (sb);
+         begin
+            return int2str (Integer (id));
+         end;
+      end if;
       declare
          group : constant String := IC.Strings.Value (c_group);
       begin
@@ -130,5 +148,21 @@ package body Archive.Unix is
       end if;
       return result;
    end str2owngrp;
+
+
+   ------------------------------------------------------------------------------------------
+   --  int2str
+   ------------------------------------------------------------------------------------------
+   function int2str (A : Integer) return String
+   is
+      raw : constant String := A'Img;
+      len : constant Natural := raw'Length;
+   begin
+      if A < 0 then
+         return raw;
+      else
+         return raw (2 .. len);
+      end if;
+   end int2str;
 
 end Archive.Unix;
