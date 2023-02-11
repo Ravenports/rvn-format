@@ -57,7 +57,7 @@ get_group_name (struct stat *sb)
 {
   struct group *gr = getgrgid(sb->st_gid);
   if (gr == NULL) {
-    return NULL:
+    return NULL;
   }
   return gr->gr_name;
 }
@@ -87,10 +87,10 @@ get_group_id (struct stat *sb)
 unsigned char
 get_file_type (struct stat *sb)
 {
-  if (S_ISDIR (sb))  { return 1; }
-  if (S_ISLNK (sb))  { return 3; }
-  if (S_ISFIFO (sb)) { return 5; }
-  if (S_ISREG (sb))
+  if (S_ISDIR (sb->st_mode))  { return 1; }
+  if (S_ISLNK (sb->st_mode))  { return 3; }
+  if (S_ISFIFO (sb->st_mode)) { return 5; }
+  if (S_ISREG (sb->st_mode))
     {
       if (sb->st_nlink > 1) { return 4; }
       return 2;

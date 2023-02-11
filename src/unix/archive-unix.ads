@@ -39,7 +39,7 @@ private
    function arc_stat
      (path : IC.Strings.chars_ptr;
       sb   : struct_stat_Access) return IC.int;
-   pragma Import (C, arc_stat, "stat");
+   pragma Import (C, arc_stat, "lstat");
 
    function arc_get_mtime (sb : struct_stat_Access) return IC.long;
    pragma Import (C, arc_get_mtime, "get_mtime");
