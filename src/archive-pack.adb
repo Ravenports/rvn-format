@@ -120,7 +120,7 @@ package body Archive.Pack is
       begin
          --  We only want true directories.  Symbolic links to directories are ignored.
          case DIR.Kind (item) is
-            when directory => null;
+            when DIR.Directory => null;
             when others => return;
          end case;
          if DIR.Simple_Name (item) /= "." and then
@@ -163,13 +163,21 @@ package body Archive.Pack is
                         "  file: " & DIR.Full_Name (item));
       end walkdir;
 
-      procedure walkfiles (item : DIR.Directory_Entry_Type) is
+      procedure walkfiles (item : DIR.Directory_Entry_Type)
+      is
+         features  : UNX.File_Characteristics;
       begin
+         features := UNX.get_charactistics (DIR.Full_Name (item));
+
          --  TODO create file header record from this file here
-         AS.print (debug, "file = " & DIR.Full_Name (item));
+         AS.print (debug, "file = " & DIR.Full_Name (item) & " (" &
+                  features.ftype'Img & ")");
       exception
          when DIR.Name_Error =>
             AS.print (normal, "walkfiles: " & dir_path & " directory does not exist");
+         when failed : others =>
+            AS.print (normal, "walkfiles exception => " & EX.Exception_Information (failed) &
+                        "  file: " & DIR.Full_Name (item));
       end walkfiles;
 
       function get_filename (item : DIR.Directory_Entry_Type) return A_filename
