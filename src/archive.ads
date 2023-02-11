@@ -8,7 +8,7 @@ package Archive is
    type one_byte    is mod 2 ** 8;
    type permissions is mod 2 ** 16;
    type index_type  is mod 2 ** 16;
-   type bits_40     is mod 2 ** 40;
+   type size_type   is mod 2 ** 40;
    type filetime    is mod 2 ** 64;
    type max_path    is mod 2 ** 12;
 

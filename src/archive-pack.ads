@@ -39,7 +39,7 @@ private
          index_group  : one_byte;
          type_of_file : file_type;
          file_perms   : permissions;
-         flat_size    : bits_40;
+         flat_size    : size_type;
          link_length  : max_path;
          modified     : filetime;
          index_parent : index_type;
