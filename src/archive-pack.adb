@@ -111,22 +111,31 @@ package body Archive.Pack is
       procedure walkfiles (item : DIR.Directory_Entry_Type);
       function get_filename (item : DIR.Directory_Entry_Type) return A_filename;
 
-      only_dirs : constant DIR.Filter_Type := (DIR.Directory => True, others => False);
+      no_filter : constant DIR.Filter_Type := (others => True);
       non_dirs  : constant DIR.Filter_Type := (DIR.Ordinary_File => True,
                                                DIR.Special_File => True,
                                                DIR.Directory => False);
 
       procedure walkdir (item : DIR.Directory_Entry_Type) is
       begin
+         --  We only want true directories.  Symbolic links to directories are ignored.
+         case DIR.Kind (item) is
+            when directory => null;
+            when others => return;
+         end case;
          if DIR.Simple_Name (item) /= "." and then
            DIR.Simple_Name (item) /= ".."
          then
-            AS.dtrack := AS.dtrack + 1;
             declare
                new_block : File_Block;
                features  : UNX.File_Characteristics;
             begin
                features := UNX.get_charactistics (DIR.Full_Name (item));
+               if features.ftype /= directory then
+                  return;
+               end if;
+
+               AS.dtrack := AS.dtrack + 1;
                new_block.filename     := get_filename (item);
                new_block.blake_sum    := null_sum;
                new_block.index_owner  := AS.get_owner_index (features.owner);
@@ -174,7 +183,7 @@ package body Archive.Pack is
    begin
       DIR.Search (Directory => dir_path,
                   Pattern   => "*",
-                  Filter    => only_dirs,
+                  Filter    => no_filter,
                   Process   => walkdir'Access);
       DIR.Search (Directory => dir_path,
                   Pattern   => "*",
