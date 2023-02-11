@@ -190,4 +190,15 @@ package body Archive.Unix is
       end case;
    end type_of_file;
 
+
+   ------------------------------------------------------------------------------------------
+   --  inode_number
+   ------------------------------------------------------------------------------------------
+   function inode_number (sb : struct_stat_Access) return inode_type
+   is
+      res : constant IC.unsigned_long_long := arc_get_inode_number (sb);
+   begin
+      return inode_type (res);
+   end inode_number;
+
 end Archive.Unix;

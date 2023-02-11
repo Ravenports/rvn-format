@@ -11,6 +11,7 @@ package Archive is
    type size_type   is mod 2 ** 40;
    type filetime    is mod 2 ** 64;
    type max_path    is mod 2 ** 16;
+   type inode_type  is mod 2 ** 64;
 
    subtype A_filename is String (1 .. 256);
    subtype A_fragment is String (1 .. 64);

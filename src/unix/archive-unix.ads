@@ -14,6 +14,7 @@ package Archive.Unix is
          group : ownergroup;
          mtime : filetime;
          perms : permissions;
+         inode : inode_type;
          error : Boolean;
       end record;
 
@@ -62,6 +63,9 @@ private
    function arc_get_file_type (sb : struct_stat_Access) return IC.unsigned_char;
    pragma Import (C, arc_get_file_type, "get_file_type");
 
+   function arc_get_inode_number (sb : struct_stat_Access) return IC.unsigned_long_long;
+   pragma Import (C, arc_get_inode_number, "get_inode_number");
+
    function stat_ok (path : String; sb : struct_stat_Access) return Boolean;
 
    function file_modification_time (sb : struct_stat_Access) return filetime;
@@ -73,6 +77,8 @@ private
    function file_group (sb : struct_stat_Access) return ownergroup;
 
    function type_of_file (sb : struct_stat_Access) return file_type;
+
+   function inode_number (sb : struct_stat_Access) return inode_type;
 
    function str2owngrp (name : String) return ownergroup;
 

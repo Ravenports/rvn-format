@@ -75,6 +75,12 @@ get_group_id (struct stat *sb)
   return sb->st_gid;
 }
 
+ino_t
+get_inode_number (struct stat *sb)
+{
+  return sb->st_ino;
+}
+
 /*
  * Return number representing file type
  * 0 = unsupported
