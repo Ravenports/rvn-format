@@ -112,9 +112,6 @@ package body Archive.Pack is
       function get_filename (item : DIR.Directory_Entry_Type) return A_filename;
 
       no_filter : constant DIR.Filter_Type := (others => True);
-      non_dirs  : constant DIR.Filter_Type := (DIR.Ordinary_File => True,
-                                               DIR.Special_File => True,
-                                               DIR.Directory => False);
 
       procedure walkdir (item : DIR.Directory_Entry_Type) is
       begin
@@ -165,9 +162,19 @@ package body Archive.Pack is
 
       procedure walkfiles (item : DIR.Directory_Entry_Type)
       is
+         --  Reject directories, but accept symlinks to directories
          features  : UNX.File_Characteristics;
       begin
          features := UNX.get_charactistics (DIR.Full_Name (item));
+
+         case features.ftype is
+            when directory => return;
+            when unsupported =>
+               AS.print
+                 (normal, "NOTICE: Unsupported file " & DIR.Full_Name (item) & " ignored.");
+               return;
+            when others => null;
+         end case;
 
          --  TODO create file header record from this file here
          AS.print (debug, "file = " & DIR.Full_Name (item) & " (" &
@@ -195,7 +202,7 @@ package body Archive.Pack is
                   Process   => walkdir'Access);
       DIR.Search (Directory => dir_path,
                   Pattern   => "*",
-                  Filter    => non_dirs,
+                  Filter    => no_filter,
                   Process   => walkfiles'Access);
    exception
       when DIR.Name_Error =>
