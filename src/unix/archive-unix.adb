@@ -45,21 +45,25 @@ package body Archive.Unix is
       result : File_Characteristics;
       sb     : aliased Unix.struct_stat;
    begin
-      result.owner := str2owngrp ("xxxx");
-      result.group := str2owngrp ("wheel");
+      result.ftype := unsupported;
       result.mtime := 0;
       result.perms := 0;
+      result.error := True;
       begin
          if Unix.stat_ok (path, sb'Unchecked_Access) then
+            result.ftype := type_of_file (sb'Unchecked_Access);
             result.owner := file_owner (sb'Unchecked_Access);
             result.group := file_group (sb'Unchecked_Access);
             result.mtime := file_modification_time (sb'Unchecked_Access);
             result.perms := file_permissions (sb'Unchecked_Access);
             result.error := False;
+         else
+            result.owner := str2owngrp ("xxx");
+            result.group := str2owngrp ("xxx");
          end if;
       exception
          when others =>
-            result.error := True;
+            null;
       end;
       return result;
    end get_charactistics;
@@ -167,5 +171,23 @@ package body Archive.Unix is
       end if;
       return raw (raw'First + 1 .. raw'Last);
    end int2str;
+
+
+   ------------------------------------------------------------------------------------------
+   --  type_of_file
+   ------------------------------------------------------------------------------------------
+   function type_of_file (sb : struct_stat_Access) return file_type
+   is
+      res : constant IC.unsigned_char := arc_get_file_type (sb);
+   begin
+      case res is
+         when 1 => return directory;
+         when 2 => return regular;
+         when 3 => return symlink;
+         when 4 => return hardlink;
+         when 5 => return fifo;
+         when others => return unsupported;
+      end case;
+   end type_of_file;
 
 end Archive.Unix;

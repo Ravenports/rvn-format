@@ -9,6 +9,7 @@ package Archive.Unix is
 
    type File_Characteristics is
       record
+         ftype : file_type;
          owner : ownergroup;
          group : ownergroup;
          mtime : filetime;
@@ -58,6 +59,9 @@ private
    function arc_get_group_id (sb : struct_stat_Access) return IC.unsigned;
    pragma Import (C, arc_get_group_id, "get_group_id");
 
+   function arc_get_file_type (sb : struct_stat_Access) return IC.unsigned_char;
+   pragma Import (C, arc_get_file_type, "get_file_type");
+
    function stat_ok (path : String; sb : struct_stat_Access) return Boolean;
 
    function file_modification_time (sb : struct_stat_Access) return filetime;
@@ -67,6 +71,8 @@ private
    function file_owner (sb : struct_stat_Access) return ownergroup;
 
    function file_group (sb : struct_stat_Access) return ownergroup;
+
+   function type_of_file (sb : struct_stat_Access) return file_type;
 
    function str2owngrp (name : String) return ownergroup;
 

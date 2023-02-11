@@ -75,4 +75,27 @@ get_group_id (struct stat *sb)
   return sb->st_gid;
 }
 
+/*
+ * Return number representing file type
+ * 0 = unsupported
+ * 1 = directory
+ * 2 = regular file
+ * 3 = symbolic ink
+ * 4 = hard link
+ * 5 = FIFO
+ */
+unsigned char
+get_file_type (struct stat *sb)
+{
+  if (S_ISDIR (sb))  { return 1; }
+  if (S_ISLNK (sb))  { return 3; }
+  if (S_ISFIFO (sb)) { return 5; }
+  if (S_ISREG (sb))
+    {
+      if (sb->st_nlink > 1) { return 4; }
+      return 2;
+    }
+  return 0;
+}
+
 #endif /* __WIN32 */
