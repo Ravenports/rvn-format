@@ -13,6 +13,7 @@ package Archive.Unix is
          group : ownergroup;
          mtime : filetime;
          perms : bits_16;
+         error : Boolean;
       end record;
 
    --  Return set of file characteristis given the path to a file or a directory

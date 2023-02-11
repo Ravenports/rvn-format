@@ -46,6 +46,9 @@ char *
 get_owner_name (struct stat *sb)
 {
   struct passwd *pw = getpwuid(sb->st_uid);
+  if (pw == NULL) {
+     return NULL;
+  }
   return pw->pw_name;
 }
 
@@ -53,6 +56,9 @@ char *
 get_group_name (struct stat *sb)
 {
   struct group *gr = getgrgid(sb->st_gid);
+  if (gr == NULL) {
+    return NULL:
+  }
   return gr->gr_name;
 }
 

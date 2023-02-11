@@ -149,6 +149,9 @@ package body Archive.Pack is
       exception
          when DIR.Name_Error =>
             AS.print (normal, "walkdir: " & dir_path & " directory does not exist");
+         when failed : others =>
+            AS.print (normal, "walkdir exception => " & EX.Exception_Information (failed) &
+                        "  file: " & DIR.Full_Name (item));
       end walkdir;
 
       procedure walkfiles (item : DIR.Directory_Entry_Type) is

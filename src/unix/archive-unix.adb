@@ -45,17 +45,22 @@ package body Archive.Unix is
       result : File_Characteristics;
       sb     : aliased Unix.struct_stat;
    begin
-      if not Unix.stat_ok (path, sb'Unchecked_Access) then
-         result.owner := str2owngrp ("xxxx");
-         result.group := str2owngrp ("wheel");
-         result.mtime := 0;
-         result.perms := 0;
-      else
-         result.owner := file_owner (sb'Unchecked_Access);
-         result.group := file_group (sb'Unchecked_Access);
-         result.mtime := file_modification_time (sb'Unchecked_Access);
-         result.perms := file_permissions (sb'Unchecked_Access);
-      end if;
+      result.owner := str2owngrp ("xxxx");
+      result.group := str2owngrp ("wheel");
+      result.mtime := 0;
+      result.perms := 0;
+      begin
+         if Unix.stat_ok (path, sb'Unchecked_Access) then
+            result.owner := file_owner (sb'Unchecked_Access);
+            result.group := file_group (sb'Unchecked_Access);
+            result.mtime := file_modification_time (sb'Unchecked_Access);
+            result.perms := file_permissions (sb'Unchecked_Access);
+            result.error := False;
+         end if;
+      exception
+         when others =>
+            result.error := True;
+      end;
       return result;
    end get_charactistics;
 
@@ -98,7 +103,7 @@ package body Archive.Unix is
          declare
             id : constant IC.unsigned := arc_get_owner_id (sb);
          begin
-            return int2str (Integer (id));
+            return str2owngrp (int2str (Integer (id)));
          end;
       end if;
       declare
@@ -123,7 +128,7 @@ package body Archive.Unix is
          declare
             id : constant IC.unsigned := arc_get_group_id (sb);
          begin
-            return int2str (Integer (id));
+            return str2owngrp (int2str (Integer (id)));
          end;
       end if;
       declare
@@ -156,13 +161,11 @@ package body Archive.Unix is
    function int2str (A : Integer) return String
    is
       raw : constant String := A'Img;
-      len : constant Natural := raw'Length;
    begin
       if A < 0 then
          return raw;
-      else
-         return raw (2 .. len);
       end if;
+      return raw (raw'First + 1 .. raw'Last);
    end int2str;
 
 end Archive.Unix;
