@@ -109,7 +109,7 @@ package body Archive.Pack is
    is
       procedure walkdir   (item : DIR.Directory_Entry_Type);
       procedure walkfiles (item : DIR.Directory_Entry_Type);
-      function get_filename (item : DIR.Directory_Entry_Type) return A_filename;
+      function get_filename (item : DIR.Directory_Entry_Type; part : Positive) return A_fragment;
 
       no_filter : constant DIR.Filter_Type := (others => True);
 
@@ -133,16 +133,20 @@ package body Archive.Pack is
                end if;
 
                AS.dtrack := AS.dtrack + 1;
-               new_block.filename     := get_filename (item);
+               new_block.filename_p1  := get_filename (item, 1);
+               new_block.filename_p2  := get_filename (item, 2);
+               new_block.filename_p3  := get_filename (item, 3);
+               new_block.filename_p4  := get_filename (item, 4);
                new_block.blake_sum    := null_sum;
+               new_block.modified     := features.mtime;
                new_block.index_owner  := AS.get_owner_index (features.owner);
                new_block.index_group  := AS.get_group_index (features.group);
                new_block.type_of_file := directory;
-               new_block.file_perms   := features.perms;
                new_block.flat_size    := 0;
+               new_block.file_perms   := features.perms;
                new_block.link_length  := 0;
-               new_block.modified     := features.mtime;
                new_block.index_parent := AS.dtrack;
+               new_block.padding      := (others => Character'Val (0));
 
                AS.files.Append (new_block);
                AS.print (debug, DIR.Full_Name (item) & " (" & AS.dtrack'Img & ")");
@@ -187,12 +191,16 @@ package body Archive.Pack is
                         "  file: " & DIR.Full_Name (item));
       end walkfiles;
 
-      function get_filename (item : DIR.Directory_Entry_Type) return A_filename
+      function get_filename (item : DIR.Directory_Entry_Type; part : Positive) return A_fragment
       is
-         result : A_filename := (others => Character'Val (0));
+         result : A_fragment;
+         tray   : A_filename := (others => Character'Val (0));
          sname  : constant String := DIR.Simple_Name (item);
+         head   : constant Natural := tray'First + (part - 1) * A_fragment'Length;
+         tail   : constant Natural := head + A_fragment'Length - 1;
       begin
-         result (result'First .. result'First + sname'Length - 1) := sname;
+         tray (result'First .. result'First + sname'Length - 1) := sname;
+         result := tray (head .. tail);
          return result;
       end get_filename;
    begin

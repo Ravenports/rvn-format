@@ -26,24 +26,7 @@ private
       Element_Type => ownergroup,
       "="          => "=");
 
-   subtype A_filename is String (1 .. 256);
-   subtype A_checksum is String (1 .. 32);
-
    null_sum : constant A_checksum := (others => Character'Val (0));
-
-   type File_Block is
-      record
-         filename     : A_filename;
-         blake_sum    : A_checksum;
-         index_owner  : one_byte;
-         index_group  : one_byte;
-         type_of_file : file_type;
-         file_perms   : permissions;
-         flat_size    : size_type;
-         link_length  : max_path;
-         modified     : filetime;
-         index_parent : index_type;
-      end record;
 
    package file_block_crate is new CON.Vectors
      (Index_Type   => File_Count,
