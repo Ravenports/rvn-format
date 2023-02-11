@@ -80,12 +80,12 @@ package body Archive.Unix is
    ------------------------------------------------------------------------------------------
    --  file_permissions
    ------------------------------------------------------------------------------------------
-   function file_permissions (sb : struct_stat_Access) return bits_16
+   function file_permissions (sb : struct_stat_Access) return permissions
    is
       res : IC.short;
    begin
       res := arc_extract_permissions (sb);
-      return bits_16 (res);
+      return permissions (res);
    end file_permissions;
 
 

@@ -12,7 +12,7 @@ package Archive.Unix is
          owner : ownergroup;
          group : ownergroup;
          mtime : filetime;
-         perms : bits_16;
+         perms : permissions;
          error : Boolean;
       end record;
 
@@ -62,7 +62,7 @@ private
 
    function file_modification_time (sb : struct_stat_Access) return filetime;
 
-   function file_permissions (sb : struct_stat_Access) return bits_16;
+   function file_permissions (sb : struct_stat_Access) return permissions;
 
    function file_owner (sb : struct_stat_Access) return ownergroup;
 

@@ -105,7 +105,7 @@ package body Archive.Pack is
    procedure scan_directory
      (AS        : in out Arc_Structure;
       dir_path  : String;
-      dir_index : bits_16)
+      dir_index : index_type)
    is
       procedure walkdir   (item : DIR.Directory_Entry_Type);
       procedure walkfiles (item : DIR.Directory_Entry_Type);
@@ -132,7 +132,7 @@ package body Archive.Pack is
                new_block.index_owner  := AS.get_owner_index (features.owner);
                new_block.index_group  := AS.get_group_index (features.group);
                new_block.type_of_file := directory;
-               new_block.permissions  := features.perms;
+               new_block.file_perms   := features.perms;
                new_block.flat_size    := 0;
                new_block.link_length  := 0;
                new_block.modified     := features.mtime;

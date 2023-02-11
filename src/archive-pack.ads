@@ -38,11 +38,11 @@ private
          index_owner  : one_byte;
          index_group  : one_byte;
          type_of_file : file_type;
-         permissions  : bits_16;
+         file_perms   : permissions;
          flat_size    : bits_40;
          link_length  : max_path;
          modified     : filetime;
-         index_parent : bits_16;
+         index_parent : index_type;
       end record;
 
    package file_block_crate is new CON.Vectors
@@ -55,7 +55,7 @@ private
          groups : owngrp_crate.Vector;
          files  : file_block_crate.Vector;
          level  : info_level := silent;
-         dtrack : bits_16    := 0;
+         dtrack : index_type := 0;
          ftrack : File_Count := 0;
       end record;
 
@@ -77,7 +77,7 @@ private
    procedure scan_directory
      (AS        : in out Arc_Structure;
       dir_path  : String;
-      dir_index : bits_16);
+      dir_index : index_type);
 
 
 end Archive.Pack;
