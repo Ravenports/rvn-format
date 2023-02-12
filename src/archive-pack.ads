@@ -2,10 +2,12 @@
 --  Reference: ../../License.txt
 
 with Ada.Containers.Vectors;
+with Ada.Streams.Stream_IO;
 
 package Archive.Pack is
 
    package CON renames Ada.Containers;
+   package SIO renames Ada.Streams.Stream_IO;
 
    --  Assemble contents of directory tree into a single file.
    --  Special files like character devices and block devices are excluded.
@@ -59,7 +61,9 @@ private
          ftrack : File_Count := 0;
          tlevel : A_Path;
          tlsize : Natural;
+         cmsize : mfest_size;
          serror : Boolean := False;
+         stmaxs : SIO.Stream_Access;
       end record;
 
    --  Given the string representation of the owner, return the index on the list.
@@ -99,5 +103,12 @@ private
 
    --  Push a link on top of the link block
    procedure push_link (AS : in out Arc_Structure; link : String);
+
+   --  Create the output file stream and write the premier block to it
+   procedure write_output_header (AS : in out Arc_Structure; output_file_path : String);
+
+   --  Write blocks 2 and 3 (groups and owners)
+   procedure write_owngrp_blocks (AS : Arc_Structure);
+
 
 end Archive.Pack;

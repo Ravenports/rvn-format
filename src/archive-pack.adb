@@ -24,13 +24,15 @@ package body Archive.Pack is
       output_file         : String;
       verbosity           : info_level)
    is
-      pragma Unreferenced (output_file);
-
       metadata : Arc_Structure;
    begin
       metadata.set_verbosity (verbosity);
       metadata.record_directory (top_level_directory);
       metadata.scan_directory (top_level_directory, 0);
+      if not metadata.serror then
+         metadata.write_output_header (output_file);
+         metadata.write_owngrp_blocks;
+      end if;
    end integrate;
 
 
@@ -220,9 +222,11 @@ package body Archive.Pack is
                   new_block.link_length  := 0;
                when regular =>
                   begin
-                     new_block.blake_sum    := Blake_3.file_digest (item_path);
-                     AS.print (debug, Blake_3.hex (new_block.blake_sum) &
-                                 " " & DIR.Simple_Name (item));
+                     new_block.blake_sum := Blake_3.file_digest (item_path);
+                     if AS.level = debug then
+                        AS.print (debug, Blake_3.hex (new_block.blake_sum) &
+                                    " " & DIR.Simple_Name (item));
+                     end if;
                   exception
                      when IOX.Use_Error =>
                         AS.serror := True;
@@ -235,9 +239,11 @@ package body Archive.Pack is
                   new_block.link_length  := 0;
                when hardlink =>
                   begin
-                     new_block.blake_sum    := Blake_3.file_digest (item_path);
-                     AS.print (debug, Blake_3.hex (new_block.blake_sum) &
-                                 " " & DIR.Simple_Name (item));
+                     new_block.blake_sum := Blake_3.file_digest (item_path);
+                     if AS.level = debug then
+                        AS.print (debug, Blake_3.hex (new_block.blake_sum) &
+                                    " " & DIR.Simple_Name (item));
+                     end if;
                   exception
                      when IOX.Use_Error =>
                         AS.serror := True;
@@ -383,8 +389,6 @@ package body Archive.Pack is
    procedure insert_inode (AS : in out Arc_Structure; inode : inode_type; path : String)
    is
       --  The top_level prefix is stripped off the full path first
-      --  "hello/there/you/shmuck"
-      --  toplevel = "hello/there"
       new_inode_record : inode_record;
       relative_path : constant String := path (path'First + AS.tlsize + 1 .. path'Last);
       plast : constant Natural  := new_inode_record.path'First + relative_path'Length - 1;
@@ -408,5 +412,52 @@ package body Archive.Pack is
       end loop;
    end push_link;
 
+
+   ------------------------------------------------------------------------------------------
+   --  write_output_header
+   ------------------------------------------------------------------------------------------
+   procedure write_output_header (AS : in out Arc_Structure; output_file_path : String)
+   is
+      sfile    : SIO.File_Type;
+      block    : premier_block;
+      nlbfloat : constant Float := Float (AS.links.Length) / 32.0;
+      nfbfloat : constant Float := Float (AS.files.Length) / 32.0;
+      cmfloat  : constant Float := Float (AS.cmsize) / 32.0;
+   begin
+      block.magic_bytes     := magic;
+      block.version         := format_version;
+      block.num_groups      := index_type (AS.groups.Length);
+      block.num_owners      := index_type (AS.owners.Length);
+      block.link_blocks     := file_index (Float'Ceiling (nlbfloat));
+      block.file_blocks     := file_index (Float'Ceiling (nfbfloat));
+      block.manifest_blocks := index_type (Float'Ceiling (cmfloat));
+      block.manifest_size   := AS.cmsize;
+      block.padding         := (others => Character'Val (0));
+
+      SIO.Create (File => sfile,
+                  Mode => SIO.Out_File,
+                  Name => output_file_path);
+      AS.stmaxs := SIO.Stream (sfile);
+
+      premier_block'Output (AS.stmaxs, block);
+   end write_output_header;
+
+
+   ------------------------------------------------------------------------------------------
+   --  write_owngrp_blocks
+   ------------------------------------------------------------------------------------------
+   procedure write_owngrp_blocks (AS : Arc_Structure)
+   is
+      procedure write_line (position : owngrp_crate.Cursor);
+      procedure write_line (position : owngrp_crate.Cursor)
+      is
+         item : ownergroup renames owngrp_crate.Element (position);
+      begin
+         ownergroup'Output (AS.stmaxs, item);
+      end write_line;
+   begin
+      AS.groups.Iterate (write_line'Access);
+      AS.owners.Iterate (write_line'Access);
+   end write_owngrp_blocks;
 
 end Archive.Pack;

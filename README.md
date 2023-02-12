@@ -46,7 +46,7 @@ Total  Information           bytes
    16  Number of files         4
    18  Num manifest blocks     2
    21  Manifest size (comp)    3
-   11  Unused                 11
+   32  Unused                 11
 ```
 The first 32 bytes provides the number of groups, owners and files contained in the archive.
 It also contains the number of 32-byte blocks required to hold the link data, and it
