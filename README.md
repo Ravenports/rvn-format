@@ -18,7 +18,7 @@ Total  Information     bytes
   298  owner group name    1   *normalized index
   299  file type           1   *regular, hardlink, symlink, directory, FIFO
   304  file size           5   *1 Tb
-  306  file mode           2   *12 bits
+  306  file mode           2   *16 bits
   308  link path size      2   *linux supports up to 4096 characters
   310  parent directory    2   *directory index (64k directories supported)
   320  padding            10   *stop at a nice increment of 64 bytes
@@ -30,7 +30,7 @@ The archive contains 5 sequential blocks
 
 ### Block 1
 
-12 bytes
+16 bytes
 ```
 Total  Information     bytes
 ------------------------------------------------------------
@@ -39,8 +39,9 @@ Total  Information     bytes
     6  Number of groups    2
     8  Number of owners    2
    12  Number of files     4
+   16  Unused              4
 ```
-The first 12 bytes provides the number of groups, owners and files contained in the archive.
+The first 16 bytes provides the number of groups, owners and files contained in the archive.
 As each type of information has a fixed size, the start index of each block can be calculated.
 
 ### Block 2
