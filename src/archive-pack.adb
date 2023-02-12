@@ -421,7 +421,6 @@ package body Archive.Pack is
       sfile    : SIO.File_Type;
       block    : premier_block;
       nlbfloat : constant Float := Float (AS.links.Length) / 32.0;
-      nfbfloat : constant Float := Float (AS.files.Length) / 32.0;
       cmfloat  : constant Float := Float (AS.cmsize) / 32.0;
    begin
       block.magic_bytes     := magic;
@@ -429,7 +428,7 @@ package body Archive.Pack is
       block.num_groups      := index_type (AS.groups.Length);
       block.num_owners      := index_type (AS.owners.Length);
       block.link_blocks     := file_index (Float'Ceiling (nlbfloat));
-      block.file_blocks     := file_index (Float'Ceiling (nfbfloat));
+      block.file_blocks     := file_index (AS.files.Length);
       block.manifest_blocks := index_type (Float'Ceiling (cmfloat));
       block.manifest_size   := AS.cmsize;
       block.padding         := (others => Character'Val (0));
