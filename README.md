@@ -20,7 +20,8 @@ Index  Information     bytes
   296  owner user name     1   *normalized index
   297  owner group name    1   *normalized index
   298  file type           1   *regular, hardlink, symlink, directory, FIFO
-  299  flat file size      5   *1 Tb
+  299  size multiplier     1   * File size div 4Gb
+  300  file size           4   * File size modulo 4Gb
   304  compressed size     4   *4 Gb
   308  file mode           2   *16 bits
   310  link path size      2   *linux supports up to 4096 characters

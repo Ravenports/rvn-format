@@ -150,6 +150,7 @@ package body Archive.Pack is
                new_block.index_owner  := AS.get_owner_index (features.owner);
                new_block.index_group  := AS.get_group_index (features.group);
                new_block.type_of_file := directory;
+               new_block.multiplier   := 0;
                new_block.flat_size    := 0;
                new_block.file_perms   := features.perms;
                new_block.link_length  := 0;
@@ -193,6 +194,8 @@ package body Archive.Pack is
             --  Blake3 sums for regular files and hardlinks
             --  The first hardlink is written as a regular file.
             new_block : File_Block;
+
+            use type DIR.File_Size;
          begin
             new_block.filename_p1  := get_filename (item, 1);
             new_block.filename_p2  := get_filename (item, 2);
@@ -210,6 +213,7 @@ package body Archive.Pack is
                when symlink =>
                   new_block.blake_sum    := null_sum;
                   new_block.type_of_file := symlink;
+                  new_block.multiplier   := 0;
                   new_block.flat_size    := 0;
                   declare
                      target : constant String := UNX.link_target (item_path);
@@ -220,6 +224,7 @@ package body Archive.Pack is
                when fifo =>
                   new_block.blake_sum    := null_sum;
                   new_block.type_of_file := fifo;
+                  new_block.multiplier   := 0;
                   new_block.flat_size    := 0;
                   new_block.link_length  := 0;
                when regular =>
@@ -237,7 +242,8 @@ package body Archive.Pack is
                                     item_path & "; This directory cannot be archived.");
                   end;
                   new_block.type_of_file := regular;
-                  new_block.flat_size    := size_type (DIR.Size (item_path));
+                  new_block.multiplier   := size_multi (DIR.Size (item_path) / 2 ** 32);
+                  new_block.flat_size    := size_modulo (DIR.Size (item_path) mod 2 ** 32);
                   new_block.link_length  := 0;
                when hardlink =>
                   begin
@@ -253,7 +259,8 @@ package body Archive.Pack is
                         AS.print (normal, "FATAL: Insufficient permissions to read " &
                                     item_path & "; This directory cannot be archived.");
                   end;
-                  new_block.flat_size    := size_type (DIR.Size (item_path));
+                  new_block.multiplier   := size_multi (DIR.Size (item_path) / 2 ** 32);
+                  new_block.flat_size    := size_modulo (DIR.Size (item_path) mod 2 ** 32);
                   if AS.inode_already_seen (features.inode) then
                      new_block.type_of_file := hardlink;
                      declare

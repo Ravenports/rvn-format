@@ -8,6 +8,8 @@ package Archive is
    type one_byte    is mod 2 ** 8;
    type permissions is mod 2 ** 16;
    type index_type  is mod 2 ** 16;
+   type size_multi  is mod 2 ** 8;
+   type size_modulo is mod 2 ** 32;
    type size_type   is mod 2 ** 40;
    type zstd_size   is mod 2 ** 32;
    type filetime    is mod 2 ** 64;
@@ -34,7 +36,8 @@ package Archive is
          index_owner  : one_byte;
          index_group  : one_byte;
          type_of_file : file_type;
-         flat_size    : size_type;
+         multiplier   : size_multi;
+         flat_size    : size_modulo;
          compressed   : zstd_size;
          file_perms   : permissions;
          link_length  : max_path;
@@ -53,9 +56,10 @@ package Archive is
          blake_sum    at 256 range  0 .. 255;
          modified     at 288 range  0 .. 63;
          index_owner  at 296 range  0 .. 7;
-         index_group  at 296 range  8 .. 15;
-         type_of_file at 296 range 16 .. 23;
-         flat_size    at 296 range 24 .. 63;
+         index_group  at 297 range  0 .. 7;
+         type_of_file at 298 range  0 .. 7;
+         multiplier   at 299 range  0 .. 7;
+         flat_size    at 300 range  0 .. 31;
          compressed   at 304 range  0 .. 31;
          file_perms   at 308 range  0 .. 15;
          link_length  at 310 range  0 .. 15;
