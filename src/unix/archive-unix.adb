@@ -48,6 +48,7 @@ package body Archive.Unix is
       result.ftype := unsupported;
       result.mtime := 0;
       result.perms := 0;
+      result.inode := 0;
       result.error := True;
       begin
          if Unix.stat_ok (path, sb'Unchecked_Access) then
@@ -56,6 +57,7 @@ package body Archive.Unix is
             result.group := file_group (sb'Unchecked_Access);
             result.mtime := file_modification_time (sb'Unchecked_Access);
             result.perms := file_permissions (sb'Unchecked_Access);
+            result.inode := inode_number (sb'Unchecked_Access);
             result.error := False;
          else
             result.owner := str2owngrp ("xxx");
