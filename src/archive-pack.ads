@@ -59,6 +59,7 @@ private
          ftrack : File_Count := 0;
          tlevel : A_Path;
          tlsize : Natural;
+         serror : Boolean := False;
       end record;
 
    --  Given the string representation of the owner, return the index on the list.

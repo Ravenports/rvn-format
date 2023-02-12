@@ -3,6 +3,7 @@
 
 with Ada.Text_IO;
 with Ada.Exceptions;
+with Ada.IO_Exceptions;
 with Ada.Directories;
 with Archive.Unix;
 with Blake_3;
@@ -12,6 +13,7 @@ package body Archive.Pack is
    package TIO renames Ada.Text_IO;
    package DIR renames Ada.Directories;
    package EX  renames Ada.Exceptions;
+   package IOX renames Ada.IO_Exceptions;
    package UNX renames Archive.Unix;
 
    ------------------------------------------------------------------------------------------
@@ -217,12 +219,32 @@ package body Archive.Pack is
                   new_block.flat_size    := 0;
                   new_block.link_length  := 0;
                when regular =>
-                  new_block.blake_sum    := Blake_3.file_digest (item_path);
+                  begin
+                     new_block.blake_sum    := Blake_3.file_digest (item_path);
+                     AS.print (debug, Blake_3.hex (new_block.blake_sum) &
+                                 " " & DIR.Simple_Name (item));
+                  exception
+                     when IOX.Use_Error =>
+                        AS.serror := True;
+                        new_block.blake_sum := null_sum;
+                        AS.print (normal, "FATAL: Insufficient permissions to read " &
+                                    item_path & "; This directory cannot be archived.");
+                  end;
                   new_block.type_of_file := regular;
                   new_block.flat_size    := size_type (DIR.Size (item_path));
                   new_block.link_length  := 0;
                when hardlink =>
-                  new_block.blake_sum    := Blake_3.file_digest (item_path);
+                  begin
+                     new_block.blake_sum    := Blake_3.file_digest (item_path);
+                     AS.print (debug, Blake_3.hex (new_block.blake_sum) &
+                                 " " & DIR.Simple_Name (item));
+                  exception
+                     when IOX.Use_Error =>
+                        AS.serror := True;
+                        new_block.blake_sum := null_sum;
+                        AS.print (normal, "FATAL: Insufficient permissions to read " &
+                                    item_path & "; This directory cannot be archived.");
+                  end;
                   new_block.flat_size    := size_type (DIR.Size (item_path));
                   if AS.inode_already_seen (features.inode) then
                      new_block.type_of_file := hardlink;
