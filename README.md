@@ -11,15 +11,15 @@ The headers are different, but much more compact. Each file is represented by a 
 ```
 Total  Information     bytes
 ------------------------------------------------------------
-  256  Filename          256
+  256  Filename          256   *split into four 32-byte parts
   288  Blake3 digest      32
-  289  owner user name     1   *normalized index
-  290  owner group name    1   *normalized index
-  291  file type           1   *regular, hardlink, symlink, directory, FIFO
-  293  file mode           2   *12 bits
-  298  file size           5   *1 Tb
-  300  link path size      2   *linux supports up to 4096 characters
-  308  modification time   8   *64-bit time
+  296  modification time   8   *64-bit time
+  297  owner user name     1   *normalized index
+  298  owner group name    1   *normalized index
+  299  file type           1   *regular, hardlink, symlink, directory, FIFO
+  304  file size           5   *1 Tb
+  306  file mode           2   *12 bits
+  308  link path size      2   *linux supports up to 4096 characters
   310  parent directory    2   *directory index (64k directories supported)
   320  padding            10   *stop at a nice increment of 64 bytes
 ```
