@@ -113,4 +113,7 @@ private
    --  Write block 4 (contiguous strings of links)
    procedure write_link_block (AS : Arc_Structure);
 
+   --  Write block 5 (All the file header blocks)
+   procedure write_file_index_block (AS : Arc_Structure);
+
 end Archive.Pack;

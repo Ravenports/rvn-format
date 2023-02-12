@@ -33,6 +33,7 @@ package body Archive.Pack is
          metadata.write_output_header (output_file);
          metadata.write_owngrp_blocks;
          metadata.write_link_block;
+         metadata.write_file_index_block;
       end if;
    end integrate;
 
@@ -511,5 +512,23 @@ package body Archive.Pack is
          line_index := line_index + 32;
       end loop;
    end write_link_block;
+
+
+   ------------------------------------------------------------------------------------------
+   --  write_file_index_block
+   ------------------------------------------------------------------------------------------
+   procedure write_file_index_block (AS : Arc_Structure)
+   is
+      procedure write (position : file_block_crate.Cursor);
+
+      procedure write (position : file_block_crate.Cursor)
+      is
+         item : File_Block renames file_block_crate.Element (position);
+      begin
+         File_Block'Output (AS.stmaxs, item);
+      end write;
+   begin
+      AS.files.Iterate (write'Access);
+   end write_file_index_block;
 
 end Archive.Pack;
