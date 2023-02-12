@@ -32,6 +32,7 @@ package body Archive.Pack is
       if not metadata.serror then
          metadata.write_output_header (output_file);
          metadata.write_owngrp_blocks;
+         metadata.write_link_block;
       end if;
    end integrate;
 
@@ -467,5 +468,32 @@ package body Archive.Pack is
       AS.groups.Iterate (write_line'Access);
       AS.owners.Iterate (write_line'Access);
    end write_owngrp_blocks;
+
+
+   ------------------------------------------------------------------------------------------
+   --  write_link_block
+   ------------------------------------------------------------------------------------------
+   procedure write_link_block (AS : Arc_Structure)
+   is
+      procedure construct (position : link_crate.Cursor);
+
+      nlbfloat   : constant Float := Float (AS.links.Length) / 32.0;
+      block_size : constant Natural := Natural (Float'Ceiling (nlbfloat)) * 32;
+
+      type block_type is array (1 .. block_size) of one_byte;
+      block : block_type := (others => 0);
+      index : Natural := 0;
+
+      procedure construct (position : link_crate.Cursor)
+      is
+         item : Character renames link_crate.Element (position);
+      begin
+         index := index + 1;
+         block (index) := one_byte (Character'Pos (item));
+      end construct;
+   begin
+      AS.links.Iterate (construct'Access);
+      block_type'Output (AS.stmaxs, block);
+   end write_link_block;
 
 end Archive.Pack;

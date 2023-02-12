@@ -110,5 +110,7 @@ private
    --  Write blocks 2 and 3 (groups and owners)
    procedure write_owngrp_blocks (AS : Arc_Structure);
 
+   --  Write block 4 (contiguous strings of links)
+   procedure write_link_block (AS : Arc_Structure);
 
 end Archive.Pack;
