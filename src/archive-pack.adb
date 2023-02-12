@@ -478,11 +478,16 @@ package body Archive.Pack is
       procedure construct (position : link_crate.Cursor);
 
       nlbfloat   : constant Float := Float (AS.links.Length) / 32.0;
-      block_size : constant Natural := Natural (Float'Ceiling (nlbfloat)) * 32;
+      num_lines  : constant Natural := Natural (Float'Ceiling (nlbfloat));
+      block_size : constant Natural := num_lines * 32;
 
       type block_type is array (1 .. block_size) of one_byte;
-      block : block_type := (others => 0);
-      index : Natural := 0;
+      type single_line is array (1 .. 32) of one_byte;
+      for single_line'Size use 256;
+
+      block      : block_type := (others => 0);
+      index      : Natural := 0;
+      line_index : Natural := 0;
 
       procedure construct (position : link_crate.Cursor)
       is
@@ -493,7 +498,10 @@ package body Archive.Pack is
       end construct;
    begin
       AS.links.Iterate (construct'Access);
-      block_type'Output (AS.stmaxs, block);
+      for line in 1 .. num_lines loop
+         single_line'Output (AS.stmaxs, single_line (block (line_index .. line_index + 31)));
+         line_index := line_index + 32;
+      end loop;
    end write_link_block;
 
 end Archive.Pack;
