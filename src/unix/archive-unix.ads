@@ -21,6 +21,9 @@ package Archive.Unix is
    --  Return set of file characteristis given the path to a file or a directory
    function get_charactistics (path : String) return File_Characteristics;
 
+   --  Return length of symlink target path
+   function link_target_size (symlink_path : String) return max_path;
+
 private
 
    function success (rc : IC.int) return Boolean;
@@ -41,6 +44,12 @@ private
      (path : IC.Strings.chars_ptr;
       sb   : struct_stat_Access) return IC.int;
    pragma Import (C, arc_stat, "lstat");
+
+   function arc_readlink
+     (path   : IC.Strings.chars_ptr;
+      buf    : access IC.unsigned_char;
+      bufsiz : IC.size_t) return IC.long;
+   pragma Import (C, arc_readlink, "readlink");
 
    function arc_get_mtime (sb : struct_stat_Access) return IC.long;
    pragma Import (C, arc_get_mtime, "get_mtime");
@@ -83,5 +92,6 @@ private
    function str2owngrp (name : String) return ownergroup;
 
    function int2str (A : Integer) return String;
+
 
 end Archive.Unix;

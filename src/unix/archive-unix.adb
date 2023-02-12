@@ -201,4 +201,21 @@ package body Archive.Unix is
       return inode_type (res);
    end inode_number;
 
+
+   ------------------------------------------------------------------------------------------
+      --  link_target_size
+   ------------------------------------------------------------------------------------------
+   function link_target_size (symlink_path : String) return max_path
+   is
+      bufsiz : constant IC.size_t := 1024;
+      buffer : array (1 .. bufsiz) of aliased IC.unsigned_char;
+      c_path : IC.Strings.chars_ptr;
+      res    : IC.long;
+   begin
+      c_path := IC.Strings.New_String (symlink_path);
+      res := arc_readlink (c_path, buffer (1)'Access, bufsiz);
+      IC.Strings.Free (c_path);
+      return max_path (res);
+   end link_target_size;
+
 end Archive.Unix;
