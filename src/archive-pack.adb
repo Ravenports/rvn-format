@@ -5,6 +5,7 @@ with Ada.Text_IO;
 with Ada.Exceptions;
 with Ada.Directories;
 with Archive.Unix;
+with Blake_3;
 
 package body Archive.Pack is
 
@@ -204,29 +205,33 @@ package body Archive.Pack is
                   new_block.blake_sum    := null_sum;
                   new_block.type_of_file := symlink;
                   new_block.flat_size    := 0;
-                  new_block.link_length  := UNX.link_target_size (item_path);
+                  declare
+                     target : constant String := UNX.link_target (item_path);
+                  begin
+                     new_block.link_length := max_path (target'Length);
+                     AS.push_link (target);
+                  end;
                when fifo =>
                   new_block.blake_sum    := null_sum;
                   new_block.type_of_file := fifo;
                   new_block.flat_size    := 0;
                   new_block.link_length  := 0;
                when regular =>
-                  new_block.blake_sum    := (1 => 'T',
-                                             2 => 'B',
-                                             3 => 'D',
-                                             others => Character'Val (0));
+                  new_block.blake_sum    := Blake_3.file_digest (item_path);
                   new_block.type_of_file := regular;
                   new_block.flat_size    := size_type (DIR.Size (item_path));
                   new_block.link_length  := 0;
                when hardlink =>
-                  new_block.blake_sum    := (1 => 'T',
-                                             2 => 'B',
-                                             3 => 'D',
-                                             others => Character'Val (0));
+                  new_block.blake_sum    := Blake_3.file_digest (item_path);
                   new_block.flat_size    := size_type (DIR.Size (item_path));
                   if AS.inode_already_seen (features.inode) then
                      new_block.type_of_file := hardlink;
-                     new_block.link_length  := AS.retrieve_inode_path (features.inode)'Length;
+                     declare
+                        target : constant String := AS.retrieve_inode_path (features.inode);
+                     begin
+                        new_block.link_length := max_path (target'Length);
+                        AS.push_link (target);
+                     end;
                   else
                      AS.insert_inode (features.inode, item_path);
                      new_block.type_of_file := regular;
@@ -368,6 +373,18 @@ package body Archive.Pack is
       new_inode_record.path (new_inode_record.path'First .. plast) := relative_path;
       AS.inodes.Append (new_inode_record);
    end insert_inode;
+
+
+   ------------------------------------------------------------------------------------------
+   --  push_link
+   ------------------------------------------------------------------------------------------
+   procedure push_link (AS : in out Arc_Structure; link : String) is
+   begin
+      AS.print (debug, "Pushing " & link & " to stack");
+      for index in link'Range loop
+         AS.links.Append (link (index));
+      end loop;
+   end push_link;
 
 
 end Archive.Pack;

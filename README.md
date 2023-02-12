@@ -12,20 +12,20 @@ The headers are different than TAR, but much more compact.
 Each file is represented by a 320-byte block
 
 ```
-Total  Information     bytes
+Index  Information     bytes
 ------------------------------------------------------------
-  256  Filename          256   *split into four 32-byte parts
-  288  Blake3 digest      32
-  296  modification time   8   *64-bit time
-  297  owner user name     1   *normalized index
-  298  owner group name    1   *normalized index
-  299  file type           1   *regular, hardlink, symlink, directory, FIFO
-  304  flat file size      5   *1 Tb
-  308  compressed size     4   *4 Gb
-  310  file mode           2   *16 bits
-  312  link path size      2   *linux supports up to 4096 characters
-  314  parent directory    2   *directory index (64k directories supported)
-  320  padding             6   *stop at a nice increment of 64 bytes
+    0  Filename          256   *split into four 32-byte parts
+  256  Blake3 digest      32
+  288  modification time   8   *64-bit time
+  296  owner user name     1   *normalized index
+  297  owner group name    1   *normalized index
+  298  file type           1   *regular, hardlink, symlink, directory, FIFO
+  299  flat file size      5   *1 Tb
+  304  compressed size     4   *4 Gb
+  308  file mode           2   *16 bits
+  310  link path size      2   *linux supports up to 4096 characters
+  312  parent directory    2   *directory index (64k directories supported)
+  314  padding             6   *stop at a nice increment of 64 bytes
 ```
 
 ## Structure

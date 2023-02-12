@@ -9,6 +9,7 @@ package Archive is
    type permissions is mod 2 ** 16;
    type index_type  is mod 2 ** 16;
    type size_type   is mod 2 ** 40;
+   type zstd_size   is mod 2 ** 32;
    type filetime    is mod 2 ** 64;
    type max_path    is mod 2 ** 16;
    type inode_type  is mod 2 ** 64;
@@ -16,7 +17,7 @@ package Archive is
    subtype A_filename is String (1 .. 256);
    subtype A_fragment is String (1 .. 64);
    subtype A_checksum is String (1 .. 32);
-   subtype A_padding  is String (1 .. 10);
+   subtype A_padding  is String (1 .. 6);
 
    type File_Block is
       record
@@ -30,6 +31,7 @@ package Archive is
          index_group  : one_byte;
          type_of_file : file_type;
          flat_size    : size_type;
+         compressed   : zstd_size;
          file_perms   : permissions;
          link_length  : max_path;
          index_parent : index_type;
@@ -50,10 +52,11 @@ package Archive is
          index_group  at 296 range  8 .. 15;
          type_of_file at 296 range 16 .. 23;
          flat_size    at 296 range 24 .. 63;
-         file_perms   at 304 range  0 .. 15;
-         link_length  at 304 range 16 .. 31;
-         index_parent at 304 range 32 .. 47;
-         padding      at 304 range 48 .. 127;
+         compressed   at 304 range  0 .. 31;
+         file_perms   at 308 range  0 .. 15;
+         link_length  at 310 range  0 .. 15;
+         index_parent at 312 range  0 .. 15;
+         padding      at 314 range  0 .. 47;
       end record;
 
 end Archive;

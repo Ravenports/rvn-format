@@ -21,8 +21,8 @@ package Archive.Unix is
    --  Return set of file characteristis given the path to a file or a directory
    function get_charactistics (path : String) return File_Characteristics;
 
-   --  Return length of symlink target path
-   function link_target_size (symlink_path : String) return max_path;
+   --  Return symlink target path
+   function link_target (symlink_path : String) return String;
 
 private
 

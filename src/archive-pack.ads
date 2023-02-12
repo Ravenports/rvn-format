@@ -43,12 +43,17 @@ private
      (Index_Type   => Natural,
       Element_Type => inode_record);
 
+   package link_crate is new CON.Vectors
+     (Index_Type   => Natural,
+      Element_Type => Character);
+
    type Arc_Structure is tagged
       record
          owners : owngrp_crate.Vector;
          groups : owngrp_crate.Vector;
          files  : file_block_crate.Vector;
          inodes : inode_crate.Vector;
+         links  : link_crate.Vector;
          level  : info_level := silent;
          dtrack : index_type := 0;
          ftrack : File_Count := 0;
@@ -90,5 +95,8 @@ private
 
    --  Insert record of a hardlink
    procedure insert_inode (AS : in out Arc_Structure; inode : inode_type; path : String);
+
+   --  Push a link on top of the link block
+   procedure push_link (AS : in out Arc_Structure; link : String);
 
 end Archive.Pack;

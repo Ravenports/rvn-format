@@ -205,9 +205,9 @@ package body Archive.Unix is
 
 
    ------------------------------------------------------------------------------------------
-      --  link_target_size
+      --  link_target
    ------------------------------------------------------------------------------------------
-   function link_target_size (symlink_path : String) return max_path
+   function link_target (symlink_path : String) return String
    is
       bufsiz : constant IC.size_t := 1024;
       buffer : array (1 .. bufsiz) of aliased IC.unsigned_char;
@@ -217,7 +217,16 @@ package body Archive.Unix is
       c_path := IC.Strings.New_String (symlink_path);
       res := arc_readlink (c_path, buffer (1)'Access, bufsiz);
       IC.Strings.Free (c_path);
-      return max_path (res);
-   end link_target_size;
+
+      declare
+         size   : constant Integer := Integer (res);
+         result : String (1 .. size);
+      begin
+         for x in 1 .. size loop
+            result (x) := Character'Val (buffer (IC.size_t (x)));
+         end loop;
+         return result;
+      end;
+   end link_target;
 
 end Archive.Unix;
