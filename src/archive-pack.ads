@@ -60,8 +60,8 @@ private
          dtrack : index_type := 0;
          ftrack : File_Count := 0;
          tlevel : A_Path;
-         tlsize : Natural;
-         cmsize : mfest_size;
+         tlsize : Natural    := 0;
+         cmsize : zstd_size  := 0;
          serror : Boolean := False;
          stmaxs : SIO.Stream_Access;
       end record;

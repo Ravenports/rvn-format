@@ -14,14 +14,14 @@ package Archive is
    type max_path    is mod 2 ** 16;
    type inode_type  is mod 2 ** 64;
    type file_index  is mod 2 ** 32;
-   type mfest_size  is mod 2 ** 24;
 
    subtype A_filename is String (1 .. 256);
    subtype A_fragment is String (1 .. 64);
    subtype A_checksum is String (1 .. 32);
-   subtype A_padding  is String (1 .. 6);
    subtype Some_magic is String (1 .. 3);
-   subtype B_padding  is String (1 .. 11);
+
+   type A_padding is array (1 .. 6) of one_byte;
+   type B_padding is array (1 .. 10) of one_byte;
 
    type File_Block is
       record
@@ -72,7 +72,7 @@ package Archive is
          link_blocks     : file_index;
          file_blocks     : file_index;
          manifest_blocks : index_type;
-         manifest_size   : mfest_size;
+         manifest_size   : zstd_size;
          padding         : B_padding;
       end record;
 
@@ -87,8 +87,8 @@ package Archive is
          link_blocks     at  8 range  0 .. 31;
          file_blocks     at 12 range  0 .. 31;
          manifest_blocks at 16 range  0 .. 15;
-         manifest_size   at 18 range  0 .. 23;
-         padding         at 21 range  0 .. 87;
+         manifest_size   at 18 range  0 .. 31;
+         padding         at 22 range  0 .. 79;
       end record;
 
    magic : constant Some_magic := Character'Val (200) & Character'Val (100) & Character'Val (50);

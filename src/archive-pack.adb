@@ -152,7 +152,7 @@ package body Archive.Pack is
                new_block.file_perms   := features.perms;
                new_block.link_length  := 0;
                new_block.index_parent := AS.dtrack;
-               new_block.padding      := (others => Character'Val (0));
+               new_block.padding      := (others => 0);
 
                AS.files.Append (new_block);
                AS.print (debug, DIR.Full_Name (item) & " (" & AS.dtrack'Img & ")");
@@ -201,7 +201,7 @@ package body Archive.Pack is
             new_block.index_group  := AS.get_group_index (features.group);
             new_block.file_perms   := features.perms;
             new_block.index_parent := dir_index;
-            new_block.padding      := (others => Character'Val (0));
+            new_block.padding      := (others => 0);
 
             case features.ftype is
                when directory | unsupported => null;   --  impossible
@@ -431,7 +431,7 @@ package body Archive.Pack is
       block.file_blocks     := file_index (AS.files.Length);
       block.manifest_blocks := index_type (Float'Ceiling (cmfloat));
       block.manifest_size   := AS.cmsize;
-      block.padding         := (others => Character'Val (0));
+      block.padding         := (others => 0);
 
       SIO.Create (File => sfile,
                   Mode => SIO.Out_File,
@@ -448,11 +448,20 @@ package body Archive.Pack is
    procedure write_owngrp_blocks (AS : Arc_Structure)
    is
       procedure write_line (position : owngrp_crate.Cursor);
+
+      type owngrp_block is
+         record
+            identifier : ownergroup;
+         end record;
+      for owngrp_block'Size use 256;
+
       procedure write_line (position : owngrp_crate.Cursor)
       is
          item : ownergroup renames owngrp_crate.Element (position);
+         block : owngrp_block;
       begin
-         ownergroup'Output (AS.stmaxs, item);
+         block.identifier := item;
+         owngrp_block'Output (AS.stmaxs, block);
       end write_line;
    begin
       AS.groups.Iterate (write_line'Access);
