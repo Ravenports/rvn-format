@@ -1,10 +1,14 @@
 --  This file is covered by the Internet Software Consortium (ISC) License
 --  Reference: ../../License.txt
 
+with Ada.Streams.Stream_IO;
+
 private with System;
 private with Interfaces.C.Strings;
 
 package Zstandard is
+
+   package SIO renames Ada.Streams.Stream_IO;
 
    type Compression_Level is range 1 .. 22;
    type File_Size         is mod 2 ** 64;
@@ -18,9 +22,9 @@ package Zstandard is
    Default_Compression : constant Compression_Level := 3;
 
 
-   ------------------
-   -- Compression  --
-   ------------------
+   -------------------
+   --  Compression  --
+   -------------------
 
    --  This function returns the compressed version of "source_data".  Should the operation fail,
    --  "successful" variable will be set to False and the resulting string will contain the
@@ -31,9 +35,9 @@ package Zstandard is
       quality     : Compression_Level := Default_Compression) return String;
 
 
-   --------------------
-   -- Decompression  --
-   --------------------
+   ---------------------
+   --  Decompression  --
+   ---------------------
 
    --  This function returns the decompressed version of "source_data".  Should the operation fail,
    --  "successful" variable will be set to False and the resulting string will contain the
@@ -41,6 +45,35 @@ package Zstandard is
    function Decompress
      (source_data : String;
       successful  : out Boolean) return String;
+
+
+   --------------------------------
+   --  Incorporate regular file  --
+   --------------------------------
+
+   --  This procedure will read the entire contents of the given path, compress it and
+   --  write the output to the temporary file of the Stream_IO handler.  Files smaller than
+   --  1,048,576 bytes are read all at once, and bigger files are read in chunks.
+   procedure incorporate_regular_file
+     (filename    : String;
+      file_size   : Natural;
+      quality     : Compression_Level := Default_Compression;
+      target_saxs : SIO.Stream_Access;
+      target_file : SIO.File_Type;
+      output_size : out Natural;
+      successful  : out Boolean);
+
+
+   ----------------------------
+   --  compress_into_memory  --
+   ----------------------------
+
+   --  This function will read a small file (under 1Mb) and return it as a string.
+   function compress_into_memory
+     (filename   : String;
+      quality    : Compression_Level := Default_Compression;
+      successful : out Boolean) return String;
+
 
 private
 
@@ -282,5 +315,17 @@ private
                                                     "source file";
    Warn_way_too_big     : constant String := "ERROR: Hit size limit imposed by this architecture";
    Warn_orig_size_fail  : constant String := "ERROR: Original size unknown";
+
+   --  Helper function to dump contents of a file into a string
+   --  Potentially useful when desirable to have a compressed copy of the file in memory
+   function File_Contents (filename : String;
+                           filesize : Natural;
+                           nominal  : out Boolean) return String;
+
+   --  Helper function to dump compressed memory into the open target file
+   procedure append_target_file
+     (target_saxs : SIO.Stream_Access;
+      compressed_text : String);
+
 
 end Zstandard;
