@@ -49,7 +49,7 @@ private
      (Index_Type   => Natural,
       Element_Type => Character);
 
-   type Arc_Structure is tagged
+   type Arc_Structure is tagged limited
       record
          owners : owngrp_crate.Vector;
          groups : owngrp_crate.Vector;
@@ -63,7 +63,8 @@ private
          tlsize : Natural    := 0;
          cmsize : zstd_size  := 0;
          serror : Boolean := False;
-         stmaxs : SIO.Stream_Access;
+         rvn_handle : SIO.File_Type;
+         rvn_stmaxs : SIO.Stream_Access;
       end record;
 
    --  Given the string representation of the owner, return the index on the list.

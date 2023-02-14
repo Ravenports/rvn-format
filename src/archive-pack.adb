@@ -427,7 +427,6 @@ package body Archive.Pack is
    ------------------------------------------------------------------------------------------
    procedure write_output_header (AS : in out Arc_Structure; output_file_path : String)
    is
-      sfile    : SIO.File_Type;
       block    : premier_block;
       nlbfloat : constant Float := Float (AS.links.Length) / 32.0;
       cmfloat  : constant Float := Float (AS.cmsize) / 32.0;
@@ -442,12 +441,12 @@ package body Archive.Pack is
       block.manifest_size   := AS.cmsize;
       block.padding         := (others => 0);
 
-      SIO.Create (File => sfile,
+      SIO.Create (File => AS.rvn_handle,
                   Mode => SIO.Out_File,
                   Name => output_file_path);
-      AS.stmaxs := SIO.Stream (sfile);
+      AS.rvn_stmaxs := SIO.Stream (AS.rvn_handle);
 
-      premier_block'Output (AS.stmaxs, block);
+      premier_block'Output (AS.rvn_stmaxs, block);
    end write_output_header;
 
 
@@ -470,7 +469,7 @@ package body Archive.Pack is
          block : owngrp_block;
       begin
          block.identifier := item;
-         owngrp_block'Output (AS.stmaxs, block);
+         owngrp_block'Output (AS.rvn_stmaxs, block);
       end write_line;
    begin
       AS.groups.Iterate (write_line'Access);
@@ -514,7 +513,7 @@ package body Archive.Pack is
             line : single_line;
          begin
             line.contents := line_type (block (line_index .. line_index + 31));
-            single_line'Output (AS.stmaxs, line);
+            single_line'Output (AS.rvn_stmaxs, line);
          end;
          line_index := line_index + 32;
       end loop;
@@ -532,7 +531,7 @@ package body Archive.Pack is
       is
          item : File_Block renames file_block_crate.Element (position);
       begin
-         File_Block'Output (AS.stmaxs, item);
+         File_Block'Output (AS.rvn_stmaxs, item);
       end write;
    begin
       AS.files.Iterate (write'Access);
