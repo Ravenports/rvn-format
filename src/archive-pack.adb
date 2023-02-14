@@ -476,7 +476,7 @@ package body Archive.Pack is
       SIO.Create (File => AS.tmp_handle,
                   Mode => SIO.Out_File,
                   Name => output_file_path & ".working");
-      AS.rvn_stmaxs := SIO.Stream (AS.tmp_handle);
+      AS.tmp_stmaxs := SIO.Stream (AS.tmp_handle);
    end create_working_file;
 
 
