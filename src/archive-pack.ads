@@ -65,6 +65,8 @@ private
          serror : Boolean := False;
          rvn_handle : SIO.File_Type;
          rvn_stmaxs : SIO.Stream_Access;
+         tmp_handle : SIO.File_Type;
+         tmp_stmaxs : SIO.Stream_Access;
       end record;
 
    --  Given the string representation of the owner, return the index on the list.
@@ -77,6 +79,9 @@ private
 
    --  Sets the standard out information level
    procedure set_verbosity (AS : in out Arc_Structure; level : info_level);
+
+   --  Opens the working file and stores the handle and stream access
+   procedure create_working_file (AS : in out Arc_Structure; output_file_path : String);
 
    --  Prints message to standard out if the display level is high enough
    procedure print (AS : Arc_Structure; msg_level : info_level; message : String);

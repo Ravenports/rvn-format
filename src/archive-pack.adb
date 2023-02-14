@@ -6,6 +6,7 @@ with Ada.Exceptions;
 with Ada.IO_Exceptions;
 with Ada.Directories;
 with Archive.Unix;
+with Zstandard;
 with Blake_3;
 
 package body Archive.Pack is
@@ -15,6 +16,7 @@ package body Archive.Pack is
    package EX  renames Ada.Exceptions;
    package IOX renames Ada.IO_Exceptions;
    package UNX renames Archive.Unix;
+   package ZST renames Zstandard;
 
    ------------------------------------------------------------------------------------------
    --  integrate
@@ -28,6 +30,7 @@ package body Archive.Pack is
    begin
       metadata.set_verbosity (verbosity);
       metadata.record_directory (top_level_directory);
+      metadata.create_working_file (output_file);
       metadata.scan_directory (top_level_directory, 0);
       if not metadata.serror then
          metadata.write_output_header (output_file);
@@ -215,6 +218,7 @@ package body Archive.Pack is
                   new_block.type_of_file := symlink;
                   new_block.multiplier   := 0;
                   new_block.flat_size    := 0;
+                  new_block.compressed   := 0;
                   declare
                      target : constant String := UNX.link_target (item_path);
                   begin
@@ -226,6 +230,7 @@ package body Archive.Pack is
                   new_block.type_of_file := fifo;
                   new_block.multiplier   := 0;
                   new_block.flat_size    := 0;
+                  new_block.compressed   := 0;
                   new_block.link_length  := 0;
                when regular =>
                   begin
@@ -245,6 +250,24 @@ package body Archive.Pack is
                   new_block.multiplier   := size_multi (DIR.Size (item_path) / 2 ** 32);
                   new_block.flat_size    := size_modulo (DIR.Size (item_path) mod 2 ** 32);
                   new_block.link_length  := 0;
+                  declare
+                     out_succ : Boolean;
+                     out_size : Natural;
+                  begin
+                     ZST.incorporate_regular_file
+                       (filename    => item_path,
+                        file_size   => Natural (DIR.Size (item_path)),
+                        quality     => 7,
+                        target_saxs => AS.tmp_stmaxs,
+                        target_file => AS.tmp_handle,
+                        output_size => out_size,
+                        successful  => out_succ);
+                     if out_succ then
+                        new_block.compressed := zstd_size (out_size);
+                     else
+                        new_block.compressed := 0;
+                     end if;
+                  end;
                when hardlink =>
                   begin
                      new_block.blake_sum := Blake_3.file_digest (item_path);
@@ -259,20 +282,42 @@ package body Archive.Pack is
                         AS.print (normal, "FATAL: Insufficient permissions to read " &
                                     item_path & "; This directory cannot be archived.");
                   end;
-                  new_block.multiplier   := size_multi (DIR.Size (item_path) / 2 ** 32);
-                  new_block.flat_size    := size_modulo (DIR.Size (item_path) mod 2 ** 32);
+
                   if AS.inode_already_seen (features.inode) then
                      new_block.type_of_file := hardlink;
+                     new_block.multiplier   := 0;
+                     new_block.flat_size    := 0;
                      declare
                         target : constant String := AS.retrieve_inode_path (features.inode);
                      begin
                         new_block.link_length := max_path (target'Length);
                         AS.push_link (target);
                      end;
+                     new_block.compressed := 0;
                   else
                      AS.insert_inode (features.inode, item_path);
                      new_block.type_of_file := regular;
+                     new_block.multiplier   := size_multi (DIR.Size (item_path) / 2 ** 32);
+                     new_block.flat_size    := size_modulo (DIR.Size (item_path) mod 2 ** 32);
                      new_block.link_length  := 0;
+                     declare
+                        out_succ : Boolean;
+                        out_size : Natural;
+                     begin
+                        ZST.incorporate_regular_file
+                          (filename    => item_path,
+                           file_size   => Natural (DIR.Size (item_path)),
+                           quality     => 7,
+                           target_saxs => AS.tmp_stmaxs,
+                           target_file => AS.tmp_handle,
+                           output_size => out_size,
+                           successful  => out_succ);
+                        if out_succ then
+                           new_block.compressed := zstd_size (out_size);
+                        else
+                           new_block.compressed := 0;
+                        end if;
+                     end;
                   end if;
             end case;
             AS.files.Append (new_block);
@@ -420,6 +465,19 @@ package body Archive.Pack is
          AS.links.Append (link (index));
       end loop;
    end push_link;
+
+
+   ------------------------------------------------------------------------------------------
+   --  create_working_file
+   ------------------------------------------------------------------------------------------
+   procedure create_working_file (AS : in out Arc_Structure; output_file_path : String)
+   is
+   begin
+      SIO.Create (File => AS.tmp_handle,
+                  Mode => SIO.Out_File,
+                  Name => output_file_path & ".working");
+      AS.rvn_stmaxs := SIO.Stream (AS.tmp_handle);
+   end create_working_file;
 
 
    ------------------------------------------------------------------------------------------
