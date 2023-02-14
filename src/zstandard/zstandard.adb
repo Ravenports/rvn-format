@@ -225,7 +225,7 @@ package body Zstandard is
       output_size : out Natural;
       successful  : out Boolean)
    is
-      max_one_pass_size : constant Natural := 2 ** 20;  --  1 megabyte
+      max_one_pass_size : constant Natural := 2 ** 18;  --  256 kb
    begin
       if file_size <= max_one_pass_size then
          declare
@@ -251,7 +251,7 @@ package body Zstandard is
       declare
          src_file  : SIO.File_Type;
          mech      : Zstandard.Streaming_Compression.Compressor;
-         chunksize : constant Ada.Streams.Stream_Element_Offset := 262_144;
+         chunksize : constant Ada.Streams.Stream_Element_Offset := 262_144;  --  256 kb
          chunk     : Ada.Streams.Stream_Element_Array (1 .. chunksize);
          Last      : Ada.Streams.Stream_Element_Offset;
          tare_size : SIO.Count;
