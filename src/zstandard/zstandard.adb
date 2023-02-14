@@ -4,12 +4,14 @@
 with Ada.Unchecked_Conversion;
 with Ada.Directories;
 with Ada.Direct_IO;
+with Ada.IO_Exceptions;
 with Ada.Streams;
 with Zstandard.Streaming_Compression;
 
 package body Zstandard is
 
    package DIR renames Ada.Directories;
+   package IOX renames Ada.IO_Exceptions;
 
    ----------------
    --  Compress  --
@@ -257,12 +259,19 @@ package body Zstandard is
 
          use type SIO.Count;
       begin
+         output_size := 0;
          tare_size := SIO.Size (target_file);
-         SIO.Open (File => src_file,
-                   Mode => SIO.In_File,
-                   Name => filename);
+         begin
+            SIO.Open (File => src_file,
+                      Mode => SIO.In_File,
+                      Name => filename);
+         exception
+            when IOX.Use_Error =>
+               successful := False;
+               return;
+         end;
 
-         mech.Initialize (output_stream => SIO.Stream (src_file),
+         mech.Initialize (output_stream => target_saxs,
                           quality       => quality);
          loop
             exit when SIO.End_Of_File (src_file);
