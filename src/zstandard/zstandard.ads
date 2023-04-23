@@ -48,12 +48,12 @@ package Zstandard is
 
 
    --------------------------------
-   --  Incorporate regular file  --
+   --  incorporate_regular_file  --
    --------------------------------
 
    --  This procedure will read the entire contents of the given path, compress it and
    --  write the output to the temporary file of the Stream_IO handler.  Files smaller than
-   --  1,048,576 bytes are read all at once, and bigger files are read in chunks.
+   --  262,144 bytes are read all at once, and bigger files are read in chunks.
    procedure incorporate_regular_file
      (filename    : String;
       file_size   : Natural;
@@ -74,6 +74,18 @@ package Zstandard is
       quality    : Compression_Level := Default_Compression;
       successful : out Boolean) return String;
 
+
+   --------------------------------
+   --  assemble_regular_archive  --
+   --------------------------------
+
+   --  This procedure will read the entire contents of the given path and append the scanned
+   --  data to file indicated by the Stream_IO handler.  Files smaller than
+   --  262,144 bytes are read all at once, and bigger files are read in chunks.
+   procedure assemble_regular_archive
+     (filename    : String;
+      file_size   : Natural;
+      target_saxs : SIO.Stream_Access);
 
 private
 

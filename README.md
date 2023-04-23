@@ -5,8 +5,12 @@ New package format for Ravenports
 
 This format replaces the equivalent of a GNU TAR far compressed by zstd program,
 only with several advantages.  The format supports a file index which includes a
-blake3 digest for each file and the ability to extract individual files without
-decompressing and disassembling the entire file.
+blake3 digest for each file.  In theory this provides the ability to extract
+individual files without decompressing and disassembling the entire file, but the
+the impact on the final file size to support this is very high.  In the end,
+smaller archives are valued more than individual file extraction.  However, the
+index will allow only decompressing up to the location of the desired file, and
+the ability to discard the previous data in memory.
 
 The headers are different than TAR, but much more compact.
 Each file is represented by a 320-byte block
@@ -22,11 +26,10 @@ Index  Information     bytes
   298  file type           1   *regular, hardlink, symlink, directory, FIFO
   299  size multiplier     1   * File size div 4Gb
   300  file size           4   * File size modulo 4Gb
-  304  compressed size     4   *4 Gb
-  308  file mode           2   *16 bits
-  310  link path size      2   *linux supports up to 4096 characters
-  312  parent directory    2   *directory index (64k directories supported)
-  314  padding             6   *stop at a nice increment of 64 bytes
+  304  file mode           2   *16 bits
+  306  link path size      2   *linux supports up to 4096 characters
+  308  parent directory    2   *directory index (64k directories supported)
+  310  padding             6   *stop at a nice increment of 64 bytes
 ```
 
 ## Structure
@@ -105,7 +108,7 @@ extracted from the archive.
 
 ### Block 7
 
-The last block contains the variable data of the file contents, sequentially.
+The last block contains the variable data of the compressed single-file archive.
 When extracting the files, the file permissions and ownership can be set immediately, but the directory
 permissions and ownership have to be done at the end to prevent the overwriting of the modification
 time of the directories.

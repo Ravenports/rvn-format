@@ -290,4 +290,71 @@ package body Zstandard is
    end incorporate_regular_file;
 
 
+   --------------------------------
+   --  assemble_regular_archive  --
+   --------------------------------
+   procedure assemble_regular_archive
+     (filename    : String;
+      file_size   : Natural;
+      target_saxs : SIO.Stream_Access)
+   is
+      max_one_pass_size : constant Natural := 2 ** 18;  --  256 kb
+   begin
+      if file_size <= max_one_pass_size then
+         if not DIR.Exists (filename) then
+            append_target_file (target_saxs, Warn_src_file_DNE);
+            return;
+         end if;
+         declare
+            good_dump : Boolean;
+            payload : constant String := File_Contents (filename => filename,
+                                                        filesize => file_size,
+                                                        nominal  => good_dump);
+         begin
+            append_target_file (target_saxs, payload);
+         end;
+         return;
+      end if;
+
+
+      --  We've got to read this file in chunks
+      declare
+         src_file  : SIO.File_Type;
+         chunksize : constant Ada.Streams.Stream_Element_Offset := 262_144;  --  256 kb
+         chunk     : Ada.Streams.Stream_Element_Array (1 .. chunksize);
+         Last      : Ada.Streams.Stream_Element_Offset;
+
+         procedure write_to_target (data : Ada.Streams.Stream_Element_Array);
+         procedure write_to_target (data : Ada.Streams.Stream_Element_Array)
+         is
+            subtype data_out is String (1 .. data'Length);
+
+            function stream_to_string is new Ada.Unchecked_Conversion
+              (Source => Ada.Streams.Stream_Element_Array,
+               Target => data_out);
+         begin
+            append_target_file (target_saxs, stream_to_string (data));
+         end write_to_target;
+      begin
+         begin
+            SIO.Open (File => src_file,
+                      Mode => SIO.In_File,
+                      Name => filename);
+         exception
+            when IOX.Use_Error =>
+               return;
+         end;
+
+         loop
+            exit when SIO.End_Of_File (src_file);
+            SIO.Read (File => src_file,
+                      Item => chunk,
+                      Last => Last);
+            write_to_target (data => chunk (1 .. Last));
+         end loop;
+         SIO.Close (src_file);
+      end;
+
+   end assemble_regular_archive;
+
 end Zstandard;

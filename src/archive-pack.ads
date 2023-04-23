@@ -83,6 +83,9 @@ private
    --  Opens the working file and stores the handle and stream access
    procedure create_working_file (AS : in out Arc_Structure; output_file_path : String);
 
+   --  Closes the working file
+   procedure finalize_working_file (AS : in out Arc_Structure);
+
    --  Prints message to standard out if the display level is high enough
    procedure print (AS : Arc_Structure; msg_level : info_level; message : String);
 
@@ -121,5 +124,9 @@ private
 
    --  Write block 5 (All the file header blocks)
    procedure write_file_index_block (AS : Arc_Structure);
+
+   --  Write block 7 (the compressed single archive)
+   procedure write_archive_block (AS : Arc_Structure; output_file_path : String);
+
 
 end Archive.Pack;

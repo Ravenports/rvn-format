@@ -41,7 +41,6 @@ package Archive is
          type_of_file : file_type;
          multiplier   : size_multi;
          flat_size    : size_modulo;
-         compressed   : zstd_size;
          file_perms   : permissions;
          link_length  : max_path;
          index_parent : index_type;
@@ -63,11 +62,10 @@ package Archive is
          type_of_file at 298 range  0 .. 7;
          multiplier   at 299 range  0 .. 7;
          flat_size    at 300 range  0 .. 31;
-         compressed   at 304 range  0 .. 31;
-         file_perms   at 308 range  0 .. 15;
-         link_length  at 310 range  0 .. 15;
-         index_parent at 312 range  0 .. 15;
-         padding      at 314 range  0 .. 47;
+         file_perms   at 304 range  0 .. 15;
+         link_length  at 306 range  0 .. 15;
+         index_parent at 308 range  0 .. 15;
+         padding      at 310 range  0 .. 47;
       end record;
 
    type premier_block is
