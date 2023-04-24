@@ -34,31 +34,56 @@ Index  Information     bytes
 
 ## Structure
 
-The archive contains 7 sequential blocks
+The archive contains 4 sequential blocks aligned at 32 bytes.
 
 ### Block 1
 
 32 bytes
 ```
-Total  Information           bytes
+Index  Information           bytes
 ------------------------------------------------------------
-    3  Magic bytes             3
-    4  version number          1
-    6  Number of groups        2
-    8  Number of owners        2
-   12  Number of link blocks   4
-   16  Number of files         4
-   18  Num metadata blocks     2
-   21  Metadata size (comp)    4
-   32  Unused                 10
+    0  Magic bytes             3
+    3  version number          1
+    4  Number of groups        2
+    6  Number of owners        2
+    8  Number of link blocks   4
+   12  Number of files         4
+   16  Metadata comp size      4
+   20  Files data comp size    4
+   24  Archive comp size       4
+   28  Unused                  4
 ```
 The first 32 bytes provides the number of groups, owners and files contained in the archive.
-It also contains the number of 32-byte blocks required to hold the link data, and it
-contains the number of 32-bytes blocks required to hold the metadata file, as well as it's
-zstd-compressed size.  As each type of information is a multiple of 32 bytes, the start
-index of each block can be calculated.
+It also contains the compressed size in bytes of the next three blocks.  The index of
+each block can easily be calculated:
+
+    LenBlock1 = 32
+    LenBlock2 = ceiling (length compressed metadata / 32)
+    LenBlock3 = ceiling (length compressed file data / 32)
+    LenBlock4 = ceiling (Length compressed archive data / 32)
+
+    Block 1 index =  0
+    Block 2 index = 32
+    Block 3 index = 32 + LenBlock2
+    Block 4 index = 32 + LenBlock2 + LenBlock3
+
 
 ### Block 2
+
+The length of this block is a multiple of 32.
+This block contains the zstd-compressed contents of the provided metadata file.
+By reading the first two blocks of the RVN archive, the manifest can be surgically
+extracted without unrolling the entire file.  The block is right-padding with zeros.
+
+### Block 3
+
+The length of this block is a multiple of 32.
+This block contains the zstd-compressed contents of concatenated blocks
+FA, FB, FC, and FD.  By reading the Block 1 and Block 3, the archive's complete
+directory index including the Blake3 checksum of every regular file can be
+surgically extracted without unrolling the entire file.
+
+#### Block FA - Group Names
 
 32 bytes per group record.
 The maximum length of a group name is 32.  The record is fixed size, and it zero padded.
@@ -72,22 +97,22 @@ postgres@@@@@@@@@@@@@@@@@@@@@@@
 In the illustration above, "@" is the zero byte.
 The index of the first record is 1, and the second record is 2, and so forth.
 
-### Block 3
+#### Block FB - Owner Names
 
 32 bytes per owner record.
 This structure is identical to the group records.
 The index of the first record is 1, and the second record is 2, and so forth.
 
-### Block 4
+#### Block FC - Link Paths
 
 32 bytes per link block.
 All of the relative link paths are concatenated without delimiter.  The blocks
 should be read into a single continuous string.
 
-### Block 5
+#### Block FD - File Records
 
 320 bytes per file record.
-A file index can be quickly constructed by reading Block 1, and using the contents to read blocks 2 through 5.  
+A file index can be quickly constructed by reading Block 1, and using the contents to read blocks FA through FD.  
 At that point, the file index of the archive can be reconstructed.
 
 The order of the files is determined by directory recursion.
@@ -100,13 +125,7 @@ The "zero" index starts with the link path of the first record, followed by the 
 Note that only the symlink types have link paths, so the length is zero in many cases.
 Likewise directories have no contents, so they are also zero bytes.
 
-### Block 6
-
-32 bytes per manifest block.
-The concatenated blocks contain the zstd-compressed version of the manifest, which can be surgically
-extracted from the archive.
-
-### Block 7
+### Block 4
 
 The last block contains the variable data of the compressed single-file archive.
 When extracting the files, the file permissions and ownership can be set immediately, but the directory
