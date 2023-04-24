@@ -689,7 +689,7 @@ package body Archive.Pack is
          output_size => out_size,
          successful  => out_succ);
       if out_succ then
-         AS.print (debug, "Compressed from" & archive_size'Img & " to" & out_size'Img);
+         AS.print (debug, "Compressed index from" & archive_size'Img & " to" & out_size'Img);
          AS.ndx_size := zstd_size (out_size);
       else
          AS.print (normal, "Failed to compress " & uncompressed_archive);
@@ -717,7 +717,7 @@ package body Archive.Pack is
          output_size => out_size,
          successful  => out_succ);
       if out_succ then
-         AS.print (debug, "Compressed from" & archive_size'Img & " to" & out_size'Img);
+         AS.print (debug, "Compressed archive from" & archive_size'Img & " to" & out_size'Img);
          AS.tmp_size := zstd_size (out_size);
       else
          AS.print (normal, "Failed to compress " & uncompressed_archive);
