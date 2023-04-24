@@ -5,6 +5,7 @@ with Ada.Text_IO;
 with Ada.Exceptions;
 with Ada.IO_Exceptions;
 with Ada.Directories;
+with Ada.Direct_IO;
 with Archive.Unix;
 with Zstandard;
 with Blake_3;
@@ -31,22 +32,30 @@ package body Archive.Pack is
    begin
       metadata.set_verbosity (verbosity);
       metadata.record_directory (top_level_directory);
-      metadata.create_working_file (output_file);
-      metadata.scan_directory (top_level_directory, 0);
-      metadata.finalize_working_file;
 
-      if not metadata.serror then
-         declare
-            mdcomp : constant String := metadata.scan_metadata_file (metadata_file);
-         begin
-            metadata.write_output_header (output_file);  --  block 1
-            metadata.write_owngrp_blocks;                --  block 2 and 3
-            metadata.write_link_block;                   --  block 4
-            metadata.write_file_index_block;             --  block 5
-            metadata.write_metadata_block (mdcomp);      --  block 6 (compressed manifest file)
-            metadata.write_archive_block (output_file);  --  block 7 (contiguous archive)
-         end;
+      metadata.initialize_archive_file (output_file);
+      metadata.scan_directory (top_level_directory, 0);
+      metadata.finalize_archive_file;
+
+      if metadata.serror then
+         metadata.remove_archive_file (output_file);
+         return;
       end if;
+
+      metadata.initialize_index_file (output_file);
+      metadata.write_owngrp_blocks;                  --  block FA and FB
+      metadata.write_link_block;                     --  block FC
+      metadata.write_file_index_block;               --  block FD
+      metadata.finalize_index_file;
+
+      metadata.write_blank_header (output_file);     --  block 1
+      metadata.write_metadata_block (metadata_file); --  block 2
+      metadata.write_file_index_block (output_file); --  block 3
+      metadata.write_archive_block (output_file);    --  block 4
+      metadata.overwrite_header (output_file);
+
+      metadata.remove_index_file (output_file);
+      metadata.remove_archive_file (output_file);
    end integrate;
 
 
@@ -446,53 +455,130 @@ package body Archive.Pack is
 
 
    ------------------------------------------------------------------------------------------
-   --  create_working_file
+   --  initialize_archive_file
    ------------------------------------------------------------------------------------------
-   procedure create_working_file (AS : in out Arc_Structure; output_file_path : String)
+   procedure initialize_archive_file (AS : in out Arc_Structure; output_file_path : String)
    is
    begin
       SIO.Create (File => AS.tmp_handle,
                   Mode => SIO.Out_File,
-                  Name => output_file_path & ".working");
+                  Name => output_file_path & ".archive");
       AS.tmp_stmaxs := SIO.Stream (AS.tmp_handle);
-   end create_working_file;
+   end initialize_archive_file;
 
 
    ------------------------------------------------------------------------------------------
-   --  finalize_working_file
+   --  finalize_archive_file
    ------------------------------------------------------------------------------------------
-   procedure finalize_working_file (AS : in out Arc_Structure)
+   procedure finalize_archive_file (AS : in out Arc_Structure)
    is
    begin
       SIO.Close (AS.tmp_handle);
-   end finalize_working_file;
+   end finalize_archive_file;
 
 
    ------------------------------------------------------------------------------------------
-   --  write_output_header
+   --  initialize_index_file
    ------------------------------------------------------------------------------------------
-   procedure write_output_header (AS : in out Arc_Structure; output_file_path : String)
+   procedure initialize_index_file (AS : in out Arc_Structure; output_file_path : String)
+   is
+   begin
+      SIO.Create (File => AS.ndx_handle,
+                  Mode => SIO.Out_File,
+                  Name => output_file_path & ".index");
+      AS.ndx_stmaxs := SIO.Stream (AS.ndx_handle);
+   end initialize_index_file;
+
+
+   ------------------------------------------------------------------------------------------
+   --  finalize_index_file
+   ------------------------------------------------------------------------------------------
+   procedure finalize_index_file (AS : in out Arc_Structure)
+   is
+   begin
+      SIO.Close (AS.ndx_handle);
+   end finalize_index_file;
+
+
+   ------------------------------------------------------------------------------------------
+   --  remove_archive_file
+   ------------------------------------------------------------------------------------------
+   procedure remove_archive_file (AS : Arc_Structure; output_file_path : String)
+   is
+      uncompressed_archive : constant String := output_file_path & ".archive";
+   begin
+      DIR.Delete_File (uncompressed_archive);
+   exception
+      when others =>
+         AS.print (normal, "Failed to remove " & uncompressed_archive);
+   end remove_archive_file;
+
+
+   ------------------------------------------------------------------------------------------
+   --  remove_index_file
+   ------------------------------------------------------------------------------------------
+   procedure remove_index_file (AS : Arc_Structure; output_file_path : String)
+   is
+      uncompressed_archive : constant String := output_file_path & ".index";
+   begin
+      DIR.Delete_File (uncompressed_archive);
+   exception
+      when others =>
+         AS.print (normal, "Failed to remove " & uncompressed_archive);
+   end remove_index_file;
+
+
+   ------------------------------------------------------------------------------------------
+   --  write_blank_header
+   ------------------------------------------------------------------------------------------
+   procedure write_blank_header (AS : in out Arc_Structure; output_file_path : String)
+   is
+      block : premier_block;
+   begin
+      block.magic_bytes := "INI";
+      SIO.Create (File => AS.rvn_handle,
+                  Mode => SIO.Out_File,
+                  Name => output_file_path);
+
+      AS.rvn_stmaxs := SIO.Stream (AS.rvn_handle);
+      premier_block'Output (AS.rvn_stmaxs, block);
+   end write_blank_header;
+
+
+   ------------------------------------------------------------------------------------------
+   --  write_blank_header
+   ------------------------------------------------------------------------------------------
+   procedure overwrite_header (AS : in out Arc_Structure; output_file_path : String)
    is
       block    : premier_block;
       nlbfloat : constant Float := Float (AS.links.Length) / 32.0;
    begin
+      SIO.Close (AS.rvn_handle);
+
       block.magic_bytes     := magic;
       block.version         := format_version;
       block.num_groups      := index_type (AS.groups.Length);
       block.num_owners      := index_type (AS.owners.Length);
       block.link_blocks     := file_index (Float'Ceiling (nlbfloat));
       block.file_blocks     := file_index (AS.files.Length);
-      block.metadata_blocks := AS.cmblocks;
-      block.metadata_size   := AS.cmsize;
+      block.size_metadata   := AS.meta_size;
+      block.size_filedata   := AS.ndx_size;
+      block.size_archive    := AS.tmp_size;
       block.padding         := (others => 0);
 
-      SIO.Create (File => AS.rvn_handle,
-                  Mode => SIO.Out_File,
-                  Name => output_file_path);
-      AS.rvn_stmaxs := SIO.Stream (AS.rvn_handle);
+      declare
+         package Premier_IO is new Ada.Direct_IO (premier_block);
+         file_handle : Premier_IO.File_Type;
+      begin
+         Premier_IO.Open (File => file_handle,
+                          Mode => Premier_IO.Inout_File,
+                          Name => output_file_path);
+         Premier_IO.Write (File => file_handle,
+                           Item => block);
+         Premier_IO.Close (file_handle);
+      end;
 
-      premier_block'Output (AS.rvn_stmaxs, block);
-   end write_output_header;
+   end overwrite_header;
 
 
    ------------------------------------------------------------------------------------------
@@ -514,7 +600,7 @@ package body Archive.Pack is
          block : owngrp_block;
       begin
          block.identifier := item;
-         owngrp_block'Output (AS.rvn_stmaxs, block);
+         owngrp_block'Output (AS.ndx_stmaxs, block);
       end write_line;
    begin
       AS.groups.Iterate (write_line'Access);
@@ -558,7 +644,7 @@ package body Archive.Pack is
             line : single_line;
          begin
             line.contents := line_type (block (line_index .. line_index + 31));
-            single_line'Output (AS.rvn_stmaxs, line);
+            single_line'Output (AS.ndx_stmaxs, line);
          end;
          line_index := line_index + 32;
       end loop;
@@ -576,7 +662,7 @@ package body Archive.Pack is
       is
          item : File_Block renames file_block_crate.Element (position);
       begin
-         File_Block'Output (AS.rvn_stmaxs, item);
+         File_Block'Output (AS.ndx_stmaxs, item);
       end write;
    begin
       AS.files.Iterate (write'Access);
@@ -584,47 +670,16 @@ package body Archive.Pack is
 
 
    ------------------------------------------------------------------------------------------
-   --  write_metadata_block
+   --  write_file_index_block
    ------------------------------------------------------------------------------------------
-   procedure write_metadata_block (AS : Arc_Structure; compressed_data : String)
-   is
-      type metadata_block is
-         record
-            payload : String (1 .. 32) := (others => Character'Val (0));
-         end record;
-      for metadata_block'Size use 256;
-
-      ndx_s : Natural := compressed_data'First;
-   begin
-      for blockid in 1 .. AS.cmblocks loop
-         declare
-            block : metadata_block;
-            blast : Natural;
-         begin
-            if blockid = AS.cmblocks then
-               blast := compressed_data'Last - ndx_s + 1;
-               block.payload (1 .. blast) := compressed_data (ndx_s .. compressed_data'Last);
-            else
-               block.payload := compressed_data (ndx_s .. ndx_s + 31);
-            end if;
-            metadata_block'Output (AS.rvn_stmaxs, block);
-         end;
-         ndx_s := ndx_s + 32;
-      end loop;
-   end write_metadata_block;
-
-
-
-   ------------------------------------------------------------------------------------------
-   --  write_archive_block
-   ------------------------------------------------------------------------------------------
-   procedure write_archive_block (AS : Arc_Structure; output_file_path : String)
+   procedure write_file_index_block (AS : in out Arc_Structure; output_file_path : String)
    is
       out_succ : Boolean;
       out_size : Natural;
-      uncompressed_archive : constant String := output_file_path & ".working";
+      uncompressed_archive : constant String := output_file_path & ".index";
       archive_size : constant Natural := Natural (DIR.Size (uncompressed_archive));
    begin
+      AS.ndx_size := 0;
       ZST.incorporate_regular_file
         (filename    => uncompressed_archive,
          file_size   => archive_size,
@@ -635,39 +690,84 @@ package body Archive.Pack is
          successful  => out_succ);
       if out_succ then
          AS.print (debug, "Compressed from" & archive_size'Img & " to" & out_size'Img);
+         AS.ndx_size := zstd_size (out_size);
       else
          AS.print (normal, "Failed to compress " & uncompressed_archive);
       end if;
-      begin
-         DIR.Delete_File (uncompressed_archive);
-      exception
-         when others =>
-            AS.print (normal, "Failed to remove " & uncompressed_archive);
-      end;
+   end write_file_index_block;
 
+
+   ------------------------------------------------------------------------------------------
+   --  write_archive_block
+   ------------------------------------------------------------------------------------------
+   procedure write_archive_block (AS : in out Arc_Structure; output_file_path : String)
+   is
+      out_succ : Boolean;
+      out_size : Natural;
+      uncompressed_archive : constant String := output_file_path & ".archive";
+      archive_size : constant Natural := Natural (DIR.Size (uncompressed_archive));
+   begin
+      AS.tmp_size := 0;
+      ZST.incorporate_regular_file
+        (filename    => uncompressed_archive,
+         file_size   => archive_size,
+         quality     => 7,
+         target_saxs => AS.rvn_stmaxs,
+         target_file => AS.rvn_handle,
+         output_size => out_size,
+         successful  => out_succ);
+      if out_succ then
+         AS.print (debug, "Compressed from" & archive_size'Img & " to" & out_size'Img);
+         AS.tmp_size := zstd_size (out_size);
+      else
+         AS.print (normal, "Failed to compress " & uncompressed_archive);
+      end if;
    end write_archive_block;
 
 
    ------------------------------------------------------------------------------------------
-   --  scan_metadata_file
+   --  write_metadata_block
    ------------------------------------------------------------------------------------------
-   function scan_metadata_file (AS : in out Arc_Structure; metadata_path : String) return String
-   is
-      it_worked : Boolean;
-      compstr : constant String := ZST.compress_into_memory (filename   => metadata_path,
-                                                             quality    => 7,
-                                                             successful => it_worked);
-      cmfloat : Float;
+   procedure write_metadata_block (AS : in out Arc_Structure; metadata_path : String) is
    begin
-      if it_worked then
-         AS.cmsize := compstr'Length;
-         cmfloat := Float (AS.cmsize) / 32.0;
-         AS.cmblocks := index_type (Float'Ceiling (cmfloat));
-         return compstr;
-      else
-         AS.cmsize := 0;
-         return "";
+      AS.meta_size := 0;
+      if metadata_path = "" then
+         AS.print (debug, "No metadata file has been provided.");
+         return;
       end if;
-   end scan_metadata_file;
+
+      if not DIR.Exists (metadata_path) then
+         AS.print (normal, "The metadata file for the given path does not exist.");
+         AS.print (normal, "The archive will be built without additional metadata.");
+         return;
+      end if;
+
+      declare
+         dossier_size : Natural;
+         out_succ : Boolean;
+         out_size : Natural;
+      begin
+         dossier_size := Natural (DIR.Size (metadata_path));
+         ZST.incorporate_regular_file
+           (filename    => metadata_path,
+            file_size   => dossier_size,
+            quality     => 7,
+            target_saxs => AS.rvn_stmaxs,
+            target_file => AS.rvn_handle,
+            output_size => out_size,
+            successful  => out_succ);
+
+         if out_succ then
+            AS.print (debug, "Compressed metadata from" & dossier_size'Img & " to" & out_size'Img);
+            AS.meta_size := zstd_size (out_size);
+         else
+            AS.print (normal, "Failed to compress " & metadata_path);
+         end if;
+      exception
+         when others =>
+            AS.print (normal, "An error occurred while inserting the additional metadata.");
+      end;
+   end write_metadata_block;
+
 
 end Archive.Pack;

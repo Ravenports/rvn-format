@@ -13,7 +13,9 @@ index will allow only decompressing up to the location of the desired file, and
 the ability to discard the previous data in memory.
 
 The headers are different than TAR, but much more compact.
-Each file is represented by a 320-byte block
+Each file is represented by a 320-byte block.
+For the sake of overall compactness, the directory data including these headers
+are all compressed in the final archive.
 
 ```
 Index  Information     bytes
@@ -34,7 +36,7 @@ Index  Information     bytes
 
 ## Structure
 
-The archive contains 4 sequential blocks aligned at 32 bytes.
+The archive contains 4 non-aligned sequential blocks.
 
 ### Block 1
 
@@ -57,27 +59,20 @@ The first 32 bytes provides the number of groups, owners and files contained in 
 It also contains the compressed size in bytes of the next three blocks.  The index of
 each block can easily be calculated:
 
-    LenBlock1 = 32
-    LenBlock2 = ceiling (length compressed metadata / 32)
-    LenBlock3 = ceiling (length compressed file data / 32)
-    LenBlock4 = ceiling (Length compressed archive data / 32)
-
     Block 1 index =  0
     Block 2 index = 32
-    Block 3 index = 32 + LenBlock2
-    Block 4 index = 32 + LenBlock2 + LenBlock3
+    Block 3 index = 32 + length of block 2
+    Block 4 index = 32 + length of block 2 + length of block 3
 
 
 ### Block 2
 
-The length of this block is a multiple of 32.
 This block contains the zstd-compressed contents of the provided metadata file.
 By reading the first two blocks of the RVN archive, the manifest can be surgically
-extracted without unrolling the entire file.  The block is right-padding with zeros.
+extracted without unrolling the entire file.
 
 ### Block 3
 
-The length of this block is a multiple of 32.
 This block contains the zstd-compressed contents of concatenated blocks
 FA, FB, FC, and FD.  By reading the Block 1 and Block 3, the archive's complete
 directory index including the Blake3 checksum of every regular file can be

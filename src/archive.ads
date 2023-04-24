@@ -26,7 +26,7 @@ package Archive is
    subtype Some_magic is String (1 .. 3);
 
    type A_padding is array (1 .. 6) of one_byte;
-   type B_padding is array (1 .. 10) of one_byte;
+   type B_padding is array (1 .. 4) of one_byte;
 
    type File_Block is
       record
@@ -76,8 +76,9 @@ package Archive is
          num_owners      : index_type;
          link_blocks     : file_index;
          file_blocks     : file_index;
-         metadata_blocks : index_type;
-         metadata_size   : zstd_size;
+         size_metadata   : zstd_size;
+         size_filedata   : zstd_size;
+         size_archive    : zstd_size;
          padding         : B_padding;
       end record;
 
@@ -91,9 +92,10 @@ package Archive is
          num_owners      at  6 range  0 .. 15;
          link_blocks     at  8 range  0 .. 31;
          file_blocks     at 12 range  0 .. 31;
-         metadata_blocks at 16 range  0 .. 15;
-         metadata_size   at 18 range  0 .. 31;
-         padding         at 22 range  0 .. 79;
+         size_metadata   at 16 range  0 .. 31;
+         size_filedata   at 20 range  0 .. 31;
+         size_archive    at 24 range  0 .. 31;
+         padding         at 28 range  0 .. 31;
       end record;
 
    magic : constant Some_magic := Character'Val (200) & Character'Val (100) & Character'Val (50);

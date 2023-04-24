@@ -60,15 +60,18 @@ private
          level  : info_level := silent;
          dtrack : index_type := 0;
          ftrack : File_Count := 0;
-         tlevel : A_Path;
          tlsize : Natural    := 0;
-         cmsize : zstd_size  := 0;
-         cmblocks   : index_type := 0;
-         serror     : Boolean := False;
+         tlevel : A_Path;
          rvn_handle : SIO.File_Type;
          rvn_stmaxs : SIO.Stream_Access;
          tmp_handle : SIO.File_Type;
          tmp_stmaxs : SIO.Stream_Access;
+         ndx_handle : SIO.File_Type;
+         ndx_stmaxs : SIO.Stream_Access;
+         tmp_size   : zstd_size := 0;
+         ndx_size   : zstd_size := 0;
+         meta_size  : zstd_size := 0;
+         serror     : Boolean := False;
       end record;
 
    --  Given the string representation of the owner, return the index on the list.
@@ -82,11 +85,23 @@ private
    --  Sets the standard out information level
    procedure set_verbosity (AS : in out Arc_Structure; level : info_level);
 
-   --  Opens the working file and stores the handle and stream access
-   procedure create_working_file (AS : in out Arc_Structure; output_file_path : String);
+   --  Opens the temporary archive file and stores the handle and stream access
+   procedure initialize_archive_file (AS : in out Arc_Structure; output_file_path : String);
 
-   --  Closes the working file
-   procedure finalize_working_file (AS : in out Arc_Structure);
+   --  Closes the temporary archive file
+   procedure finalize_archive_file (AS : in out Arc_Structure);
+
+   --  Unlinks the termporary archive file
+   procedure remove_archive_file (AS : Arc_Structure; output_file_path : String);
+
+   --  Opens the temporary index file and stores the handle and stream access
+   procedure initialize_index_file (AS : in out Arc_Structure; output_file_path : String);
+
+      --  Closes the temporary index file
+   procedure finalize_index_file (AS : in out Arc_Structure);
+
+   --  Unlinks the termporary index file
+   procedure remove_index_file (AS : Arc_Structure; output_file_path : String);
 
    --  Prints message to standard out if the display level is high enough
    procedure print (AS : Arc_Structure; msg_level : info_level; message : String);
@@ -115,27 +130,30 @@ private
    --  Push a link on top of the link block
    procedure push_link (AS : in out Arc_Structure; link : String);
 
-   --  Scan metadata file.  If compression fails (e.g. because file doesn't exist),
-   --  a blank string is returned, which translates to 0 blocks, and 0 compressed size
-   function scan_metadata_file (AS : in out Arc_Structure; metadata_path : String) return String;
+   --  Create the output file stream and write a blank premier block to it
+   procedure write_blank_header (AS : in out Arc_Structure; output_file_path : String);
 
-   --  Create the output file stream and write the premier block to it
-   procedure write_output_header (AS : in out Arc_Structure; output_file_path : String);
+   --  Close archive file, and re-write the premier header with the final information
+   procedure overwrite_header (AS : in out Arc_Structure; output_file_path : String);
 
-   --  Write blocks 2 and 3 (groups and owners)
+   --  Write blocks FA and FB (groups and owners) to temporary file
    procedure write_owngrp_blocks (AS : Arc_Structure);
 
-   --  Write block 4 (contiguous strings of links)
+   --  Write block FC (contiguous strings of links) to temporary file
    procedure write_link_block (AS : Arc_Structure);
 
-   --  Write block 5 (All the file header blocks)
+   --  Write block FD (All the file header blocks) to temporary file
    procedure write_file_index_block (AS : Arc_Structure);
 
-   --  Write block 6 (the compressed metadata file, aligned to 32 bytes)
-   procedure write_metadata_block (AS : Arc_Structure; compressed_data : String);
+   --  Compress and insert given metadata file (block 2).  If the file does not exist or if
+   --  an error occurs, 0 will be set for metadata (meaning it's not provided).
+   procedure write_metadata_block (AS : in out Arc_Structure; metadata_path : String);
 
-   --  Write block 7 (the compressed single archive)
-   procedure write_archive_block (AS : Arc_Structure; output_file_path : String);
+   --  Write block 3 (the compressed concatentation of blocks FA .. FD)
+   procedure write_file_index_block (AS : in out Arc_Structure; output_file_path : String);
+
+   --  Write block 4 (the compressed single archive)
+   procedure write_archive_block (AS : in out Arc_Structure; output_file_path : String);
 
 
 end Archive.Pack;
