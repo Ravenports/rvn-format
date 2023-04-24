@@ -597,16 +597,16 @@ package body Archive.Pack is
          output_size => out_size,
          successful  => out_succ);
       if out_succ then
-         TIO.Put_Line ("Compressed from" & uncompressed_archive & " to" & out_size'Img);
+         AS.print (debug, "Compressed from" & archive_size'Img & " to" & out_size'Img);
       else
-         TIO.Put_Line ("Failed to compress " & uncompressed_archive);
+         AS.print (normal, "Failed to compress " & uncompressed_archive);
       end if;
-      --  begin
-      --     DIR.Delete_File (uncompressed_archive);
-      --  exception
-      --     when others =>
-      --        TIO.Put_Line ("Failed to remove " & uncompressed_archive);
-      --  end if;
+      begin
+         DIR.Delete_File (uncompressed_archive);
+      exception
+         when others =>
+            AS.print (normal, "Failed to remove " & uncompressed_archive);
+      end;
 
    end write_archive_block;
 
