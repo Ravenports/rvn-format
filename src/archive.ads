@@ -76,8 +76,8 @@ package Archive is
          num_owners      : index_type;
          link_blocks     : file_index;
          file_blocks     : file_index;
-         manifest_blocks : index_type;
-         manifest_size   : zstd_size;
+         metadata_blocks : index_type;
+         metadata_size   : zstd_size;
          padding         : B_padding;
       end record;
 
@@ -91,8 +91,8 @@ package Archive is
          num_owners      at  6 range  0 .. 15;
          link_blocks     at  8 range  0 .. 31;
          file_blocks     at 12 range  0 .. 31;
-         manifest_blocks at 16 range  0 .. 15;
-         manifest_size   at 18 range  0 .. 31;
+         metadata_blocks at 16 range  0 .. 15;
+         metadata_size   at 18 range  0 .. 31;
          padding         at 22 range  0 .. 79;
       end record;
 

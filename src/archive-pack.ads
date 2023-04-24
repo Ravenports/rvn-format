@@ -14,6 +14,7 @@ package Archive.Pack is
 
    procedure integrate
      (top_level_directory : String;
+      metadata_file       : String;
       output_file         : String;
       verbosity           : info_level);
 
@@ -62,7 +63,8 @@ private
          tlevel : A_Path;
          tlsize : Natural    := 0;
          cmsize : zstd_size  := 0;
-         serror : Boolean := False;
+         cmblocks   : index_type := 0;
+         serror     : Boolean := False;
          rvn_handle : SIO.File_Type;
          rvn_stmaxs : SIO.Stream_Access;
          tmp_handle : SIO.File_Type;
@@ -113,6 +115,10 @@ private
    --  Push a link on top of the link block
    procedure push_link (AS : in out Arc_Structure; link : String);
 
+   --  Scan metadata file.  If compression fails (e.g. because file doesn't exist),
+   --  a blank string is returned, which translates to 0 blocks, and 0 compressed size
+   function scan_metadata_file (AS : in out Arc_Structure; metadata_path : String) return String;
+
    --  Create the output file stream and write the premier block to it
    procedure write_output_header (AS : in out Arc_Structure; output_file_path : String);
 
@@ -124,6 +130,9 @@ private
 
    --  Write block 5 (All the file header blocks)
    procedure write_file_index_block (AS : Arc_Structure);
+
+   --  Write block 6 (the compressed metadata file, aligned to 32 bytes)
+   procedure write_metadata_block (AS : Arc_Structure; compressed_data : String);
 
    --  Write block 7 (the compressed single archive)
    procedure write_archive_block (AS : Arc_Structure; output_file_path : String);

@@ -48,13 +48,13 @@ Total  Information           bytes
     8  Number of owners        2
    12  Number of link blocks   4
    16  Number of files         4
-   18  Num manifest blocks     2
-   21  Manifest size (comp)    4
+   18  Num metadata blocks     2
+   21  Metadata size (comp)    4
    32  Unused                 10
 ```
 The first 32 bytes provides the number of groups, owners and files contained in the archive.
 It also contains the number of 32-byte blocks required to hold the link data, and it
-contains the number of 32-bytes blocks required to hold the manifest, as well as it's
+contains the number of 32-bytes blocks required to hold the metadata file, as well as it's
 zstd-compressed size.  As each type of information is a multiple of 32 bytes, the start
 index of each block can be calculated.
 

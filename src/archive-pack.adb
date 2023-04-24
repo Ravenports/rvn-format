@@ -23,6 +23,7 @@ package body Archive.Pack is
    ------------------------------------------------------------------------------------------
    procedure integrate
      (top_level_directory : String;
+      metadata_file       : String;
       output_file         : String;
       verbosity           : info_level)
    is
@@ -33,13 +34,18 @@ package body Archive.Pack is
       metadata.create_working_file (output_file);
       metadata.scan_directory (top_level_directory, 0);
       metadata.finalize_working_file;
+
       if not metadata.serror then
-         metadata.write_output_header (output_file);  --  block 1
-         metadata.write_owngrp_blocks;                --  block 2 and 3
-         metadata.write_link_block;                   --  block 4
-         metadata.write_file_index_block;             --  block 5
-                                                      --  block 6 (compressed manifest file)
-         metadata.write_archive_block (output_file);  --  block 7 (contiguous archive)
+         declare
+            mdcomp : constant String := metadata.scan_metadata_file (metadata_file);
+         begin
+            metadata.write_output_header (output_file);  --  block 1
+            metadata.write_owngrp_blocks;                --  block 2 and 3
+            metadata.write_link_block;                   --  block 4
+            metadata.write_file_index_block;             --  block 5
+            metadata.write_metadata_block (mdcomp);      --  block 6 (compressed manifest file)
+            metadata.write_archive_block (output_file);  --  block 7 (contiguous archive)
+         end;
       end if;
    end integrate;
 
@@ -469,7 +475,6 @@ package body Archive.Pack is
    is
       block    : premier_block;
       nlbfloat : constant Float := Float (AS.links.Length) / 32.0;
-      cmfloat  : constant Float := Float (AS.cmsize) / 32.0;
    begin
       block.magic_bytes     := magic;
       block.version         := format_version;
@@ -477,8 +482,8 @@ package body Archive.Pack is
       block.num_owners      := index_type (AS.owners.Length);
       block.link_blocks     := file_index (Float'Ceiling (nlbfloat));
       block.file_blocks     := file_index (AS.files.Length);
-      block.manifest_blocks := index_type (Float'Ceiling (cmfloat));
-      block.manifest_size   := AS.cmsize;
+      block.metadata_blocks := AS.cmblocks;
+      block.metadata_size   := AS.cmsize;
       block.padding         := (others => 0);
 
       SIO.Create (File => AS.rvn_handle,
@@ -579,6 +584,38 @@ package body Archive.Pack is
 
 
    ------------------------------------------------------------------------------------------
+   --  write_metadata_block
+   ------------------------------------------------------------------------------------------
+   procedure write_metadata_block (AS : Arc_Structure; compressed_data : String)
+   is
+      type metadata_block is
+         record
+            payload : String (1 .. 32) := (others => Character'Val (0));
+         end record;
+      for metadata_block'Size use 32;
+
+      ndx_s : Natural := compressed_data'First;
+   begin
+      for blockid in 1 .. AS.cmblocks loop
+         declare
+            block : metadata_block;
+            blast : Natural;
+         begin
+            if blockid = AS.cmblocks then
+               blast := compressed_data'Last - ndx_s + 1;
+               block.payload (1 .. blast) := compressed_data (ndx_s .. compressed_data'Last);
+            else
+               block.payload := compressed_data (ndx_s .. ndx_s + 31);
+            end if;
+            metadata_block'Output (AS.rvn_stmaxs, block);
+         end;
+         ndx_s := ndx_s + 32;
+      end loop;
+   end write_metadata_block;
+
+
+
+   ------------------------------------------------------------------------------------------
    --  write_archive_block
    ------------------------------------------------------------------------------------------
    procedure write_archive_block (AS : Arc_Structure; output_file_path : String)
@@ -609,5 +646,28 @@ package body Archive.Pack is
       end;
 
    end write_archive_block;
+
+
+   ------------------------------------------------------------------------------------------
+   --  scan_metadata_file
+   ------------------------------------------------------------------------------------------
+   function scan_metadata_file (AS : in out Arc_Structure; metadata_path : String) return String
+   is
+      it_worked : Boolean;
+      compstr : constant String := ZST.compress_into_memory (filename   => metadata_path,
+                                                             quality    => 7,
+                                                             successful => it_worked);
+      cmfloat : Float;
+   begin
+      if it_worked then
+         AS.cmsize := compstr'Length;
+         cmfloat := Float (AS.cmsize) / 32.0;
+         AS.cmblocks := index_type (Float'Ceiling (cmfloat));
+         return compstr;
+      else
+         AS.cmsize := 0;
+         return "";
+      end if;
+   end scan_metadata_file;
 
 end Archive.Pack;
