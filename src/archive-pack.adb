@@ -592,7 +592,7 @@ package body Archive.Pack is
          record
             payload : String (1 .. 32) := (others => Character'Val (0));
          end record;
-      for metadata_block'Size use 32;
+      for metadata_block'Size use 256;
 
       ndx_s : Natural := compressed_data'First;
    begin
