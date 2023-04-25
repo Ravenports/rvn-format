@@ -357,4 +357,14 @@ package body Zstandard is
 
    end assemble_regular_archive;
 
+
+   --------------------------------
+   --  SEO_DStreamOutSize  --
+   --------------------------------
+   function SEO_DStreamOutSize return Ada.Streams.Stream_Element_Offset
+   is
+   begin
+      return Ada.Streams.Stream_Element_Offset (ZSTD_DStreamOutSize);
+   end SEO_DStreamOutSize;
+
 end Zstandard;

@@ -1,16 +1,14 @@
 --  This file is covered by the Internet Software Consortium (ISC) License
---  Reference: ../License.txt
+--  Reference: ../../License.txt
 
 with Ada.Streams;
 
-package Zstandard.Functions.Streaming_Decompression is
+package Zstandard.Streaming_Decompression is
 
    package STR renames Ada.Streams;
 
-   Output_container_size : constant Thin.IC.size_t := Thin.ZSTD_DStreamOutSize;
-
    subtype Output_Data_Container is
-     STR.Stream_Element_Array (1 .. STR.Stream_Element_Offset (Output_container_size));
+     STR.Stream_Element_Array (1 .. SEO_DStreamOutSize);
 
    type Decompressor is tagged private;
 
@@ -34,20 +32,12 @@ package Zstandard.Functions.Streaming_Decompression is
 
 private
 
-   Recommended_Chunk_Size : constant Thin.IC.size_t := Thin.ZSTD_DStreamInSize;
+   Recommended_Chunk_Size : constant IC.size_t := ZSTD_DStreamInSize;
 
    type Decompressor is tagged
       record
          source_stream    : access STR.Root_Stream_Type'Class;
-         zstd_stream      : Thin.ZSTD_DStream_ptr := Thin.Null_DStream_pointer;
+         zstd_stream      : ZSTD_DStream_ptr := Null_DStream_pointer;
       end record;
 
-   function convert_to_stream_array
-     (char_data         : Thin.IC.char_array;
-      number_characters : Thin.IC.size_t) return STR.Stream_Element_Array;
-
-   function convert_to_char_array
-     (stream_data       : STR.Stream_Element_Array;
-      output_array_size : Thin.IC.size_t) return Thin.IC.char_array;
-
-end Zstandard.Functions.Streaming_Decompression;
+end Zstandard.Streaming_Decompression;

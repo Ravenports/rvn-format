@@ -87,6 +87,10 @@ package Zstandard is
       file_size   : Natural;
       target_saxs : SIO.Stream_Access);
 
+
+   --  converts ZSTD_DStreamOutSize to Stream_Element_Offset
+   function SEO_DStreamOutSize return Ada.Streams.Stream_Element_Offset;
+
 private
 
    package IC  renames Interfaces.C;
