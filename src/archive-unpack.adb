@@ -4,11 +4,13 @@
 
 with Ada.Text_IO;
 with Ada.Directories;
+with Ada.Exceptions;
 
 package body Archive.Unpack is
 
    package TIO renames Ada.Text_IO;
-   package DIR  renames Ada.Directories;
+   package DIR renames Ada.Directories;
+   package EX  renames Ada.Exceptions;
 
    procedure open_rvn_archive
      (DS          : in out DArc;
@@ -43,8 +45,9 @@ package body Archive.Unpack is
       begin
          premier_block'Read (DS.rvn_stmaxs, DS.header);
       exception
-         when others =>
+         when problem : others =>
             DS.print (normal, "Something went wrong opening " & rvn_archive);
+            DS.print (normal, EX.Exception_Message (problem));
             return;
       end;
 
