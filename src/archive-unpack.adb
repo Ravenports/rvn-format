@@ -17,6 +17,7 @@ package body Archive.Unpack is
    is
    begin
       DS.valid := False;
+      DS.set_verbosity (verbosity);
       if DIR.Exists (rvn_archive) then
          case DIR.Kind (rvn_archive) is
             when DIR.Ordinary_File =>
@@ -76,6 +77,7 @@ package body Archive.Unpack is
    is
    begin
       SIO.Close (DS.rvn_handle);
+      DS.print (debug, "RVN archive was closed.");
    end close_rvn_archive;
 
 
