@@ -75,7 +75,7 @@ package body Archive.Unpack is
       DS.print (debug, "             index :" & SIO.Index (DS.rvn_handle)'Img);
 
       DS.valid    := True;
-      DS.b2_index := 32;
+      DS.b2_index := 33;
       DS.b3_index := DS.b2_index + SIO.Count (DS.header.size_metadata);
       DS.b4_index := DS.b3_index + SIO.Count (DS.header.size_filedata);
 
