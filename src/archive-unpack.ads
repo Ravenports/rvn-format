@@ -32,8 +32,6 @@ package Archive.Unpack is
 
 private
 
-   KB256 : constant Natural := 262_144;
-
    type DArc is tagged limited
       record
          header     : premier_block;

@@ -71,6 +71,9 @@ This block contains the zstd-compressed contents of the provided metadata file.
 By reading the first two blocks of the RVN archive, the manifest can be surgically
 extracted without unrolling the entire file.
 
+Due to the nature of this block being reserved for metadata, the size of the
+uncompressed file is limited to 256 kb (262,144 bytes) by rule.
+
 ### Block 3
 
 This block contains the zstd-compressed contents of concatenated blocks

@@ -99,6 +99,7 @@ package Archive is
       end record;
 
    magic : constant Some_magic := Character'Val (200) & Character'Val (100) & Character'Val (50);
+   KB256 : constant Natural := 262_144;
    format_version : constant one_byte := 1;
 
 end Archive;

@@ -174,34 +174,29 @@ package body Archive.Unpack is
       --  Move to this point if not already there.
       --  However, this is unnecessary if metadata is zero bytes.
       use type SIO.Count;
+      metasize : zstd_size renames DS.header.size_metadata;
    begin
-      if DS.header.size_metadata = 0 then
+      if metasize = 0 then
          DS.print (debug, "There is no metadata; writing an zero-byte file at " & filepath);
          return;
       end if;
       if SIO.Index (DS.rvn_handle) /= DS.b2_index then
          SIO.Set_Index (DS.rvn_handle, DS.b2_index);
       end if;
-      if Natural (DS.header.size_metadata) > KB256 then
-         null;
-      else
-         DS.print (debug, "Metadata less than 256K, single pass decompression");
-         declare
-            decompress_success : Boolean;
-            plain_text : constant String :=
-              ZST.Decompress (archive_saxs => DS.rvn_stmaxs,
-                              data_length  => Natural (DS.header.size_metadata),
-                              successful   => decompress_success);
-         begin
-            if decompress_success then
-               DS.direct_file_creation (target_file => filepath,
-                                        contents    => plain_text);
-            else
-               DS.print (normal, "Failed to extract metadata from archive");
-            end if;
-         end;
-      end if;
-
+      DS.print (debug, "Single pass decompression for metadata, comp size:" & metasize'Img);
+      declare
+         decompress_success : Boolean;
+         plain_text : constant String := ZST.Decompress (archive_saxs => DS.rvn_stmaxs,
+                                                         data_length  => Natural (metasize),
+                                                         successful   => decompress_success);
+      begin
+         if decompress_success then
+            DS.direct_file_creation (target_file => filepath,
+                                     contents    => plain_text);
+         else
+            DS.print (normal, "Failed to extract metadata from archive");
+         end if;
+      end;
    end write_metadata_to_file;
 
 
@@ -219,13 +214,9 @@ package body Archive.Unpack is
       if SIO.Index (DS.rvn_handle) /= DS.b2_index then
          SIO.Set_Index (DS.rvn_handle, DS.b2_index);
       end if;
-      if Natural (DS.header.size_metadata) > KB256 then
-         return "TBD - Huge Metadata";
-      else
-         return ZST.Decompress (archive_saxs => DS.rvn_stmaxs,
-                                data_length  => Natural (DS.header.size_metadata),
-                                successful   => decompress_success);
-      end if;
+      return ZST.Decompress (archive_saxs => DS.rvn_stmaxs,
+                             data_length  => Natural (DS.header.size_metadata),
+                             successful   => decompress_success);
    end extract_metadata;
 
 end Archive.Unpack;

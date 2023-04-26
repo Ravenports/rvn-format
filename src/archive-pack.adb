@@ -748,6 +748,13 @@ package body Archive.Pack is
          out_size : Natural;
       begin
          dossier_size := Natural (DIR.Size (metadata_path));
+
+         if dossier_size > KB256 then
+            AS.print (normal, "The metadata file size exceeds the 256 KB limit.");
+            AS.print (normal, "The archive will be built without this file.");
+            return;
+         end if;
+
          ZST.incorporate_regular_file
            (filename    => metadata_path,
             file_size   => dossier_size,
