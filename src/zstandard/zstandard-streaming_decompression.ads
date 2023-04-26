@@ -1,14 +1,13 @@
 --  This file is covered by the Internet Software Consortium (ISC) License
 --  Reference: ../../License.txt
 
-with Ada.Streams;
+with Ada.Streams.Stream_IO;
 
 package Zstandard.Streaming_Decompression is
 
-   package STR renames Ada.Streams;
+   package SIO renames Ada.Streams.Stream_IO;
 
-   subtype Output_Data_Container is
-     STR.Stream_Element_Array (1 .. SEO_DStreamOutSize);
+   subtype Output_Data_Container is String (1 .. Natural_DStreamOutSize);
 
    type Decompressor is tagged private;
 
@@ -16,14 +15,15 @@ package Zstandard.Streaming_Decompression is
    --  The input stream and output buffer capacity are externally provided
    procedure Initialize
      (mechanism       : out Decompressor;
-      input_stream    : not null access STR.Root_Stream_Type'Class);
+      input_stream    : not null SIO.Stream_Access);
 
    --  Decompress data as each input chunk is received
-   --  if "complete" then the decompression is complete (don't call procedure any more)
+   --  Since the size of the compressed data is known before the first call, the caller
+   --  must track the remaining bytes, thus knowning when the decompression is complete.
    --  The "last_element" is the end of the container range (e.g. 1 .. last_element)
    procedure Decompress_Data
      (mechanism    :     Decompressor;
-      complete     : out Boolean;
+      chunk_size   :     Natural;
       output_data  : out Output_Data_Container;
       last_element : out Natural);
 
@@ -32,11 +32,9 @@ package Zstandard.Streaming_Decompression is
 
 private
 
-   Recommended_Chunk_Size : constant IC.size_t := ZSTD_DStreamInSize;
-
    type Decompressor is tagged
       record
-         source_stream    : access STR.Root_Stream_Type'Class;
+         source_stream    : SIO.Stream_Access;
          zstd_stream      : ZSTD_DStream_ptr := Null_DStream_pointer;
       end record;
 

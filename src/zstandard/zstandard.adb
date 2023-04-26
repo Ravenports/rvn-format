@@ -382,12 +382,21 @@ package body Zstandard is
 
 
    --------------------------------
-   --  SEO_DStreamOutSize  --
+   --  Natural_DStreamOutSize  --
    --------------------------------
-   function SEO_DStreamOutSize return Ada.Streams.Stream_Element_Offset
-   is
+   function Natural_DStreamOutSize return Natural is
    begin
-      return Ada.Streams.Stream_Element_Offset (ZSTD_DStreamOutSize);
-   end SEO_DStreamOutSize;
+      return Natural (ZSTD_DStreamOutSize);
+   end Natural_DStreamOutSize;
+
+
+   --------------------------------
+   --  Natural_DStreamInSize  --
+   --------------------------------
+   function Natural_DStreamInSize return Natural is
+   begin
+      return Natural (ZSTD_DStreamInSize);
+   end Natural_DStreamInSize;
+
 
 end Zstandard;

@@ -6,12 +6,14 @@ with Ada.Unchecked_Conversion;
 
 package body Zstandard.Streaming_Decompression is
 
+   package STR renames Ada.Streams;
+
    ------------------
    --  Initialize  --
    ------------------
    procedure Initialize
      (mechanism       : out Decompressor;
-      input_stream    : not null access STR.Root_Stream_Type'Class)
+      input_stream    : not null SIO.Stream_Access)
    is
       initResult : IC.size_t;
    begin
@@ -34,17 +36,15 @@ package body Zstandard.Streaming_Decompression is
    -----------------------
    procedure Decompress_Data
      (mechanism    :     Decompressor;
-      complete     : out Boolean;
+      chunk_size   :     Natural;
       output_data  : out Output_Data_Container;
       last_element : out Natural)
    is
 
-      Last      : STR.Stream_Element_Offset;
-      sin_last  : constant STR.Stream_Element_Offset :=
-        STR.Stream_Element_Offset (Recommended_Chunk_Size);
+      sin_last  : constant STR.Stream_Element_Offset := STR.Stream_Element_Offset (chunk_size);
 
-      type data_in_type  is array (1 .. Recommended_Chunk_Size) of aliased IC.unsigned_char;
-      type data_out_type is array (1 .. Output_Data_Container'Size) of aliased IC.unsigned_char;
+      type data_in_type  is array (1 .. chunk_size) of aliased IC.unsigned_char;
+      type data_out_type is array (Output_Data_Container'Range) of aliased IC.unsigned_char;
       subtype data_sin_type is STR.Stream_Element_Array (1 .. sin_last);
 
       size_hint : IC.size_t;
@@ -70,23 +70,16 @@ package body Zstandard.Streaming_Decompression is
          raise streaming_decompression_error with "Run initialize procedure first";
       end if;
 
-      mechanism.source_stream.Read (Item => data_sin, Last => Last);
-
-      if Natural (Last) = 0 then
-         last_element := 0;
-         complete := True;
-         return;
-      end if;
+      data_sin_type'Read (mechanism.source_stream, data_sin);
 
       data_in := data_sin_to_data_in (data_sin);
-      complete := (Natural (Last) /= Natural (Recommended_Chunk_Size));
 
       inbuffer := (src  => data_in (data_in'First)'Unchecked_Access,
-                   size => Recommended_Chunk_Size,
+                   size => IC.size_t (chunk_size),
                    pos  => 0);
 
       outbuffer := (dst  => data_out (data_out'First)'Unchecked_Access,
-                    size => Output_Data_Container'Size,
+                    size => Output_Data_Container'Length,
                     pos  => 0);
 
       size_hint := ZSTD_decompressStream (zds    => mechanism.zstd_stream,

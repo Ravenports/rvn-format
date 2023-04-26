@@ -96,8 +96,11 @@ package Zstandard is
       target_saxs : SIO.Stream_Access);
 
 
-   --  converts ZSTD_DStreamOutSize to Stream_Element_Offset
-   function SEO_DStreamOutSize return Ada.Streams.Stream_Element_Offset;
+   --  converts ZSTD_DStreamOutSize to Natural
+   function Natural_DStreamOutSize return Natural;
+
+   --  converts ZSTD_DStreamInSize to Natural (128Kb)
+   function Natural_DStreamInSize return Natural;
 
 private
 
