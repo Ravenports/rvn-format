@@ -178,7 +178,7 @@ package body Archive.Unpack is
       end if;
       if DS.arrow /= DS.b2_index then
          SIO.Set_Index (DS.rvn_handle, Ada.Streams.Stream_IO.Count (DS.b2_index));
-         DS.arrow := DS.b2_index;
+         DS.arrow := DS.b3_index;
       end if;
       if Natural (DS.header.size_metadata) > KB256 then
          null;
@@ -186,9 +186,10 @@ package body Archive.Unpack is
          DS.print (debug, "Metadata less than 256K, single pass decompression");
          declare
             decompress_success : Boolean;
-            plain_text : constant String := ZST.Decompress (archive_saxs => DS.rvn_stmaxs,
-                                                            data_length  => DS.b2_index,
-                                                            successful   => decompress_success);
+            plain_text : constant String :=
+              ZST.Decompress (archive_saxs => DS.rvn_stmaxs,
+                              data_length  => Natural (DS.header.size_metadata),
+                              successful   => decompress_success);
          begin
             if decompress_success then
                DS.direct_file_creation (target_file => filepath,
@@ -214,13 +215,13 @@ package body Archive.Unpack is
       end if;
       if DS.arrow /= DS.b2_index then
          SIO.Set_Index (DS.rvn_handle, Ada.Streams.Stream_IO.Count (DS.b2_index));
-         DS.arrow := DS.b2_index;
+         DS.arrow := DS.b3_index;
       end if;
       if Natural (DS.header.size_metadata) > KB256 then
          return "TBD - Huge Metadata";
       else
          return ZST.Decompress (archive_saxs => DS.rvn_stmaxs,
-                                data_length  => DS.b2_index,
+                                data_length  => Natural (DS.header.size_metadata),
                                 successful   => decompress_success);
       end if;
    end extract_metadata;
