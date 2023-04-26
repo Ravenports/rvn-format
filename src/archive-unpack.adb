@@ -3,14 +3,17 @@
 
 
 with Ada.Text_IO;
+with Ada.Direct_IO;
 with Ada.Directories;
 with Ada.Exceptions;
+with Zstandard;
 
 package body Archive.Unpack is
 
    package TIO renames Ada.Text_IO;
    package DIR renames Ada.Directories;
    package EX  renames Ada.Exceptions;
+   package ZST renames Zstandard;
 
    procedure open_rvn_archive
      (DS          : in out DArc;
@@ -43,6 +46,7 @@ package body Archive.Unpack is
                 Name => rvn_archive);
 
       begin
+         DS.rvn_stmaxs := SIO.Stream (DS.rvn_handle);
          premier_block'Read (DS.rvn_stmaxs, DS.header);
       exception
          when problem : others =>
@@ -68,7 +72,11 @@ package body Archive.Unpack is
       DS.print (debug, "  file index bytes :" & DS.header.size_filedata'Img);
       DS.print (debug, "     archive bytes :" & DS.header.size_archive'Img);
 
-      DS.valid := True;
+      DS.valid    := True;
+      DS.b2_index := 32;
+      DS.b3_index := DS.b2_index + Natural (DS.header.size_metadata);
+      DS.b4_index := DS.b3_index + Natural (DS.header.size_filedata);
+      DS.arrow    := DS.b2_index;
 
    end open_rvn_archive;
 
@@ -79,9 +87,23 @@ package body Archive.Unpack is
    procedure close_rvn_archive (DS : in out DArc)
    is
    begin
-      SIO.Close (DS.rvn_handle);
-      DS.print (debug, "RVN archive was closed.");
+      if DS.valid then
+         SIO.Close (DS.rvn_handle);
+         DS.valid := False;
+         DS.print (debug, "RVN archive was closed.");
+      else
+         DS.print (debug, "Attempted to close an RVN archive that was not open.");
+      end if;
    end close_rvn_archive;
+
+
+   ------------------------------------------------------------------------------------------
+   --  rvn_archive_is_open
+   ------------------------------------------------------------------------------------------
+   function rvn_archive_is_open (DS : DArc) return Boolean is
+   begin
+      return DS.valid;
+   end rvn_archive_is_open;
 
 
    ------------------------------------------------------------------------------------------
@@ -109,5 +131,98 @@ package body Archive.Unpack is
          end if;
       end if;
    end print;
+
+
+   ------------------------------------------------------------------------------------------
+   --  direct_file_creation
+   ------------------------------------------------------------------------------------------
+   procedure direct_file_creation
+     (DS          : DArc;
+      target_file : String;
+      contents    : String)
+   is
+      subtype file_contents is String (1 .. contents'Length);
+      package Blitz is new Ada.Direct_IO (file_contents);
+
+      out_handle : Blitz.File_Type;
+   begin
+      begin
+         Blitz.Create (File => out_handle,
+                       Mode => Blitz.Out_File,
+                       Name => target_file);
+         Blitz.Write (File => out_handle,
+                      Item => file_contents (contents));
+         Blitz.Close (out_handle);
+         DS.print (debug, "Successful direct file creation of " & target_file);
+      exception
+         when others =>
+            DS.print (normal, "Failed to create output file at " & target_file);
+      end;
+   end direct_file_creation;
+
+
+   ------------------------------------------------------------------------------------------
+   --  write_metadata_to_file
+   ------------------------------------------------------------------------------------------
+   procedure write_metadata_to_file
+     (DS      : in out DArc;
+      filepath : String)
+   is
+      --  metadata is always starts on index of 32.
+      --  Move to this point if not already there.
+      --  However, this is unnecessary if metadata is zero bytes.
+   begin
+      if DS.header.size_metadata = 0 then
+         DS.print (debug, "There is no metadata; writing an zero-byte file at " & filepath);
+         return;
+      end if;
+      if DS.arrow /= DS.b2_index then
+         SIO.Set_Index (DS.rvn_handle, Ada.Streams.Stream_IO.Count (DS.b2_index));
+         DS.arrow := DS.b2_index;
+      end if;
+      if Natural (DS.header.size_metadata) > KB256 then
+         null;
+      else
+         DS.print (debug, "Metadata less than 256K, single pass decompression");
+         declare
+            decompress_success : Boolean;
+            plain_text : constant String := ZST.Decompress (archive_saxs => DS.rvn_stmaxs,
+                                                            data_length  => DS.b2_index,
+                                                            successful   => decompress_success);
+         begin
+            if decompress_success then
+               DS.direct_file_creation (target_file => filepath,
+                                        contents    => plain_text);
+            else
+               DS.print (normal, "Failed to extract metadata from archive");
+            end if;
+         end;
+      end if;
+
+   end write_metadata_to_file;
+
+
+   ------------------------------------------------------------------------------------------
+   --  extract_metadata
+   ------------------------------------------------------------------------------------------
+   function extract_metadata (DS : in out DArc) return String
+   is
+      decompress_success : Boolean;
+   begin
+      if DS.header.size_metadata = 0 then
+         return "";
+      end if;
+      if DS.arrow /= DS.b2_index then
+         SIO.Set_Index (DS.rvn_handle, Ada.Streams.Stream_IO.Count (DS.b2_index));
+         DS.arrow := DS.b2_index;
+      end if;
+      if Natural (DS.header.size_metadata) > KB256 then
+         return "TBD - Huge Metadata";
+      else
+         return ZST.Decompress (archive_saxs => DS.rvn_stmaxs,
+                                data_length  => DS.b2_index,
+                                successful   => decompress_success);
+      end if;
+   end extract_metadata;
 
 end Archive.Unpack;

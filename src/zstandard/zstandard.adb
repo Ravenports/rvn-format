@@ -5,7 +5,6 @@ with Ada.Unchecked_Conversion;
 with Ada.Directories;
 with Ada.Direct_IO;
 with Ada.IO_Exceptions;
-with Ada.Streams;
 with Zstandard.Streaming_Compression;
 
 package body Zstandard is
@@ -110,6 +109,30 @@ package body Zstandard is
             return IC.Strings.Value (ZSTD_getErrorName (code => dcmp_bytes));
          end if;
       end;
+   end Decompress;
+
+
+   ------------------
+   --  Decompress  --
+   ------------------
+   function Decompress
+     (archive_saxs : SIO.Stream_Access;
+      data_length  : Natural;
+      successful  : out Boolean) return String
+   is
+      type magazine_type is
+         record
+            data : String (1 .. data_length);
+         end record;
+      magazine : magazine_type;
+   begin
+      magazine_type'Read (archive_saxs, magazine);
+      return Decompress (source_data => magazine.data,
+                         successful  => successful);
+   exception
+      when others =>
+         successful := False;
+         return "Failed to read compressed chunk from archive";
    end Decompress;
 
 

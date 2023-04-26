@@ -46,6 +46,14 @@ package Zstandard is
      (source_data : String;
       successful  : out Boolean) return String;
 
+   --  This function reads the entire block of compressed data from the archive and
+   --  returns the decompressed string.  As above, the succcessful variable will be set to False
+   --  upon failure and the resulting string returns the error message.
+   function Decompress
+     (archive_saxs : SIO.Stream_Access;
+      data_length  : Natural;
+      successful   : out Boolean) return String;
+
 
    --------------------------------
    --  incorporate_regular_file  --
