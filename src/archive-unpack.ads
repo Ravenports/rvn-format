@@ -37,14 +37,13 @@ private
    type DArc is tagged limited
       record
          header     : premier_block;
-         arrow      : Natural;
          valid      : Boolean;
          level      : info_level := silent;
          rvn_handle : SIO.File_Type;
          rvn_stmaxs : SIO.Stream_Access;
-         b2_index   : Natural;
-         b3_index   : Natural;
-         b4_index   : Natural;
+         b2_index   : SIO.Count;
+         b3_index   : SIO.Count;
+         b4_index   : SIO.Count;
       end record;
 
    --  Prints message to standard out if the display level is high enough

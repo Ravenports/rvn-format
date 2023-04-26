@@ -20,6 +20,7 @@ package body Archive.Unpack is
       rvn_archive : String;
       verbosity   : info_level)
    is
+      use type SIO.Count;
    begin
       DS.valid := False;
       DS.set_verbosity (verbosity);
@@ -71,12 +72,13 @@ package body Archive.Unpack is
       DS.print (debug, "    metadata bytes :" & DS.header.size_metadata'Img);
       DS.print (debug, "  file index bytes :" & DS.header.size_filedata'Img);
       DS.print (debug, "     archive bytes :" & DS.header.size_archive'Img);
+      DS.print (debug, "             index :" & SIO.Index (DS.rvn_handle)'Img);
 
       DS.valid    := True;
       DS.b2_index := 32;
-      DS.b3_index := DS.b2_index + Natural (DS.header.size_metadata);
-      DS.b4_index := DS.b3_index + Natural (DS.header.size_filedata);
-      DS.arrow    := DS.b2_index;
+      DS.b3_index := DS.b2_index + SIO.Count (DS.header.size_metadata);
+      DS.b4_index := DS.b3_index + SIO.Count (DS.header.size_filedata);
+
 
    end open_rvn_archive;
 
@@ -171,14 +173,14 @@ package body Archive.Unpack is
       --  metadata is always starts on index of 32.
       --  Move to this point if not already there.
       --  However, this is unnecessary if metadata is zero bytes.
+      use type SIO.Count;
    begin
       if DS.header.size_metadata = 0 then
          DS.print (debug, "There is no metadata; writing an zero-byte file at " & filepath);
          return;
       end if;
-      if DS.arrow /= DS.b2_index then
-         SIO.Set_Index (DS.rvn_handle, Ada.Streams.Stream_IO.Count (DS.b2_index));
-         DS.arrow := DS.b3_index;
+      if SIO.Index (DS.rvn_handle) /= DS.b2_index then
+         SIO.Set_Index (DS.rvn_handle, DS.b2_index);
       end if;
       if Natural (DS.header.size_metadata) > KB256 then
          null;
@@ -209,13 +211,13 @@ package body Archive.Unpack is
    function extract_metadata (DS : in out DArc) return String
    is
       decompress_success : Boolean;
+      use type SIO.Count;
    begin
       if DS.header.size_metadata = 0 then
          return "";
       end if;
-      if DS.arrow /= DS.b2_index then
-         SIO.Set_Index (DS.rvn_handle, Ada.Streams.Stream_IO.Count (DS.b2_index));
-         DS.arrow := DS.b3_index;
+      if SIO.Index (DS.rvn_handle) /= DS.b2_index then
+         SIO.Set_Index (DS.rvn_handle, DS.b2_index);
       end if;
       if Natural (DS.header.size_metadata) > KB256 then
          return "TBD - Huge Metadata";
