@@ -9,6 +9,7 @@ with Ada.Unchecked_Conversion;
 with Ada.Exceptions;
 with Ada.Strings.Fixed;
 with Zstandard;
+with Blake_3;
 
 package body Archive.Unpack is
 
@@ -330,7 +331,7 @@ package body Archive.Unpack is
                DS.print (debug, "extract filename: " & ASF.Trim (data.filename_p1 &
                            data.filename_p2 & data.filename_p3 &
                            data.filename_p4, Ada.Strings.Both));
-               DS.print (debug, "          b3 sum: " & data.blake_sum);
+               DS.print (debug, "          b3 sum: " & Blake_3.hex (data.blake_sum));
                DS.print (debug, "    type of file: " & data.type_of_file'Img);
                DS.print (debug, "       flat size:" & data.flat_size'Img);
                DS.print (debug, "    parent index:" & data.index_parent'Img);
