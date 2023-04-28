@@ -5,7 +5,9 @@
 with Ada.Text_IO;
 with Ada.Direct_IO;
 with Ada.Directories;
+with Ada.Unchecked_Conversion;
 with Ada.Exceptions;
+with Ada.Strings.Fixed;
 with Zstandard;
 
 package body Archive.Unpack is
@@ -13,6 +15,7 @@ package body Archive.Unpack is
    package TIO renames Ada.Text_IO;
    package DIR renames Ada.Directories;
    package EX  renames Ada.Exceptions;
+   package ASF renames Ada.Strings.Fixed;
    package ZST renames Zstandard;
 
    procedure open_rvn_archive
@@ -79,6 +82,10 @@ package body Archive.Unpack is
       DS.b3_index := DS.b2_index + SIO.Count (DS.header.size_metadata);
       DS.b4_index := DS.b3_index + SIO.Count (DS.header.size_filedata);
 
+      DS.con_track.num_groups  := Natural (DS.header.num_groups);
+      DS.con_track.num_owners  := Natural (DS.header.num_owners);
+      DS.con_track.link_blocks := Natural (DS.header.link_blocks);
+      DS.con_track.file_blocks := Natural (DS.header.file_blocks);
 
    end open_rvn_archive;
 
@@ -218,5 +225,157 @@ package body Archive.Unpack is
                              data_length  => Natural (DS.header.size_metadata),
                              successful   => decompress_success);
    end extract_metadata;
+
+
+   ------------------------------------------------------------------------------------------
+   --  consume_index
+   ------------------------------------------------------------------------------------------
+   function consume_index (DS : in out DArc; index_data : String) return Natural
+   is
+      function sufficient_data (chars_needed : Natural) return Boolean;
+
+      sindex     : Natural := index_data'First;
+      data_left  : Natural := index_data'Length;
+      num_groups : constant Natural := DS.con_track.num_groups;
+      num_owners : constant Natural := DS.con_track.num_owners;
+      num_links  : constant Natural := DS.con_track.link_blocks;
+      num_files  : constant Natural := DS.con_track.file_blocks;
+      fblk_size  : constant Natural := File_Block'Size / 8;
+
+      subtype FBString is String (1 .. fblk_size);
+
+      function sufficient_data (chars_needed : Natural) return Boolean is
+      begin
+         return chars_needed <= data_left;
+      end sufficient_data;
+
+      function FBString_to_File_Block is
+        new Ada.Unchecked_Conversion (Source => FBString,
+                                      Target => File_Block);
+   begin
+      --  Read in groups data
+      for x in 1 .. num_groups loop
+         if sufficient_data (ownergroup'Length) then
+            declare
+               data : ownergroup;
+            begin
+               data := index_data (sindex .. sindex + ownergroup'Length - 1);
+               DS.groups.Append (data);
+               sindex := sindex + ownergroup'Length;
+               data_left := data_left - ownergroup'Length;
+               DS.con_track.num_groups := DS.con_track.num_groups - 1;
+               DS.print (debug, "Extract group: " & data);
+            end;
+         else
+            return data_left;
+         end if;
+      end loop;
+
+      --  Read in owners data
+      for x in 1 .. num_owners loop
+         if sufficient_data (ownergroup'Length) then
+            declare
+               data : ownergroup;
+            begin
+               data := index_data (sindex .. sindex + ownergroup'Length - 1);
+               DS.owners.Append (data);
+               sindex := sindex + ownergroup'Length;
+               data_left := data_left - ownergroup'Length;
+               DS.con_track.num_owners := DS.con_track.num_owners - 1;
+               DS.print (debug, "Extract owner: " & data);
+            end;
+         else
+            return data_left;
+         end if;
+      end loop;
+
+      --  Read in 32-byte link blocks
+      for x in 1 .. num_links loop
+         if sufficient_data (32) then
+            declare
+               link32 : String (1 .. 32);
+            begin
+               for y in 1 .. 32 loop
+                  declare
+                     data : Character;
+                  begin
+                     data := index_data (sindex);
+                     sindex := sindex + 1;
+                     data_left := data_left - 1;
+                     DS.links.Append (data);
+                     link32 (y) := data;
+                  end;
+               end loop;
+               DS.con_track.link_blocks := DS.con_track.link_blocks - 32;
+               DS.print (debug, "Extract link block: " & link32);
+            end;
+         else
+            return data_left;
+         end if;
+      end loop;
+
+      --  Read in 320-byte file blocks
+      for x in 1 .. num_files loop
+         if sufficient_data (fblk_size) then
+            declare
+               data : File_Block;
+               datastr : FBString;
+            begin
+               datastr := index_data (sindex .. sindex + FBString'Length - 1);
+               sindex := sindex + FBString'Length;
+               data_left := data_left - FBString'Length;
+               data := FBString_to_File_Block (datastr);
+               DS.files.Append (data);
+               DS.con_track.file_blocks := DS.con_track.file_blocks - 1;
+               DS.print (debug, "extract filename: " & ASF.Trim (data.filename_p1 &
+                           data.filename_p2 & data.filename_p3 &
+                           data.filename_p4, Ada.Strings.Both));
+               DS.print (debug, "          b3 sum: " & data.blake_sum);
+               DS.print (debug, "    type of file: " & data.type_of_file'Img);
+               DS.print (debug, "       flat size:" & data.flat_size'Img);
+               DS.print (debug, "    parent index:" & data.index_parent'Img);
+            end;
+         else
+            return data_left;
+         end if;
+      end loop;
+
+      return data_left;  --  should be zero
+   end consume_index;
+
+
+   ------------------------------------------------------------------------------------------
+   --  retrieve_file_index
+   ------------------------------------------------------------------------------------------
+   procedure retrieve_file_index (DS : in out DArc)
+   is
+      use type SIO.Count;
+   begin
+      if SIO.Index (DS.rvn_handle) /= DS.b3_index then
+         SIO.Set_Index (DS.rvn_handle, DS.b3_index);
+      end if;
+
+      if Natural (DS.header.size_filedata) > KB256 then
+         DS.print (normal, "filedata > 256KB needs to be implemented");
+      else
+         declare
+            decompress_success : Boolean;
+            left_over : Natural;
+            all_files : constant String :=
+              ZST.Decompress (archive_saxs => DS.rvn_stmaxs,
+                              data_length  => Natural (DS.header.size_filedata),
+                              successful   => decompress_success);
+         begin
+            if not decompress_success then
+               DS.print (normal, "Failed to decompress file index block.");
+            else
+               left_over := DS.consume_index (all_files);
+               if left_over > 0 then
+                  DS.print (normal, "All file consumption left data over unexpectedly.");
+               end if;
+            end if;
+         end;
+      end if;
+   end retrieve_file_index;
 
 end Archive.Unpack;
