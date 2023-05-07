@@ -44,6 +44,21 @@ private
    subtype A_Path is String (1 .. 1024);
    subtype FBString is String (1 .. fblk_size);
 
+   type Scanned_File_Block is
+      record
+         filename     : A_filename;
+         blake_sum    : A_checksum;
+         modified     : filetime;
+         index_owner  : one_byte;
+         index_group  : one_byte;
+         type_of_file : file_type;
+         multiplier   : size_multi;
+         flat_size    : size_modulo;
+         file_perms   : permissions;
+         link_length  : max_path;
+         index_parent : index_type;
+      end record;
+
    package owngrp_crate is new CON.Vectors
      (Index_Type   => owngrp_count,
       Element_Type => ownergroup,
@@ -51,7 +66,7 @@ private
 
    package file_block_crate is new CON.Vectors
      (Index_Type   => File_Count,
-      Element_Type => File_Block);
+      Element_Type => Scanned_File_Block);
 
    package link_crate is new CON.Vectors
      (Index_Type   => Natural,
@@ -100,6 +115,9 @@ private
    function consume_index (DS : in out DArc; index_data : String) return Natural;
 
    --  This function converts the 320-byte string into a File_Block structure
-   function FBString_to_File_Block (Source : FBString) return File_Block;
+   function FBString_to_File_Block (Source : FBString) return Scanned_File_Block;
+
+   --  Cut out trailing characters set to zero and return as a trimmed string
+   function trim_trailing_zeros (full_string : String) return String;
 
 end Archive.Unpack;

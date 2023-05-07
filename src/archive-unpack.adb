@@ -314,7 +314,7 @@ package body Archive.Unpack is
       for x in 1 .. num_files loop
          if sufficient_data (fblk_size) then
             declare
-               data : File_Block;
+               data : Scanned_File_Block;
                datastr : FBString;
             begin
                datastr := index_data (sindex .. sindex + fblk_size - 1);
@@ -324,9 +324,7 @@ package body Archive.Unpack is
                DS.files.Append (data);
                DS.con_track.file_blocks := DS.con_track.file_blocks - 1;
                if DS.level = debug then
-                  DS.print (debug, "extract filename: " & ASF.Trim (data.filename_p1 &
-                              data.filename_p2 & data.filename_p3 &
-                              data.filename_p4, Ada.Strings.Both));
+                  DS.print (debug, "extract filename: " & trim_trailing_zeros (data.filename));
                   DS.print (debug, "          b3 sum: " & Blake_3.hex (data.blake_sum));
                   DS.print (debug, "    type of file: " & data.type_of_file'Img);
                   DS.print (debug, "       flat size:" & data.flat_size'Img);
@@ -381,9 +379,9 @@ package body Archive.Unpack is
    ------------------------------------------------------------------------------------------
    --  FBString_to_File_Block
    ------------------------------------------------------------------------------------------
-   function FBString_to_File_Block (Source : FBString) return File_Block
+   function FBString_to_File_Block (Source : FBString) return Scanned_File_Block
    is
-      result : File_Block;
+      result : Scanned_File_Block;
 
       function str_to_16bits (index : Natural) return Natural;
       function str_to_32bits (index : Natural) return Natural;
@@ -458,10 +456,7 @@ package body Archive.Unpack is
          return result;
       end str_to_64bits;
    begin
-      result.filename_p1  := Source (Source'First .. Source'First + 63);
-      result.filename_p2  := Source (Source'First + 64 .. Source'First + 127);
-      result.filename_p3  := Source (Source'First + 128 .. Source'First + 191);
-      result.filename_p4  := Source (Source'First + 192 .. Source'First + 255);
+      result.filename     := Source (Source'First .. Source'First + 255);
       result.blake_sum    := Source (Source'First + 256 .. Source'First + 287);
       result.modified     := str_to_64bits (Source'First + 288);
       result.index_owner  := one_byte (Character'Pos (Source (Source'First + 296)));
@@ -472,9 +467,25 @@ package body Archive.Unpack is
       result.file_perms   := permissions (str_to_16bits (Source'First + 304));
       result.link_length  := max_path (str_to_16bits (Source'First + 306));
       result.index_parent := index_type (str_to_16bits (Source'First + 308));
-      result.padding      := (others => 0);
 
       return result;
    end FBString_to_File_Block;
+
+   ------------------------------------------------------------------------------------------
+   --  trim_trailing_zeros
+   ------------------------------------------------------------------------------------------
+   function trim_trailing_zeros (full_string : String) return String
+   is
+      first_zero : Natural;
+      pattern    : constant String (1 .. 1) := (others => Character'Val (0));
+   begin
+      first_zero := ASF.Index (Source  => full_string, Pattern => pattern);
+      if first_zero = full_string'First then
+         return "";
+      elsif first_zero > full_string'First then
+         return full_string (full_string'First .. first_zero - 1);
+      end if;
+      return full_string;
+   end trim_trailing_zeros;
 
 end Archive.Unpack;
