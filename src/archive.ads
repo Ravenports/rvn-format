@@ -25,8 +25,8 @@ package Archive is
    subtype A_checksum is String (1 .. 32);
    subtype Some_magic is String (1 .. 3);
 
-   type A_padding is array (1 .. 6) of one_byte;
-   type B_padding is array (1 .. 4) of one_byte;
+   type A_padding is array (1 .. 10) of one_byte;
+   type B_padding is array (1 ..  4) of one_byte;
 
    type File_Block is
       record
@@ -65,7 +65,7 @@ package Archive is
          file_perms   at 304 range  0 .. 15;
          link_length  at 306 range  0 .. 15;
          index_parent at 308 range  0 .. 15;
-         padding      at 310 range  0 .. 47;
+         padding      at 310 range  0 .. 79;
       end record;
 
    type premier_block is

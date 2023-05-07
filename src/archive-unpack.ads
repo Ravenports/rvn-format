@@ -37,9 +37,12 @@ package Archive.Unpack is
 
 private
 
+   fblk_size  : constant Natural := File_Block'Size / 8;
+
    type owngrp_count is range 0 .. 2 ** 8 - 1;
    type File_Count is range 0 .. 2 ** 31 - 1;
    subtype A_Path is String (1 .. 1024);
+   subtype FBString is String (1 .. fblk_size);
 
    package owngrp_crate is new CON.Vectors
      (Index_Type   => owngrp_count,
@@ -95,5 +98,8 @@ private
    --  it contains.  The returned result is how many characters are left over and need
    --  to prefix the next extraction of the index data.
    function consume_index (DS : in out DArc; index_data : String) return Natural;
+
+   --  This function converts the 320-byte string into a File_Block structure
+   function FBString_to_File_Block (Source : FBString) return File_Block;
 
 end Archive.Unpack;

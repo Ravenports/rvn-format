@@ -2,6 +2,7 @@
 --  Reference: ../License.txt
 
 
+with System;
 with Ada.Text_IO;
 with Ada.Direct_IO;
 with Ada.Directories;
@@ -241,18 +242,12 @@ package body Archive.Unpack is
       num_owners : constant Natural := DS.con_track.num_owners;
       num_links  : constant Natural := DS.con_track.link_blocks;
       num_files  : constant Natural := DS.con_track.file_blocks;
-      fblk_size  : constant Natural := File_Block'Size / 8;
-
-      subtype FBString is String (1 .. fblk_size);
 
       function sufficient_data (chars_needed : Natural) return Boolean is
       begin
          return chars_needed <= data_left;
       end sufficient_data;
 
-      function FBString_to_File_Block is
-        new Ada.Unchecked_Conversion (Source => FBString,
-                                      Target => File_Block);
    begin
       --  Read in groups data
       for x in 1 .. num_groups loop
@@ -322,9 +317,9 @@ package body Archive.Unpack is
                data : File_Block;
                datastr : FBString;
             begin
-               datastr := index_data (sindex .. sindex + FBString'Length - 1);
-               sindex := sindex + FBString'Length;
-               data_left := data_left - FBString'Length;
+               datastr := index_data (sindex .. sindex + fblk_size - 1);
+               sindex := sindex + fblk_size;
+               data_left := data_left - fblk_size;
                data := FBString_to_File_Block (datastr);
                DS.files.Append (data);
                DS.con_track.file_blocks := DS.con_track.file_blocks - 1;
@@ -378,5 +373,105 @@ package body Archive.Unpack is
          end;
       end if;
    end retrieve_file_index;
+
+
+   ------------------------------------------------------------------------------------------
+   --  FBString_to_File_Block
+   ------------------------------------------------------------------------------------------
+   function FBString_to_File_Block (Source : FBString) return File_Block
+   is
+      result : File_Block;
+
+      function str_to_16bits (index : Natural) return Natural;
+      function str_to_32bits (index : Natural) return Natural;
+      function str_to_64bits (index : Natural) return filetime;
+
+      function str_to_16bits (index : Natural) return Natural
+      is
+         result  : Natural;
+         hi_byte : constant Natural := Natural (Character'Pos (Source (index)));
+         lo_byte : constant Natural := Natural (Character'Pos (Source (index + 1)));
+      begin
+         case System.Default_Bit_Order is
+            when System.Low_Order_First =>
+               --  Little Endian
+               result := hi_byte + (lo_byte * 256);
+            when System.High_Order_First =>
+               --  Big Endian
+               result := lo_byte + (hi_byte * 256);
+         end case;
+         return result;
+      end str_to_16bits;
+
+      function str_to_32bits (index : Natural) return Natural
+      is
+         result  : Natural;
+         A_byte : constant Natural := Natural (Character'Pos (Source (index)));
+         B_byte : constant Natural := Natural (Character'Pos (Source (index + 1)));
+         C_byte : constant Natural := Natural (Character'Pos (Source (index + 2)));
+         D_byte : constant Natural := Natural (Character'Pos (Source (index + 3)));
+      begin
+         case System.Default_Bit_Order is
+            when System.Low_Order_First =>
+               --  Little Endian
+               result := A_byte + (B_byte * 256) + (C_byte * 65_536) + (D_byte * 16_777_216);
+            when System.High_Order_First =>
+               --  Big Endian
+               result := D_byte + (C_byte * 256) + (B_byte * 65_536) + (A_byte * 16_777_216);
+         end case;
+         return result;
+      end str_to_32bits;
+
+      function str_to_64bits (index : Natural) return filetime
+      is
+         result : filetime := 0;
+         multiplier : Natural;
+         bytex : Natural;
+         spos  : Natural := 0;
+      begin
+         case System.Default_Bit_Order is
+            when System.Low_Order_First =>
+               --  Little Endian
+               for bitndx in 0 .. 7 loop
+                  bytex := Character'Pos (Source (index + spos));
+                  if bytex > 0 then
+                     multiplier := 2 ** (8 * bitndx);
+                     result := result + filetime (bytex * multiplier);
+                  end if;
+                  spos := spos + 1;
+               end loop;
+
+            when System.High_Order_First =>
+               --  Big Endian
+               for bitndx in reverse 0 .. 7 loop
+                  bytex := Character'Pos (Source (index + spos));
+                  if bytex > 0 then
+                     multiplier := 2 ** (8 * bitndx);
+                     result := result + filetime (bytex * multiplier);
+                  end if;
+                  spos := spos + 1;
+               end loop;
+         end case;
+         return result;
+      end str_to_64bits;
+   begin
+      result.filename_p1  := Source (Source'First .. Source'First + 63);
+      result.filename_p2  := Source (Source'First + 64 .. Source'First + 127);
+      result.filename_p3  := Source (Source'First + 128 .. Source'First + 191);
+      result.filename_p4  := Source (Source'First + 192 .. Source'First + 255);
+      result.blake_sum    := Source (Source'First + 256 .. Source'First + 287);
+      result.modified     := str_to_64bits (Source'First + 288);
+      result.index_owner  := one_byte (Character'Pos (Source (Source'First + 296)));
+      result.index_group  := one_byte (Character'Pos (Source (Source'First + 297)));
+      result.type_of_file := file_type'Val (Character'Pos (Source (Source'First + 298)));
+      result.multiplier   := size_multi (Character'Pos (Source (Source'First + 299)));
+      result.flat_size    := size_modulo (str_to_32bits (Source'First + 300));
+      result.file_perms   := permissions (str_to_16bits (Source'First + 304));
+      result.link_length  := max_path (str_to_16bits (Source'First + 306));
+      result.index_parent := index_type (str_to_16bits (Source'First + 308));
+      result.padding      := (others => 0);
+
+      return result;
+   end FBString_to_File_Block;
 
 end Archive.Unpack;
