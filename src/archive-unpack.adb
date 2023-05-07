@@ -323,13 +323,16 @@ package body Archive.Unpack is
                data := FBString_to_File_Block (datastr);
                DS.files.Append (data);
                DS.con_track.file_blocks := DS.con_track.file_blocks - 1;
-               DS.print (debug, "extract filename: " & ASF.Trim (data.filename_p1 &
-                           data.filename_p2 & data.filename_p3 &
-                           data.filename_p4, Ada.Strings.Both));
-               DS.print (debug, "          b3 sum: " & Blake_3.hex (data.blake_sum));
-               DS.print (debug, "    type of file: " & data.type_of_file'Img);
-               DS.print (debug, "       flat size:" & data.flat_size'Img);
-               DS.print (debug, "    parent index:" & data.index_parent'Img);
+               if DS.level = debug then
+                  DS.print (debug, "extract filename: " & ASF.Trim (data.filename_p1 &
+                              data.filename_p2 & data.filename_p3 &
+                              data.filename_p4, Ada.Strings.Both));
+                  DS.print (debug, "          b3 sum: " & Blake_3.hex (data.blake_sum));
+                  DS.print (debug, "    type of file: " & data.type_of_file'Img);
+                  DS.print (debug, "       flat size:" & data.flat_size'Img);
+                  DS.print (debug, "    parent index:" & data.index_parent'Img);
+                  DS.print (debug, "    modification:" & data.modified'Img);
+               end if;
             end;
          else
             return data_left;
