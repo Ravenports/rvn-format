@@ -260,7 +260,9 @@ package body Archive.Unpack is
                sindex := sindex + ownergroup'Length;
                data_left := data_left - ownergroup'Length;
                DS.con_track.num_groups := DS.con_track.num_groups - 1;
-               DS.print (debug, "Extract group: " & data);
+               if DS.level = debug then
+                  DS.print (debug, "Extract group: " & trim_trailing_zeros (data));
+               end if;
             end;
          else
             return data_left;
@@ -278,7 +280,9 @@ package body Archive.Unpack is
                sindex := sindex + ownergroup'Length;
                data_left := data_left - ownergroup'Length;
                DS.con_track.num_owners := DS.con_track.num_owners - 1;
-               DS.print (debug, "Extract owner: " & data);
+               if DS.level = debug then
+                  DS.print (debug, "Extract owner: " & trim_trailing_zeros (data));
+               end if;
             end;
          else
             return data_left;
@@ -324,6 +328,7 @@ package body Archive.Unpack is
                DS.files.Append (data);
                DS.con_track.file_blocks := DS.con_track.file_blocks - 1;
                if DS.level = debug then
+                  DS.print (debug, "");
                   DS.print (debug, "extract filename: " & trim_trailing_zeros (data.filename));
                   DS.print (debug, "          b3 sum: " & Blake_3.hex (data.blake_sum));
                   DS.print (debug, "    type of file: " & data.type_of_file'Img);
