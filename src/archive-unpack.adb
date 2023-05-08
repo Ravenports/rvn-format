@@ -334,6 +334,7 @@ package body Archive.Unpack is
                   DS.print (debug, "    type of file: " & data.type_of_file'Img);
                   DS.print (debug, "       flat size:" & data.flat_size'Img);
                   DS.print (debug, "    parent index:" & data.index_parent'Img);
+                  DS.print (debug, "    directory ID:" & data.directory_id'Img);
                   DS.print (debug, "    modification:" & data.modified'Img);
                end if;
             end;
@@ -472,6 +473,7 @@ package body Archive.Unpack is
       result.file_perms   := permissions (str_to_16bits (Source'First + 304));
       result.link_length  := max_path (str_to_16bits (Source'First + 306));
       result.index_parent := index_type (str_to_16bits (Source'First + 308));
+      result.directory_id := index_type (str_to_16bits (Source'First + 310));
 
       return result;
    end FBString_to_File_Block;

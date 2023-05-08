@@ -175,7 +175,8 @@ package body Archive.Pack is
                new_block.flat_size    := 0;
                new_block.file_perms   := features.perms;
                new_block.link_length  := 0;
-               new_block.index_parent := AS.dtrack;
+               new_block.index_parent := dir_index;
+               new_block.directory_id := AS.dtrack;
                new_block.padding      := (others => 0);
 
                AS.files.Append (new_block);
@@ -227,6 +228,7 @@ package body Archive.Pack is
             new_block.index_group  := AS.get_group_index (features.group);
             new_block.file_perms   := features.perms;
             new_block.index_parent := dir_index;
+            new_block.directory_id := 0;
             new_block.padding      := (others => 0);
 
             case features.ftype is

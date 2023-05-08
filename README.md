@@ -30,8 +30,9 @@ Index  Information     bytes
   300  file size           4   * File size modulo 4Gb
   304  file mode           2   *16 bits
   306  link path size      2   *linux supports up to 4096 characters
-  308  parent directory    2   *directory index (64k directories supported)
-  310  padding            10   *Unused bytes for potential use
+  308  parent directory    2   *index of parent directory
+  310  directory index     2   *directory index (64K directories supported)
+  312  padding             8   *Unused bytes for potential use
 ```
 
 ## Structure

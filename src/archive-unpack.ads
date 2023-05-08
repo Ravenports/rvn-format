@@ -4,6 +4,7 @@
 
 with Ada.Containers.Vectors;
 with Ada.Streams.Stream_IO;
+with Ada.Strings.Unbounded;
 
 package Archive.Unpack is
 
@@ -43,6 +44,7 @@ private
    type File_Count is range 0 .. 2 ** 31 - 1;
    subtype A_Path is String (1 .. 1024);
    subtype FBString is String (1 .. fblk_size);
+   subtype text is Ada.Strings.Unbounded.Unbounded_String;
 
    type Scanned_File_Block is
       record
@@ -57,6 +59,12 @@ private
          file_perms   : permissions;
          link_length  : max_path;
          index_parent : index_type;
+         directory_id : index_type;
+      end record;
+
+   type A_Directory is
+      record
+         directory : text;
       end record;
 
    package owngrp_crate is new CON.Vectors
@@ -71,6 +79,10 @@ private
    package link_crate is new CON.Vectors
      (Index_Type   => Natural,
       Element_Type => Character);
+
+   package directory_crate is new CON.Vectors
+     (Index_Type   => Positive,
+      Element_Type => A_Directory);
 
    type consumer_items is
       record
@@ -95,6 +107,7 @@ private
          groups     : owngrp_crate.Vector;
          links      : link_crate.Vector;
          files      : file_block_crate.Vector;
+         folders    : directory_crate.Vector;
       end record;
 
    --  Prints message to standard out if the display level is high enough
