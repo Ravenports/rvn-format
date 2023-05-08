@@ -332,13 +332,14 @@ package body Archive.Unpack is
                   declare
                      base : constant String := trim_trailing_zeros (data.filename);
                      cart : A_Directory;
-                     parent : constant Positive := Positive (data.index_parent);
+                     parent : Positive;
                   begin
                      if data.index_parent = 0 then
                         cart.directory := ASU.To_Unbounded_String (base);
                         DS.folders.Append (cart);
                         DS.print (debug, "DIR index" & data.directory_id'Img & " => " & base);
                      else
+                        parent  := Positive (data.index_parent);
                         cart.directory := DS.folders.Element (parent).directory;
                         ASU.Append (cart.directory, "/" & base);
                         DS.folders.Append (cart);
