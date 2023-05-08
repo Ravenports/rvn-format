@@ -327,6 +327,26 @@ package body Archive.Unpack is
                data := FBString_to_File_Block (datastr);
                DS.files.Append (data);
                DS.con_track.file_blocks := DS.con_track.file_blocks - 1;
+               if data.directory_id > 0 then
+                  --  directory_ID starts with 1 and increases
+                  declare
+                     base : constant String := trim_trailing_zeros (data.filename);
+                     cart : A_Directory;
+                     parent : constant Positive := Positive (data.index_parent);
+                  begin
+                     if data.index_parent = 0 then
+                        cart.directory := ASU.To_Unbounded_String (base);
+                        DS.folders.Append (cart);
+                        DS.print (debug, "DIR index" & data.directory_id'Img & " => " & base);
+                     else
+                        cart.directory := DS.folders.Element (parent).directory;
+                        ASU.Append (cart.directory, "/" & base);
+                        DS.folders.Append (cart);
+                        DS.print (debug, "DIR index" & data.directory_id'Img &
+                                    " => " & ASU.To_String (cart.directory));
+                     end if;
+                  end;
+               end if;
                if DS.level = debug then
                   DS.print (debug, "");
                   DS.print (debug, "extract filename: " & trim_trailing_zeros (data.filename));

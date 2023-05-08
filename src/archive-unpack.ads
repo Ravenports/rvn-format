@@ -10,6 +10,7 @@ package Archive.Unpack is
 
    package CON renames Ada.Containers;
    package SIO renames Ada.Streams.Stream_IO;
+   package ASU renames Ada.Strings.Unbounded;
 
    type DArc is tagged limited private;
 
@@ -44,7 +45,7 @@ private
    type File_Count is range 0 .. 2 ** 31 - 1;
    subtype A_Path is String (1 .. 1024);
    subtype FBString is String (1 .. fblk_size);
-   subtype text is Ada.Strings.Unbounded.Unbounded_String;
+   subtype text is ASU.Unbounded_String;
 
    type Scanned_File_Block is
       record
