@@ -37,6 +37,10 @@ package Archive.Unpack is
    --  This procedure decompresses the file index, parses it, and stores it internally.
    procedure retrieve_file_index (DS : in out DArc);
 
+   --  This procedure sends the file index to standard out.  Directories are omitted.
+   --  The print order matches the order written to the archive.
+   procedure print_manifest (DS : DArc);
+
 private
 
    fblk_size  : constant Natural := File_Block'Size / 8;

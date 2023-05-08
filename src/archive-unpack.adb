@@ -499,6 +499,7 @@ package body Archive.Unpack is
       return result;
    end FBString_to_File_Block;
 
+
    ------------------------------------------------------------------------------------------
    --  trim_trailing_zeros
    ------------------------------------------------------------------------------------------
@@ -515,5 +516,30 @@ package body Archive.Unpack is
       end if;
       return full_string;
    end trim_trailing_zeros;
+
+
+   ------------------------------------------------------------------------------------------
+   --  print_manifest
+   ------------------------------------------------------------------------------------------
+   procedure print_manifest (DS : DArc)
+   is
+      procedure print (position : file_block_crate.Cursor);
+      procedure print (position : file_block_crate.Cursor)
+      is
+         block : Scanned_File_Block renames file_block_crate.Element (position);
+      begin
+         if block.type_of_file /= directory then
+            declare
+               parent : constant Positive := Positive (block.index_parent);
+               fullpath : constant String := ASU.To_String (DS.folders.Element (parent).directory)
+                 & "/" & trim_trailing_zeros (block.filename);
+            begin
+               DS.print (normal, fullpath);
+            end;
+         end if;
+      end print;
+   begin
+      DS.files.Iterate (print'Access);
+   end print_manifest;
 
 end Archive.Unpack;
