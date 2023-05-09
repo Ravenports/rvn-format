@@ -521,7 +521,7 @@ package body Archive.Unpack is
    ------------------------------------------------------------------------------------------
    --  print_manifest
    ------------------------------------------------------------------------------------------
-   procedure print_manifest (DS : DArc)
+   procedure print_manifest (DS : DArc; show_b3sum : Boolean := False)
    is
       procedure print (position : file_block_crate.Cursor);
       procedure print (position : file_block_crate.Cursor)
@@ -534,7 +534,11 @@ package body Archive.Unpack is
                fullpath : constant String := ASU.To_String (DS.folders.Element (parent).directory)
                  & "/" & trim_trailing_zeros (block.filename);
             begin
-               DS.print (normal, fullpath);
+               if show_b3sum then
+                  DS.print (normal, Blake_3.hex (block.blake_sum) & " " & fullpath);
+               else
+                  DS.print (normal, fullpath);
+               end if;
             end;
          end if;
       end print;
