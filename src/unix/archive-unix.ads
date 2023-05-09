@@ -24,6 +24,12 @@ package Archive.Unix is
    --  Return symlink target path
    function link_target (symlink_path : String) return String;
 
+   --  Attempts to create a hardlink and returns True on success
+   function create_hardlink (actual_file : String; destination : String) return Boolean;
+
+   --  Attempts to create a symlink and returns True on success
+   function create_symlink (actual_file : String; link_to_create : String) return Boolean;
+
 private
 
    function success (rc : IC.int) return Boolean;
@@ -74,6 +80,12 @@ private
 
    function arc_get_inode_number (sb : struct_stat_Access) return IC.unsigned_long_long;
    pragma Import (C, arc_get_inode_number, "get_inode_number");
+
+   function symlink (path1, path2 : IC.char_array) return IC.int;
+   pragma Import (C, symlink);
+
+   function link (path1, path2 : IC.char_array) return IC.int;
+   pragma Import (C, link);
 
    function stat_ok (path : String; sb : struct_stat_Access) return Boolean;
 

@@ -34,13 +34,17 @@ package Archive.Unpack is
    --  This function decompresses the metadata and returns it as a string
    function extract_metadata (DS : in out DArc) return String;
 
-   --  This procedure decompresses the file index, parses it, and stores it internally.
-   procedure retrieve_file_index (DS : in out DArc);
-
    --  This procedure sends the file index to standard out.  Directories are omitted.
    --  The print order matches the order written to the archive.
    --  If 'show_b3sum' is true, each line is prefixed with the blake3 checksum (hex).
-   procedure print_manifest (DS : DArc; show_b3sum : Boolean := False);
+   procedure print_manifest (DS : in out DArc; show_b3sum : Boolean := False);
+
+   --  This function extracts the archive and returns true if successful.
+   function extract_archive
+     (DS            : in out DArc;
+      top_directory : String;
+      set_owners    : Boolean;
+      set_perms     : Boolean) return Boolean;
 
 private
 
@@ -114,6 +118,8 @@ private
          links      : link_crate.Vector;
          files      : file_block_crate.Vector;
          folders    : directory_crate.Vector;
+         processed  : Boolean := False;
+         link_index : Natural := 0;
       end record;
 
    --  Prints message to standard out if the display level is high enough
@@ -138,5 +144,12 @@ private
 
    --  Cut out trailing characters set to zero and return as a trimmed string
    function trim_trailing_zeros (full_string : String) return String;
+
+   --  This procedure decompresses the file index, parses it, and stores it internally.
+   procedure retrieve_file_index (DS : in out DArc);
+
+   --  This function pops the next link out of the vectory, but it has to be
+   --  given the length of the string first
+   function retrieve_link_target (DS : in out DArc; link_len : max_path) return String;
 
 end Archive.Unpack;

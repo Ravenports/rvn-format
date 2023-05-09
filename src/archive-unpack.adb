@@ -11,6 +11,7 @@ with Ada.Exceptions;
 with Ada.Strings.Fixed;
 with Zstandard;
 with Blake_3;
+with Archive.Unix;
 
 package body Archive.Unpack is
 
@@ -380,6 +381,7 @@ package body Archive.Unpack is
       end if;
 
       if Natural (DS.header.size_filedata) > KB256 then
+         --  TODO: retrieve_file_index implement > 256Kb block
          DS.print (normal, "filedata > 256KB needs to be implemented");
       else
          declare
@@ -400,6 +402,7 @@ package body Archive.Unpack is
             end if;
          end;
       end if;
+      DS.processed := True;
    end retrieve_file_index;
 
 
@@ -521,7 +524,7 @@ package body Archive.Unpack is
    ------------------------------------------------------------------------------------------
    --  print_manifest
    ------------------------------------------------------------------------------------------
-   procedure print_manifest (DS : DArc; show_b3sum : Boolean := False)
+   procedure print_manifest (DS : in out DArc; show_b3sum : Boolean := False)
    is
       procedure print (position : file_block_crate.Cursor);
       procedure print (position : file_block_crate.Cursor)
@@ -543,7 +546,132 @@ package body Archive.Unpack is
          end if;
       end print;
    begin
+      if not DS.processed then
+         DS.retrieve_file_index;
+      end if;
       DS.files.Iterate (print'Access);
    end print_manifest;
+
+
+   ------------------------------------------------------------------------------------------
+   --  retrieve_link_target
+   ------------------------------------------------------------------------------------------
+   function retrieve_link_target (DS : in out DArc; link_len : max_path) return String
+   is
+   begin
+      if link_len = 0 then
+         return "";
+      end if;
+      declare
+         link : String (1 .. Natural (link_len));
+      begin
+         for x in link'Range loop
+            link (x) := DS.links.Element (x);
+            DS.link_index := DS.link_index + 1;
+         end loop;
+         return link;
+      end;
+   end retrieve_link_target;
+
+
+   ------------------------------------------------------------------------------------------
+   --  extract_archive
+   ------------------------------------------------------------------------------------------
+   function extract_archive
+     (DS            : in out DArc;
+      top_directory : String;
+      set_owners    : Boolean;
+      set_perms     : Boolean) return Boolean
+   is
+      procedure extract (position : file_block_crate.Cursor);
+      procedure make_directory (directory_id : Positive);
+      procedure make_symlink (parent_dir : Positive; link_name : String; link_len : max_path);
+      procedure make_hardlink (parent_dir : Positive; link_name : String; link_len : max_path);
+
+      good_extraction : Boolean := True;
+
+      procedure extract (position : file_block_crate.Cursor)
+      is
+         block : Scanned_File_Block renames file_block_crate.Element (position);
+      begin
+         case block.type_of_file is
+            when directory =>
+               make_directory (Positive (block.directory_id));
+            when regular => null;
+            when symlink =>
+               make_symlink (parent_dir => Positive (block.index_parent),
+                             link_name  => trim_trailing_zeros (block.filename),
+                             link_len   => block.link_length);
+            when hardlink =>
+               make_hardlink (parent_dir => Positive (block.index_parent),
+                              link_name  => trim_trailing_zeros (block.filename),
+                              link_len   => block.link_length);
+            when fifo => null;
+            when unsupported =>
+               good_extraction := False;
+         end case;
+      end extract;
+
+      procedure make_directory (directory_id : Positive)
+      is
+         full_path : constant String := top_directory &
+           "/" & ASU.To_String (DS.folders.Element (directory_id).directory);
+      begin
+         DIR.Create_Directory (New_Directory => full_path);
+         DS.print (debug, "Extracted " & full_path & " directory");
+      exception
+         when DIR.Use_Error =>
+            DS.print (normal, "Extract/create " & full_path & " directory unsupported");
+            good_extraction := False;
+         when DIR.Name_Error =>
+            DS.print (normal, "Failed to Extract/create " & full_path & " directory");
+            good_extraction := False;
+      end make_directory;
+
+      procedure make_symlink (parent_dir : Positive; link_name : String; link_len : max_path)
+      is
+         link_path : constant String := top_directory &
+           "/" & ASU.To_String (DS.folders.Element (parent_dir).directory) &
+           "/" & link_name;
+         link_target : constant String := DS.retrieve_link_target (link_len);
+      begin
+         if Unix.create_symlink (actual_file    => link_target,
+                                 link_to_create => link_path)
+         then
+            DS.print (debug, "Extracted symlink " & link_path & " => " & link_target);
+         else
+            DS.print (normal, "Failed to extract symlink " & link_path & " => " & link_target);
+            good_extraction := False;
+         end if;
+      end make_symlink;
+
+      procedure make_hardlink (parent_dir : Positive; link_name : String; link_len : max_path)
+      is
+         duplicate : constant String := top_directory &
+           "/" & ASU.To_String (DS.folders.Element (parent_dir).directory) &
+           "/" & link_name;
+         source : constant String := DS.retrieve_link_target (link_len);
+      begin
+         if Unix.create_hardlink (actual_file => source,
+                                  destination => duplicate)
+         then
+            DS.print (debug, "Extracted hardlink " & source & " => " & duplicate);
+         else
+            DS.print (normal, "Failed to extract hardlink " & source & " => " & duplicate);
+            good_extraction := False;
+         end if;
+      end make_hardlink;
+
+      use type SIO.Count;
+   begin
+      if not DS.processed then
+         DS.retrieve_file_index;
+      end if;
+      if SIO.Index (DS.rvn_handle) /= DS.b4_index then
+         SIO.Set_Index (DS.rvn_handle, DS.b4_index);
+      end if;
+      DS.files.Iterate (extract'Access);
+      return good_extraction;
+   end extract_archive;
 
 end Archive.Unpack;

@@ -232,4 +232,42 @@ package body Archive.Unix is
       end;
    end link_target;
 
+
+   --------------------------------------------------------------------------------------------
+   --  create_symlink
+   --------------------------------------------------------------------------------------------
+   function create_symlink (actual_file : String; link_to_create : String) return Boolean
+   is
+      use type IC.int;
+      path1  : constant IC.char_array := IC.To_C (actual_file);
+      path2  : constant IC.char_array := IC.To_C (link_to_create);
+      result : IC.int;
+   begin
+      if actual_file = "" or else link_to_create = "" then
+         return False;
+      end if;
+      result := symlink (path1, path2);
+
+      return result = 0;
+   end create_symlink;
+
+
+   --------------------------------------------------------------------------------------------
+   --  create_hardlink
+   --------------------------------------------------------------------------------------------
+   function create_hardlink (actual_file : String; destination : String) return Boolean
+   is
+      use type IC.int;
+      path1  : constant IC.char_array := IC.To_C (actual_file);
+      path2  : constant IC.char_array := IC.To_C (destination);
+      result : IC.int;
+   begin
+      if actual_file = "" or else destination = "" then
+         return False;
+      end if;
+      result := link (path1, path2);
+
+      return result = 0;
+   end create_hardlink;
+
 end Archive.Unix;
