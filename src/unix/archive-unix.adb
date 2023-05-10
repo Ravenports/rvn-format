@@ -270,4 +270,23 @@ package body Archive.Unix is
       return result = 0;
    end create_hardlink;
 
+
+   --------------------------------------------------------------------------------------------
+   --  create_fifo
+   --------------------------------------------------------------------------------------------
+   function create_fifo (fifo_path : String; perms : permissions) return Boolean
+   is
+      use type IC.int;
+      path   : constant IC.char_array := IC.To_C (fifo_path);
+      mode   : constant IC.unsigned_short := IC.unsigned_short (perms);
+      result : IC.int;
+   begin
+      if fifo_path = "" then
+         return False;
+      end if;
+      result := mkfifo (path, mode);
+
+      return result = 0;
+   end create_fifo;
+
 end Archive.Unix;

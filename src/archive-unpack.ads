@@ -152,4 +152,8 @@ private
    --  given the length of the string first
    function retrieve_link_target (DS : in out DArc; link_len : max_path) return String;
 
+   --  This function filters out permissions beyond read-write-execute for root, user,
+   --  and other.  This is includes the SUID.
+   function rwx_filter (perms : permissions) return permissions;
+
 end Archive.Unpack;

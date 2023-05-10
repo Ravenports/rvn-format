@@ -30,6 +30,9 @@ package Archive.Unix is
    --  Attempts to create a symlink and returns True on success
    function create_symlink (actual_file : String; link_to_create : String) return Boolean;
 
+   --  Attempts to create FIFO file and returns True on success
+   function create_fifo (fifo_path : String; perms : permissions) return Boolean;
+
 private
 
    function success (rc : IC.int) return Boolean;
@@ -86,6 +89,9 @@ private
 
    function link (path1, path2 : IC.char_array) return IC.int;
    pragma Import (C, link);
+
+   function mkfifo (path : IC.char_array; mode : IC.unsigned_short) return IC.int;
+   pragma Import (C, mkfifo);
 
    function stat_ok (path : String; sb : struct_stat_Access) return Boolean;
 

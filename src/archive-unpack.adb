@@ -587,6 +587,7 @@ package body Archive.Unpack is
       procedure make_directory (directory_id : Positive);
       procedure make_symlink (parent_dir : Positive; link_name : String; link_len : max_path);
       procedure make_hardlink (parent_dir : Positive; link_name : String; link_len : max_path);
+      procedure make_fifo (parent_dir : Positive; file_name : String; perms : permissions);
 
       good_extraction : Boolean := True;
 
@@ -606,7 +607,10 @@ package body Archive.Unpack is
                make_hardlink (parent_dir => Positive (block.index_parent),
                               link_name  => trim_trailing_zeros (block.filename),
                               link_len   => block.link_length);
-            when fifo => null;
+            when fifo =>
+               make_fifo (parent_dir => Positive (block.index_parent),
+                          file_name  => trim_trailing_zeros (block.filename),
+                          perms      => block.file_perms);
             when unsupported =>
                good_extraction := False;
          end case;
@@ -617,8 +621,29 @@ package body Archive.Unpack is
          full_path : constant String := top_directory &
            "/" & ASU.To_String (DS.folders.Element (directory_id).directory);
       begin
+         if DIR.Exists (full_path) then
+            case DIR.Kind (full_path) is
+               when DIR.Directory =>
+                  DS.print (verbose, "Skip directory creation; " & full_path & " already exists.");
+                  return;
+               when DIR.Ordinary_File | DIR.Special_File =>
+                  begin
+                     DIR.Delete_File (full_path);
+                     DS.print (verbose, "Deleted file with same path as needed directory.");
+                  exception
+                     when DIR.Use_Error =>
+                        DS.print (normal, "Deletion of " & full_path & " file unsupported.");
+                        good_extraction := False;
+                        return;
+                     when DIR.Name_Error =>
+                        DS.print (normal, "Deletion of " & full_path & " failed (unknown reason)");
+                        good_extraction := False;
+                        return;
+                  end;
+            end case;
+         end if;
          DIR.Create_Directory (New_Directory => full_path);
-         DS.print (debug, "Extracted " & full_path & " directory");
+         DS.print (verbose, "Extracted " & full_path & " directory");
       exception
          when DIR.Use_Error =>
             DS.print (normal, "Extract/create " & full_path & " directory unsupported");
@@ -638,7 +663,7 @@ package body Archive.Unpack is
          if Unix.create_symlink (actual_file    => link_target,
                                  link_to_create => link_path)
          then
-            DS.print (debug, "Extracted symlink " & link_path & " => " & link_target);
+            DS.print (verbose, "Extracted symlink " & link_path & " => " & link_target);
          else
             DS.print (normal, "Failed to extract symlink " & link_path & " => " & link_target);
             good_extraction := False;
@@ -655,12 +680,30 @@ package body Archive.Unpack is
          if Unix.create_hardlink (actual_file => source,
                                   destination => duplicate)
          then
-            DS.print (debug, "Extracted hardlink " & source & " => " & duplicate);
+            DS.print (verbose, "Extracted hardlink " & source & " => " & duplicate);
          else
             DS.print (normal, "Failed to extract hardlink " & source & " => " & duplicate);
             good_extraction := False;
          end if;
       end make_hardlink;
+
+      procedure make_fifo (parent_dir : Positive; file_name : String; perms : permissions)
+      is
+         fifo_path : constant String := top_directory &
+           "/" & ASU.To_String (DS.folders.Element (parent_dir).directory) &
+           "/" & file_name;
+         fifo_perms : permissions := perms;
+      begin
+         if not set_perms then
+            fifo_perms := rwx_filter (perms);
+         end if;
+         if Unix.create_fifo (fifo_path, fifo_perms) then
+            DS.print (verbose, "Created fifo file " & fifo_path);
+         else
+            DS.print (normal, "Failed to create fifo file " & fifo_path);
+            good_extraction := False;
+         end if;
+      end make_fifo;
 
       use type SIO.Count;
    begin
@@ -673,5 +716,16 @@ package body Archive.Unpack is
       DS.files.Iterate (extract'Access);
       return good_extraction;
    end extract_archive;
+
+
+   ------------------------------------------------------------------------------------------
+   --  rwx_filter
+   ------------------------------------------------------------------------------------------
+   function rwx_filter (perms : permissions) return permissions
+   is
+      rwx : constant permissions := 2#0000000111111111#;
+   begin
+      return (perms and rwx);
+   end rwx_filter;
 
 end Archive.Unpack;
