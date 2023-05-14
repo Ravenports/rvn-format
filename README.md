@@ -22,17 +22,18 @@ Index  Information     bytes
 ------------------------------------------------------------
     0  Filename          256   *split into four 32-byte parts
   256  Blake3 digest      32
-  288  modification time   8   *64-bit time
-  296  owner user name     1   *normalized index
-  297  owner group name    1   *normalized index
-  298  file type           1   *regular, hardlink, symlink, directory, FIFO
-  299  size multiplier     1   * File size div 4Gb
-  300  file size           4   * File size modulo 4Gb
-  304  file mode           2   *16 bits
-  306  link path size      2   *linux supports up to 4096 characters
-  308  parent directory    2   *index of parent directory
-  310  directory index     2   *directory index (64K directories supported)
-  312  padding             8   *Unused bytes for potential use
+  288  modification time   8   *64-bit time component (seconds)
+  296  modification time   4   *32-bit time component (nanoseconds)
+  300  owner user name     1   *normalized index
+  301  owner group name    1   *normalized index
+  302  file type           1   *regular, hardlink, symlink, directory, FIFO
+  303  size multiplier     1   *File size div 4Gb
+  304  file size           4   *File size modulo 4Gb
+  308  file mode           2   *16 bits
+  310  link path size      2   *linux supports up to 4096 characters
+  312  parent directory    2   *index of parent directory
+  314  directory index     2   *directory index (64K directories supported)
+  316  padding             4   *Unused bytes for potential use
 ```
 
 ## Structure

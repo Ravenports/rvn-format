@@ -47,6 +47,7 @@ package body Archive.Unix is
    is
       result : File_Characteristics;
       sb     : aliased Unix.struct_stat;
+      tspec  : time_specification;
    begin
       result.ftype := unsupported;
       result.mtime := 0;
@@ -55,10 +56,12 @@ package body Archive.Unix is
       result.error := True;
       begin
          if Unix.stat_ok (path, sb'Unchecked_Access) then
+            tspec := file_modification_time (sb'Unchecked_Access);
             result.ftype := type_of_file (sb'Unchecked_Access);
             result.owner := file_owner (sb'Unchecked_Access);
             result.group := file_group (sb'Unchecked_Access);
-            result.mtime := file_modification_time (sb'Unchecked_Access);
+            result.mtime := tspec.epoch;
+            result.mnsec := tspec.nsecs;
             result.perms := file_permissions (sb'Unchecked_Access);
             result.inode := inode_number (sb'Unchecked_Access);
             result.error := False;
@@ -77,12 +80,15 @@ package body Archive.Unix is
    ------------------------------------------------------------------------------------------
    --  get_mtime
    ------------------------------------------------------------------------------------------
-   function file_modification_time (sb : struct_stat_Access) return filetime
+   function file_modification_time (sb : struct_stat_Access) return time_specification
    is
-      res : IC.long;
+      cres : timespec;
+      result : time_specification;
    begin
-      res := arc_get_mtime (sb);
-      return filetime (res);
+      cres := arc_get_mtime (sb);
+      result.epoch := filetime (cres.tv_sec);
+      result.nsecs := nanoseconds (cres.tv_nsec);
+      return result;
    end file_modification_time;
 
 
@@ -288,5 +294,56 @@ package body Archive.Unix is
 
       return result = 0;
    end create_fifo;
+
+
+   --------------------------------------------------------------------------------------------
+   --  change_mode
+   --------------------------------------------------------------------------------------------
+   function change_mode (path : String; perms : permissions) return Boolean
+   is
+      use type IC.int;
+      cpath  : constant IC.char_array := IC.To_C (path);
+      mode   : constant IC.unsigned_short := IC.unsigned_short (perms);
+   begin
+      if path = "" then
+         return False;
+      end if;
+      return (chmod (cpath, mode) = 0);
+   end change_mode;
+
+
+   --------------------------------------------------------------------------------------------
+   --  lookup_group
+   --------------------------------------------------------------------------------------------
+   function lookup_group (name : String) return owngrp_id
+   is
+      cname : constant IC.char_array := IC.To_C (name);
+   begin
+      return owngrp_id (clookup_group (cname));
+   end lookup_group;
+
+
+   --------------------------------------------------------------------------------------------
+   --  lookup_user
+   --------------------------------------------------------------------------------------------
+   function lookup_user (name : String) return owngrp_id
+   is
+      cname : constant IC.char_array := IC.To_C (name);
+   begin
+      return owngrp_id (clookup_user (cname));
+   end lookup_user;
+
+
+   --------------------------------------------------------------------------------------------
+   --  touch_file
+   --------------------------------------------------------------------------------------------
+   --  function touch_file (path : String;
+   --                       mod_secs : filetime;
+   --                       mod_nsecs : nanoseconds) return Boolean
+   --  is
+   --  begin
+   --     --  TODO: needs reworking
+   --     return False;
+   --  end touch_file;
 
 end Archive.Unix;

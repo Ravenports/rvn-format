@@ -167,7 +167,8 @@ package body Archive.Pack is
                new_block.filename_p3  := get_filename (item, 3);
                new_block.filename_p4  := get_filename (item, 4);
                new_block.blake_sum    := null_sum;
-               new_block.modified     := features.mtime;
+               new_block.modified_sec := features.mtime;
+               new_block.modified_ns  := features.mnsec;
                new_block.index_owner  := AS.get_owner_index (features.owner);
                new_block.index_group  := AS.get_group_index (features.group);
                new_block.type_of_file := directory;
@@ -223,7 +224,8 @@ package body Archive.Pack is
             new_block.filename_p2  := get_filename (item, 2);
             new_block.filename_p3  := get_filename (item, 3);
             new_block.filename_p4  := get_filename (item, 4);
-            new_block.modified     := features.mtime;
+            new_block.modified_sec := features.mtime;
+            new_block.modified_ns  := features.mnsec;
             new_block.index_owner  := AS.get_owner_index (features.owner);
             new_block.index_group  := AS.get_group_index (features.group);
             new_block.file_perms   := features.perms;

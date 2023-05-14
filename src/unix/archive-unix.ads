@@ -13,6 +13,7 @@ package Archive.Unix is
          owner : ownergroup;
          group : ownergroup;
          mtime : filetime;
+         mnsec : nanoseconds;
          perms : permissions;
          inode : inode_type;
          error : Boolean;
@@ -33,6 +34,20 @@ package Archive.Unix is
    --  Attempts to create FIFO file and returns True on success
    function create_fifo (fifo_path : String; perms : permissions) return Boolean;
 
+   --  Attempts to set file permissions
+   function change_mode (path : String; perms : permissions) return Boolean;
+
+   --  Attempts to reset creation and modification time
+   --  function touch_file (path : String;
+   --                       mod_secs : filetime;
+   --                       mod_nsecs : nanoseconds) return Boolean;
+
+   --  Returns the group ID given the group name (or 4,000,000,000 if not found)
+   function lookup_group (name : String) return owngrp_id;
+
+   --  Returns the User ID given the user name (or 4,000,000,000 if not found)
+   function lookup_user (name : String) return owngrp_id;
+
 private
 
    function success (rc : IC.int) return Boolean;
@@ -46,8 +61,21 @@ private
          block : stat_block;
       end record;
 
+   type time_specification is
+      record
+         epoch : filetime;
+         nsecs : nanoseconds;
+      end record;
+
    type struct_stat_Access is access all struct_stat;
    pragma Convention (C, struct_stat_Access);
+
+   type time_t is new IC.long;
+   type timespec is record
+      tv_sec   : time_t;
+      tv_nsec  : IC.long;
+   end record;
+   pragma Convention (C, timespec);
 
    function arc_stat
      (path : IC.Strings.chars_ptr;
@@ -60,7 +88,7 @@ private
       bufsiz : IC.size_t) return IC.long;
    pragma Import (C, arc_readlink, "readlink");
 
-   function arc_get_mtime (sb : struct_stat_Access) return IC.long;
+   function arc_get_mtime (sb : struct_stat_Access) return timespec;
    pragma Import (C, arc_get_mtime, "get_mtime");
 
    function arc_extract_permissions (sb : struct_stat_Access) return IC.short;
@@ -93,9 +121,18 @@ private
    function mkfifo (path : IC.char_array; mode : IC.unsigned_short) return IC.int;
    pragma Import (C, mkfifo);
 
+   function chmod (path : IC.char_array; mode : IC.unsigned_short) return IC.int;
+   pragma Import (C, chmod);
+
+   function clookup_group (name : IC.char_array) return IC.unsigned;
+   pragma Import (C, clookup_group);
+
+   function clookup_user (name : IC.char_array) return IC.unsigned;
+   pragma Import (C, clookup_user);
+
    function stat_ok (path : String; sb : struct_stat_Access) return Boolean;
 
-   function file_modification_time (sb : struct_stat_Access) return filetime;
+   function file_modification_time (sb : struct_stat_Access) return time_specification;
 
    function file_permissions (sb : struct_stat_Access) return permissions;
 

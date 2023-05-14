@@ -44,12 +44,15 @@ package Archive.Unpack is
      (DS            : in out DArc;
       top_directory : String;
       set_owners    : Boolean;
-      set_perms     : Boolean) return Boolean;
+      set_perms     : Boolean;
+      set_modtime   : Boolean) return Boolean;
 
 private
 
-   fblk_size  : constant Natural := File_Block'Size / 8;
+   fblk_size    : constant Natural := File_Block'Size / 8;
+   id_not_found : constant owngrp_id := 4_000_000_000;
 
+   type owngrp_lookup is (id_unset, id_valid, id_unknown);
    type owngrp_count is range 0 .. 2 ** 8 - 1;
    type File_Count is range 0 .. 2 ** 31 - 1;
    subtype A_Path is String (1 .. 1024);
@@ -60,12 +63,12 @@ private
       record
          filename     : A_filename;
          blake_sum    : A_checksum;
-         modified     : filetime;
-         index_owner  : one_byte;
-         index_group  : one_byte;
+         modified_sec : filetime;
+         modified_ns  : nanoseconds;
+         index_owner  : owngrp_count;
+         index_group  : owngrp_count;
          type_of_file : file_type;
-         multiplier   : size_multi;
-         flat_size    : size_modulo;
+         file_size_tb : size_type;
          file_perms   : permissions;
          link_length  : max_path;
          index_parent : index_type;
@@ -77,9 +80,16 @@ private
          directory : text;
       end record;
 
+   type ownergroup_info is
+      record
+         name   : ownergroup;
+         id     : owngrp_id;
+         status : owngrp_lookup;
+      end record;
+
    package owngrp_crate is new CON.Vectors
      (Index_Type   => owngrp_count,
-      Element_Type => ownergroup,
+      Element_Type => ownergroup_info,
       "="          => "=");
 
    package file_block_crate is new CON.Vectors

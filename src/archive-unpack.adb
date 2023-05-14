@@ -254,15 +254,20 @@ package body Archive.Unpack is
       for x in 1 .. num_groups loop
          if sufficient_data (ownergroup'Length) then
             declare
-               data : ownergroup;
+               data : ownergroup_info;
             begin
-               data := index_data (sindex .. sindex + ownergroup'Length - 1);
+               data.name := index_data (sindex .. sindex + ownergroup'Length - 1);
+               data.id   := Unix.lookup_group (trim_trailing_zeros (data.name));
+               case data.id is
+                  when id_not_found => data.status := id_unknown;
+                  when others => data.status := id_valid;
+               end case;
                DS.groups.Append (data);
                sindex := sindex + ownergroup'Length;
                data_left := data_left - ownergroup'Length;
                DS.con_track.num_groups := DS.con_track.num_groups - 1;
                if DS.level = debug then
-                  DS.print (debug, "Extract group: " & trim_trailing_zeros (data));
+                  DS.print (debug, "Extract group: " & trim_trailing_zeros (data.name));
                end if;
             end;
          else
@@ -274,15 +279,20 @@ package body Archive.Unpack is
       for x in 1 .. num_owners loop
          if sufficient_data (ownergroup'Length) then
             declare
-               data : ownergroup;
+               data : ownergroup_info;
             begin
-               data := index_data (sindex .. sindex + ownergroup'Length - 1);
+               data.name := index_data (sindex .. sindex + ownergroup'Length - 1);
+               data.id   := Unix.lookup_user (trim_trailing_zeros (data.name));
+               case data.id is
+                  when id_not_found => data.status := id_unknown;
+                  when others => data.status := id_valid;
+               end case;
                DS.owners.Append (data);
                sindex := sindex + ownergroup'Length;
                data_left := data_left - ownergroup'Length;
                DS.con_track.num_owners := DS.con_track.num_owners - 1;
                if DS.level = debug then
-                  DS.print (debug, "Extract owner: " & trim_trailing_zeros (data));
+                  DS.print (debug, "Extract owner: " & trim_trailing_zeros (data.name));
                end if;
             end;
          else
@@ -354,10 +364,17 @@ package body Archive.Unpack is
                   DS.print (debug, "extract filename: " & trim_trailing_zeros (data.filename));
                   DS.print (debug, "          b3 sum: " & Blake_3.hex (data.blake_sum));
                   DS.print (debug, "    type of file: " & data.type_of_file'Img);
-                  DS.print (debug, "       flat size:" & data.flat_size'Img);
+                  DS.print (debug, "       flat size:" & data.file_size_tb'Img);
                   DS.print (debug, "    parent index:" & data.index_parent'Img);
                   DS.print (debug, "    directory ID:" & data.directory_id'Img);
-                  DS.print (debug, "    modification:" & data.modified'Img);
+                  DS.print (debug, "    modified sec:" & data.modified_sec'Img);
+                  DS.print (debug, "    modified  ns:" & data.modified_ns'Img);
+                  DS.print (debug, "           owner:" &
+                              trim_trailing_zeros (DS.owners.Element (data.index_owner).name) &
+                              " (" & DS.owners.Element (data.index_owner).id'Img & ")");
+                  DS.print (debug, "           group:" &
+                              trim_trailing_zeros (DS.groups.Element (data.index_group).name) &
+                              " (" & DS.groups.Element (data.index_group).id'Img & ")");
                end if;
             end;
          else
@@ -488,16 +505,17 @@ package body Archive.Unpack is
    begin
       result.filename     := Source (Source'First .. Source'First + 255);
       result.blake_sum    := Source (Source'First + 256 .. Source'First + 287);
-      result.modified     := str_to_64bits (Source'First + 288);
-      result.index_owner  := one_byte (Character'Pos (Source (Source'First + 296)));
-      result.index_group  := one_byte (Character'Pos (Source (Source'First + 297)));
-      result.type_of_file := file_type'Val (Character'Pos (Source (Source'First + 298)));
-      result.multiplier   := size_multi (Character'Pos (Source (Source'First + 299)));
-      result.flat_size    := size_modulo (str_to_32bits (Source'First + 300));
-      result.file_perms   := permissions (str_to_16bits (Source'First + 304));
-      result.link_length  := max_path (str_to_16bits (Source'First + 306));
-      result.index_parent := index_type (str_to_16bits (Source'First + 308));
-      result.directory_id := index_type (str_to_16bits (Source'First + 310));
+      result.modified_sec := str_to_64bits (Source'First + 288);
+      result.modified_ns  := nanoseconds (str_to_32bits (Source'First + 296));
+      result.index_owner  := owngrp_count (Character'Pos (Source (Source'First + 300)));
+      result.index_group  := owngrp_count (Character'Pos (Source (Source'First + 301)));
+      result.type_of_file := file_type'Val (Character'Pos (Source (Source'First + 302)));
+      result.file_size_tb := size_type (Character'Pos (Source (Source'First + 303))) * (2 ** 32) +
+                             size_type (str_to_32bits (Source'First + 304));
+      result.file_perms   := permissions (str_to_16bits (Source'First + 308));
+      result.link_length  := max_path (str_to_16bits (Source'First + 310));
+      result.index_parent := index_type (str_to_16bits (Source'First + 312));
+      result.directory_id := index_type (str_to_16bits (Source'First + 314));
 
       return result;
    end FBString_to_File_Block;
@@ -581,7 +599,8 @@ package body Archive.Unpack is
      (DS            : in out DArc;
       top_directory : String;
       set_owners    : Boolean;
-      set_perms     : Boolean) return Boolean
+      set_perms     : Boolean;
+      set_modtime   : Boolean) return Boolean
    is
       procedure extract (position : file_block_crate.Cursor);
       procedure make_directory (directory_id : Positive);

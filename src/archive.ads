@@ -16,16 +16,18 @@ package Archive is
    type size_type   is mod 2 ** 40;
    type zstd_size   is mod 2 ** 32;
    type filetime    is mod 2 ** 64;
+   type nanoseconds is mod 2 ** 32;
    type max_path    is mod 2 ** 16;
    type inode_type  is mod 2 ** 64;
    type file_index  is mod 2 ** 32;
+   type owngrp_id   is mod 2 ** 32;
 
    subtype A_filename is String (1 .. 256);
    subtype A_fragment is String (1 .. 64);
    subtype A_checksum is String (1 .. 32);
    subtype Some_magic is String (1 .. 3);
 
-   type A_padding is array (1 .. 8) of one_byte;
+   type A_padding is array (1 .. 4) of one_byte;
    type B_padding is array (1 .. 4) of one_byte;
 
    type File_Block is
@@ -35,7 +37,8 @@ package Archive is
          filename_p3  : A_fragment;
          filename_p4  : A_fragment;
          blake_sum    : A_checksum;
-         modified     : filetime;
+         modified_sec : filetime;
+         modified_ns  : nanoseconds;
          index_owner  : one_byte;
          index_group  : one_byte;
          type_of_file : file_type;
@@ -57,17 +60,18 @@ package Archive is
          filename_p3  at 128 range  0 .. 511;
          filename_p4  at 192 range  0 .. 511;
          blake_sum    at 256 range  0 .. 255;
-         modified     at 288 range  0 .. 63;
-         index_owner  at 296 range  0 .. 7;
-         index_group  at 297 range  0 .. 7;
-         type_of_file at 298 range  0 .. 7;
-         multiplier   at 299 range  0 .. 7;
-         flat_size    at 300 range  0 .. 31;
-         file_perms   at 304 range  0 .. 15;
-         link_length  at 306 range  0 .. 15;
-         index_parent at 308 range  0 .. 15;
-         directory_id at 310 range  0 .. 15;
-         padding      at 312 range  0 .. 63;
+         modified_sec at 288 range  0 .. 63;
+         modified_ns  at 296 range  0 .. 31;
+         index_owner  at 300 range  0 .. 7;
+         index_group  at 301 range  0 .. 7;
+         type_of_file at 302 range  0 .. 7;
+         multiplier   at 303 range  0 .. 7;
+         flat_size    at 304 range  0 .. 31;
+         file_perms   at 308 range  0 .. 15;
+         link_length  at 310 range  0 .. 15;
+         index_parent at 312 range  0 .. 15;
+         directory_id at 314 range  0 .. 15;
+         padding      at 316 range  0 .. 31;
       end record;
 
    type premier_block is

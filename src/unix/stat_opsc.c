@@ -23,7 +23,7 @@
 #endif
 
 
-long
+struct timespec
 get_mtime (struct stat *sb)
 {
   return sb->st_mtime;
@@ -62,6 +62,25 @@ get_group_name (struct stat *sb)
   return gr->gr_name;
 }
 
+gid_t
+clookup_group (const char * name)
+{
+  struct group *gr = getgrnam (name);
+  if (gr == NULL) {
+    return 4000000000;
+  }
+  return gr.gr_gid;
+}
+
+uid_t
+clookup_user (const char * name)
+{
+  struct passwd *pw = getpwnam(name);
+  if (pw == NULL) {
+    return 4000000000;
+  }
+  return pw.pw_uid;
+}
 
 uid_t
 get_owner_id (struct stat *sb)
