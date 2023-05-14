@@ -26,7 +26,7 @@
 struct timespec
 get_mtime (struct stat *sb)
 {
-  return sb->st_mtime;
+  return sb->st_mtim;
 }
 
 unsigned short
@@ -69,7 +69,7 @@ clookup_group (const char * name)
   if (gr == NULL) {
     return 4000000000;
   }
-  return gr.gr_gid;
+  return gr->gr_gid;
 }
 
 uid_t
@@ -79,7 +79,7 @@ clookup_user (const char * name)
   if (pw == NULL) {
     return 4000000000;
   }
-  return pw.pw_uid;
+  return pw->pw_uid;
 }
 
 uid_t
