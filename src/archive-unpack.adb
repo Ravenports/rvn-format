@@ -650,6 +650,9 @@ package body Archive.Unpack is
             when directory | unsupported =>
                --  Update directory metadata on second pass
                null;
+            when regular =>
+               --  delete when regular file extraction implemented
+               null;
             when others =>
                errcode := Unix.adjust_metadata
                  (path         => file_path,
