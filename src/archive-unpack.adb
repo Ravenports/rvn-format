@@ -317,7 +317,6 @@ package body Archive.Unpack is
                      link32 (y) := data;
                   end;
                end loop;
-               DS.con_track.link_blocks := DS.con_track.link_blocks - 32;
                DS.print (debug, "Extract link block: " & link32);
             end;
          else
@@ -608,7 +607,8 @@ package body Archive.Unpack is
       procedure make_symlink (link_path : String; link_len : max_path);
       procedure make_hardlink (duplicate : String; link_len : max_path);
       procedure make_fifo (fifo_path : String; perms : permissions);
-      function absolute_path (parent_dir : Positive; file_name : String) return String;
+      function absolute_path (parent_dir : index_type; file_name : String) return String;
+
 
       good_extraction : Boolean := True;
 
@@ -621,7 +621,7 @@ package body Archive.Unpack is
          valid_owngrp : Boolean;
          these_perms  : permissions := block.file_perms;
          file_path    : constant String :=
-           absolute_path (parent_dir => Positive (block.index_parent),
+           absolute_path (parent_dir => block.index_parent,
                           file_name  => trim_trailing_zeros (block.filename));
 
          use type Unix.metadata_rc;
@@ -677,8 +677,9 @@ package body Archive.Unpack is
          valid_owngrp : Boolean;
          these_perms  : permissions := block.file_perms;
          file_path    : constant String :=
-           absolute_path (parent_dir => Positive (block.index_parent),
-                          file_name  => trim_trailing_zeros (block.filename));
+           absolute_path
+             (parent_dir => block.index_parent,
+              file_name  => trim_trailing_zeros (block.filename));
 
          use type Unix.metadata_rc;
       begin
@@ -789,13 +790,16 @@ package body Archive.Unpack is
          end if;
       end make_fifo;
 
-      function absolute_path (parent_dir : Positive; file_name : String) return String
+      function absolute_path (parent_dir : index_type; file_name : String) return String
       is
-         full_path : constant String := top_directory &
-           "/" & ASU.To_String (DS.folders.Element (parent_dir).directory) &
-           "/" & file_name;
       begin
-         return full_path;
+         if parent_dir = 0 then
+            return top_directory & "/" & file_name;
+         else
+            return top_directory &
+              "/" & ASU.To_String (DS.folders.Element (Positive (parent_dir)).directory) &
+              "/" & file_name;
+         end if;
       end absolute_path;
 
       use type SIO.Count;
