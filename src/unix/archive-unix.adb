@@ -1,7 +1,13 @@
 --  This file is covered by the Internet Software Consortium (ISC) License
 --  Reference: ../../License.txt
 
+with Ada.Characters.Latin_1;
+with Ada.Strings.Fixed;
+
 package body Archive.Unix is
+
+   package LAT renames Ada.Characters.Latin_1;
+   package ASF renames Ada.Strings.Fixed;
 
    ------------------------------------------------------------------------------------------
    --  success
@@ -335,7 +341,7 @@ package body Archive.Unix is
 
 
    --------------------------------------------------------------------------------------------
-   --  touch_file
+   --  adjust_metadata
    --------------------------------------------------------------------------------------------
    function adjust_metadata
      (path         : String;
@@ -383,5 +389,74 @@ package body Archive.Unix is
       return metadata_rc (rescode);
    end adjust_metadata;
 
+
+   --------------------------------------------------------------------------------------------
+   --  metadata_error
+   --------------------------------------------------------------------------------------------
+   function metadata_error (errcode : metadata_rc) return String
+   is
+      function check_flag_1 return String;
+      function check_flag_2 return String;
+      function check_flag_3 return String;
+      function check_flag_4 return String;
+      function check_flag_5 return String;
+
+      function check_flag_1 return String
+      is
+         flag : constant metadata_rc := 1;
+      begin
+         if (errcode and flag) > 0 then
+            return "error: Failed to open file." & LAT.LF;
+         end if;
+         return "";
+      end check_flag_1;
+
+      function check_flag_2 return String
+      is
+         flag : constant metadata_rc := 2;
+      begin
+         if (errcode and flag) > 0 then
+            return "error: Failed to close file." & LAT.LF;
+         end if;
+         return "";
+      end check_flag_2;
+
+      function check_flag_3 return String
+      is
+         flag : constant metadata_rc := 4;
+      begin
+         if (errcode and flag) > 0 then
+            return "error: Failed to set owner and/or group." & LAT.LF;
+         end if;
+         return "";
+      end check_flag_3;
+
+      function check_flag_4 return String
+      is
+         flag : constant metadata_rc := 8;
+      begin
+         if (errcode and flag) > 0 then
+            return "error: Failed to set file permissions." & LAT.LF;
+         end if;
+         return "";
+      end check_flag_4;
+
+      function check_flag_5 return String
+      is
+         flag : constant metadata_rc := 16;
+      begin
+         if (errcode and flag) > 0 then
+            return "error: Failed to set file modification time." & LAT.LF;
+         end if;
+         return "";
+      end check_flag_5;
+   begin
+      if errcode = 0 then
+         return "";
+      end if;
+      return ASF.Trim (check_flag_1 & check_flag_2 & check_flag_3 & check_flag_4 & check_flag_5,
+                       Ada.Strings.Right);
+
+   end metadata_error;
 
 end Archive.Unix;

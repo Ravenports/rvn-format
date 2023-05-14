@@ -57,6 +57,9 @@ package Archive.Unix is
       new_m_secs   : filetime;
       new_m_nano   : nanoseconds) return metadata_rc;
 
+   --  Return error description from adjust_metadata return code
+   function metadata_error (errcode : metadata_rc) return String;
+
 private
 
    function success (rc : IC.int) return Boolean;
