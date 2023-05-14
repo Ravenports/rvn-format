@@ -583,7 +583,7 @@ package body Archive.Unpack is
          link : String (1 .. Natural (link_len));
       begin
          for x in link'Range loop
-            link (x) := DS.links.Element (x);
+            link (x) := DS.links.Element (link_index);
             DS.link_index := DS.link_index + 1;
          end loop;
          return link;
