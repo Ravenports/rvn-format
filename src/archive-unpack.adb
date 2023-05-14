@@ -369,12 +369,12 @@ package body Archive.Unpack is
                   DS.print (debug, "    directory ID:" & data.directory_id'Img);
                   DS.print (debug, "    modified sec:" & data.modified_sec'Img);
                   DS.print (debug, "    modified  ns:" & data.modified_ns'Img);
-                  DS.print (debug, "           owner:" &
+                  DS.print (debug, "           owner: " &
                               trim_trailing_zeros (DS.owners.Element (data.index_owner).name) &
-                              " (" & DS.owners.Element (data.index_owner).id'Img & ")");
-                  DS.print (debug, "           group:" &
+                              "(" & DS.owners.Element (data.index_owner).id'Img & ")");
+                  DS.print (debug, "           group: " &
                               trim_trailing_zeros (DS.groups.Element (data.index_group).name) &
-                              " (" & DS.groups.Element (data.index_group).id'Img & ")");
+                              "(" & DS.groups.Element (data.index_group).id'Img & ")");
                end if;
             end;
          else

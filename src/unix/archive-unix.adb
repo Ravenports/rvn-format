@@ -337,13 +337,51 @@ package body Archive.Unix is
    --------------------------------------------------------------------------------------------
    --  touch_file
    --------------------------------------------------------------------------------------------
-   --  function touch_file (path : String;
-   --                       mod_secs : filetime;
-   --                       mod_nsecs : nanoseconds) return Boolean
-   --  is
-   --  begin
-   --     --  TODO: needs reworking
-   --     return False;
-   --  end touch_file;
+   function adjust_metadata
+     (path         : String;
+      reset_owngrp : Boolean;
+      reset_perms  : Boolean;
+      reset_mtime  : Boolean;
+      new_uid      : owngrp_id;
+      new_gid      : owngrp_id;
+      new_perms    : permissions;
+      new_m_secs   : filetime;
+      new_m_nano   : nanoseconds) return metadata_rc
+   is
+      cpath     : constant IC.char_array := IC.To_C (path);
+      do_owner  : IC.unsigned_char := 0;
+      do_perms  : IC.unsigned_char := 0;
+      do_mtime  : IC.unsigned_char := 0;
+      rescode   : IC.unsigned_char;
+      ctimespec : timespec;
+      c_uid     : IC.unsigned := 0;
+      c_gid     : IC.unsigned := 0;
+      c_perms   : IC.short := 0;
+   begin
+      if reset_owngrp then
+         do_owner := 1;
+         c_uid := IC.unsigned (new_uid);
+         c_gid := IC.unsigned (new_gid);
+      end if;
+      if reset_perms then
+         do_perms := 1;
+         c_perms := IC.short (new_perms);
+      end if;
+      if reset_mtime then
+         do_mtime := 1;
+         ctimespec.tv_sec  := time_t (new_m_secs);
+         ctimespec.tv_nsec := IC.long (new_m_nano);
+      end if;
+      rescode := set_metadata (path              => cpath,
+                               reset_modtime     => do_mtime,
+                               reset_ownership   => do_owner,
+                               reset_permissions => do_perms,
+                               new_mtime         => ctimespec,
+                               new_user_id       => c_uid,
+                               new_group_id      => c_gid,
+                               new_permissions   => c_perms);
+      return metadata_rc (rescode);
+   end adjust_metadata;
+
 
 end Archive.Unix;

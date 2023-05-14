@@ -19,6 +19,8 @@ package Archive.Unix is
          error : Boolean;
       end record;
 
+   type metadata_rc is mod 2 ** 5;
+
    --  Return set of file characteristis given the path to a file or a directory
    function get_charactistics (path : String) return File_Characteristics;
 
@@ -37,16 +39,23 @@ package Archive.Unix is
    --  Attempts to set file permissions
    function change_mode (path : String; perms : permissions) return Boolean;
 
-   --  Attempts to reset creation and modification time
-   --  function touch_file (path : String;
-   --                       mod_secs : filetime;
-   --                       mod_nsecs : nanoseconds) return Boolean;
-
    --  Returns the group ID given the group name (or 4,000,000,000 if not found)
    function lookup_group (name : String) return owngrp_id;
 
    --  Returns the User ID given the user name (or 4,000,000,000 if not found)
    function lookup_user (name : String) return owngrp_id;
+
+   --  Sets file metadata (ownership, perms, modification time) in any combination at once.
+   function adjust_metadata
+     (path         : String;
+      reset_owngrp : Boolean;
+      reset_perms  : Boolean;
+      reset_mtime  : Boolean;
+      new_uid      : owngrp_id;
+      new_gid      : owngrp_id;
+      new_perms    : permissions;
+      new_m_secs   : filetime;
+      new_m_nano   : nanoseconds) return metadata_rc;
 
 private
 
@@ -129,6 +138,17 @@ private
 
    function clookup_user (name : IC.char_array) return IC.unsigned;
    pragma Import (C, clookup_user);
+
+   function set_metadata
+     (path              : IC.char_array;
+      reset_modtime     : IC.unsigned_char;
+      reset_ownership   : IC.unsigned_char;
+      reset_permissions : IC.unsigned_char;
+      new_mtime         : timespec;
+      new_user_id       : IC.unsigned;
+      new_group_id      : IC.unsigned;
+      new_permissions   : IC.short) return IC.unsigned_char;
+   pragma Import (C, set_metadata);
 
    function stat_ok (path : String; sb : struct_stat_Access) return Boolean;
 

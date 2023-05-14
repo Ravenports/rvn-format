@@ -123,4 +123,64 @@ get_file_type (struct stat *sb)
   return 0;
 }
 
+/*
+ * set metadata return values
+ *   0 Nothing done or all successful
+ *
+ *  Values greater than zero mean an error occurred.
+ *  Bit position meanings:
+ *  1 -> failed to open the file
+ *  2 -> failed to close the file
+ *  3 -> failed to set ownership
+ *  4 -> failed to set permissions
+ *  5 -> failed to set modification time
+ */
+unsigned char
+set_metadata (const char *    path;
+              unsigned char   reset_modtime;
+              unsigned char   reset_ownership;
+              unsigned char   reset_permissions;
+              struct timespec new_mtime;
+              uid_t           new_user_id;
+              gid_t           new_group_id;
+              mode_t          new_permissions)
+{
+  int filedesc;
+  int rc = 0;
+  const struct timespec times[2] = {{0, UTIME_OMIT}, new_mtime};
+
+  /* It is possible all three actions are disabled, but it shouldn't happen */
+  if (!(reset_modtime || reset_ownership || reset_permissions)) { return 0; }
+
+  if ((filedesc = open_file (path, O_RDONLY)) < 0) {
+    return 1;
+  }
+
+  /* setting permissions has to follow ownership because chown clears SetUID and SetGID bits */
+  if (reset_ownership) {
+    if (fchown (filedesc, new_user_id, new_group_id) < 0) {
+      rc += 4;
+    }
+  }
+
+  if (reset_permissions) {
+    if (fchmod (filedesc, new_permissions) < 0) {
+      rc += 8;
+    }
+  }
+
+  if reset_modtime) {
+    if (futimens (filedesc, times) < 0) {
+      rc = += 16;
+    }
+  }
+
+  if (close (filedesc) < 0) {
+    rc = += 2;
+  }
+
+  return rc;
+}
+
+
 #endif /* __WIN32 */
