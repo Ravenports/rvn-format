@@ -51,6 +51,7 @@ package Archive.Unix is
       reset_owngrp : Boolean;
       reset_perms  : Boolean;
       reset_mtime  : Boolean;
+      type_of_file : file_type;
       new_uid      : owngrp_id;
       new_gid      : owngrp_id;
       new_perms    : permissions;
@@ -152,6 +153,17 @@ private
       new_group_id      : IC.unsigned;
       new_permissions   : IC.short) return IC.unsigned_char;
    pragma Import (C, set_metadata);
+
+   function set_symlink_metadata
+     (path              : IC.char_array;
+      reset_modtime     : IC.unsigned_char;
+      reset_ownership   : IC.unsigned_char;
+      reset_permissions : IC.unsigned_char;
+      new_mtime         : timespec;
+      new_user_id       : IC.unsigned;
+      new_group_id      : IC.unsigned;
+      new_permissions   : IC.short) return IC.unsigned_char;
+   pragma Import (C, set_symlink_metadata);
 
    function stat_ok (path : String; sb : struct_stat_Access) return Boolean;
 

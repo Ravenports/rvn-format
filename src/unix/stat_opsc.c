@@ -182,5 +182,42 @@ set_metadata (const char *    path;
   return rc;
 }
 
+unsigned char
+set_symlink_metadata (const char *    path;
+                      unsigned char   reset_modtime;
+                      unsigned char   reset_ownership;
+                      unsigned char   reset_permissions;
+                      struct timespec new_mtime;
+                      uid_t           new_user_id;
+                      gid_t           new_group_id;
+                      mode_t          new_permissions)
+{
+  int rc = 0;
+  const struct timespec times[2] = {{0, UTIME_OMIT}, new_mtime};
+
+  /* It is possible all three actions are disabled, but it shouldn't happen */
+  if (!(reset_modtime || reset_ownership || reset_permissions)) { return 0; }
+
+  /* setting permissions has to follow ownership because chown clears SetUID and SetGID bits */
+  if (reset_ownership) {
+    if (lchown (path, new_user_id, new_group_id) < 0) {
+      rc += 4;
+    }
+  }
+
+  if (reset_permissions) {
+    if (lchmod (path, new_permissions) < 0) {
+      rc += 8;
+    }
+  }
+
+  if reset_modtime) {
+    if (utimensat (-1, path, times, AT_SYMLINK_NOFOLLOW) < 0) {
+      rc = += 16;
+    }
+  }
+
+  return rc;
+}
 
 #endif /* __WIN32 */

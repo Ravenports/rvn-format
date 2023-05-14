@@ -603,37 +603,111 @@ package body Archive.Unpack is
       set_modtime   : Boolean) return Boolean
    is
       procedure extract (position : file_block_crate.Cursor);
+      procedure second_pass (position : file_block_crate.Cursor);
       procedure make_directory (directory_id : Positive);
-      procedure make_symlink (parent_dir : Positive; link_name : String; link_len : max_path);
-      procedure make_hardlink (parent_dir : Positive; link_name : String; link_len : max_path);
-      procedure make_fifo (parent_dir : Positive; file_name : String; perms : permissions);
+      procedure make_symlink (link_path : String; link_len : max_path);
+      procedure make_hardlink (duplicate : String; link_len : max_path);
+      procedure make_fifo (fifo_path : String; perms : permissions);
+      function absolute_path (parent_dir : Positive; file_name : String) return String;
 
       good_extraction : Boolean := True;
 
       procedure extract (position : file_block_crate.Cursor)
       is
          block : Scanned_File_Block renames file_block_crate.Element (position);
+         errcode      : Unix.metadata_rc;
+         block_uid    : owngrp_id;
+         block_gid    : owngrp_id;
+         valid_owngrp : Boolean;
+         these_perms  : permissions := block.file_perms;
+         file_path    : constant String :=
+           absolute_path (parent_dir => Positive (block.index_parent),
+                          file_name  => trim_trailing_zeros (block.filename));
+
+         use type Unix.metadata_rc;
       begin
+         block_uid := DS.owners.Element (block.index_owner).id;
+         block_gid := DS.groups.Element (block.index_group).id;
+         valid_owngrp := (block_uid /= id_not_found) and then (block_gid /= id_not_found);
+         if not set_perms then
+            these_perms := rwx_filter (block.file_perms);
+         end if;
          case block.type_of_file is
             when directory =>
                make_directory (Positive (block.directory_id));
             when regular => null;
+               --  TODO: extract file
             when symlink =>
-               make_symlink (parent_dir => Positive (block.index_parent),
-                             link_name  => trim_trailing_zeros (block.filename),
-                             link_len   => block.link_length);
+               make_symlink (link_path => file_path, link_len => block.link_length);
             when hardlink =>
-               make_hardlink (parent_dir => Positive (block.index_parent),
-                              link_name  => trim_trailing_zeros (block.filename),
-                              link_len   => block.link_length);
+               make_hardlink (duplicate => file_path, link_len => block.link_length);
             when fifo =>
-               make_fifo (parent_dir => Positive (block.index_parent),
-                          file_name  => trim_trailing_zeros (block.filename),
-                          perms      => block.file_perms);
+               make_fifo (fifo_path => file_path, perms => block.file_perms);
             when unsupported =>
                good_extraction := False;
          end case;
+         case block.type_of_file is
+            when directory | unsupported =>
+               --  Update directory metadata on second pass
+               null;
+            when others =>
+               errcode := Unix.adjust_metadata
+                 (path         => file_path,
+                  reset_owngrp => set_owners and valid_owngrp,
+                  reset_perms  => True,
+                  reset_mtime  => set_modtime,
+                  type_of_file => block.type_of_file,
+                  new_uid      => block_uid,
+                  new_gid      => block_gid,
+                  new_perms    => these_perms,
+                  new_m_secs   => block.modified_sec,
+                  new_m_nano   => block.modified_ns);
+               if errcode > 0 then
+                  DS.print (normal, Unix.metadata_error (errcode));
+               end if;
+         end case;
       end extract;
+
+      procedure second_pass (position : file_block_crate.Cursor)
+      is
+         block : Scanned_File_Block renames file_block_crate.Element (position);
+         errcode      : Unix.metadata_rc;
+         block_uid    : owngrp_id;
+         block_gid    : owngrp_id;
+         valid_owngrp : Boolean;
+         these_perms  : permissions := block.file_perms;
+         file_path    : constant String :=
+           absolute_path (parent_dir => Positive (block.index_parent),
+                          file_name  => trim_trailing_zeros (block.filename));
+
+         use type Unix.metadata_rc;
+      begin
+         block_uid := DS.owners.Element (block.index_owner).id;
+         block_gid := DS.groups.Element (block.index_group).id;
+         valid_owngrp := (block_uid /= id_not_found) and then (block_gid /= id_not_found);
+         if not set_perms then
+            these_perms := rwx_filter (block.file_perms);
+         end if;
+         case block.type_of_file is
+            when directory =>
+               errcode := Unix.adjust_metadata
+                 (path         => file_path,
+                  reset_owngrp => set_owners and valid_owngrp,
+                  reset_perms  => True,
+                  reset_mtime  => set_modtime,
+                  type_of_file => block.type_of_file,
+                  new_uid      => block_uid,
+                  new_gid      => block_gid,
+                  new_perms    => these_perms,
+                  new_m_secs   => block.modified_sec,
+                  new_m_nano   => block.modified_ns);
+               if errcode > 0 then
+                  DS.print (normal, Unix.metadata_error (errcode));
+               end if;
+            when others =>
+               null;
+         end case;
+      end second_pass;
 
       procedure make_directory (directory_id : Positive)
       is
@@ -672,11 +746,8 @@ package body Archive.Unpack is
             good_extraction := False;
       end make_directory;
 
-      procedure make_symlink (parent_dir : Positive; link_name : String; link_len : max_path)
+      procedure make_symlink (link_path : String; link_len : max_path)
       is
-         link_path : constant String := top_directory &
-           "/" & ASU.To_String (DS.folders.Element (parent_dir).directory) &
-           "/" & link_name;
          link_target : constant String := DS.retrieve_link_target (link_len);
       begin
          if Unix.create_symlink (actual_file    => link_target,
@@ -689,11 +760,8 @@ package body Archive.Unpack is
          end if;
       end make_symlink;
 
-      procedure make_hardlink (parent_dir : Positive; link_name : String; link_len : max_path)
+      procedure make_hardlink (duplicate : String; link_len : max_path)
       is
-         duplicate : constant String := top_directory &
-           "/" & ASU.To_String (DS.folders.Element (parent_dir).directory) &
-           "/" & link_name;
          source : constant String := DS.retrieve_link_target (link_len);
       begin
          if Unix.create_hardlink (actual_file => source,
@@ -706,11 +774,8 @@ package body Archive.Unpack is
          end if;
       end make_hardlink;
 
-      procedure make_fifo (parent_dir : Positive; file_name : String; perms : permissions)
+      procedure make_fifo (fifo_path : String; perms : permissions)
       is
-         fifo_path : constant String := top_directory &
-           "/" & ASU.To_String (DS.folders.Element (parent_dir).directory) &
-           "/" & file_name;
          fifo_perms : permissions := perms;
       begin
          if not set_perms then
@@ -724,6 +789,15 @@ package body Archive.Unpack is
          end if;
       end make_fifo;
 
+      function absolute_path (parent_dir : Positive; file_name : String) return String
+      is
+         full_path : constant String := top_directory &
+           "/" & ASU.To_String (DS.folders.Element (parent_dir).directory) &
+           "/" & file_name;
+      begin
+         return full_path;
+      end absolute_path;
+
       use type SIO.Count;
    begin
       if not DS.processed then
@@ -733,6 +807,7 @@ package body Archive.Unpack is
          SIO.Set_Index (DS.rvn_handle, DS.b4_index);
       end if;
       DS.files.Iterate (extract'Access);
+      DS.files.Iterate (second_pass'Access);
       return good_extraction;
    end extract_archive;
 

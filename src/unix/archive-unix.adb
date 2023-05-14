@@ -348,6 +348,7 @@ package body Archive.Unix is
       reset_owngrp : Boolean;
       reset_perms  : Boolean;
       reset_mtime  : Boolean;
+      type_of_file : file_type;
       new_uid      : owngrp_id;
       new_gid      : owngrp_id;
       new_perms    : permissions;
@@ -358,7 +359,7 @@ package body Archive.Unix is
       do_owner  : IC.unsigned_char := 0;
       do_perms  : IC.unsigned_char := 0;
       do_mtime  : IC.unsigned_char := 0;
-      rescode   : IC.unsigned_char;
+      rescode   : IC.unsigned_char := 0;
       ctimespec : timespec;
       c_uid     : IC.unsigned := 0;
       c_gid     : IC.unsigned := 0;
@@ -378,14 +379,32 @@ package body Archive.Unix is
          ctimespec.tv_sec  := time_t (new_m_secs);
          ctimespec.tv_nsec := IC.long (new_m_nano);
       end if;
-      rescode := set_metadata (path              => cpath,
-                               reset_modtime     => do_mtime,
-                               reset_ownership   => do_owner,
-                               reset_permissions => do_perms,
-                               new_mtime         => ctimespec,
-                               new_user_id       => c_uid,
-                               new_group_id      => c_gid,
-                               new_permissions   => c_perms);
+      case type_of_file is
+         when regular | fifo | directory =>
+            rescode := set_metadata
+              (path              => cpath,
+               reset_modtime     => do_mtime,
+               reset_ownership   => do_owner,
+               reset_permissions => do_perms,
+               new_mtime         => ctimespec,
+               new_user_id       => c_uid,
+               new_group_id      => c_gid,
+               new_permissions   => c_perms);
+         when symlink =>
+            rescode := set_symlink_metadata
+              (path              => cpath,
+               reset_modtime     => do_mtime,
+               reset_ownership   => do_owner,
+               reset_permissions => do_perms,
+               new_mtime         => ctimespec,
+               new_user_id       => c_uid,
+               new_group_id      => c_gid,
+               new_permissions   => c_perms);
+         when unsupported | hardlink =>
+            --  Skip hardlinks.  This is set on the target.
+            --  Doing it again is redundant
+            null;
+      end case;
       return metadata_rc (rescode);
    end adjust_metadata;
 
