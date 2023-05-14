@@ -142,10 +142,10 @@ set_metadata (const char *    path,
               unsigned char   reset_modtime,
               unsigned char   reset_ownership,
               unsigned char   reset_permissions,
-              struct timespec new_mtime,
               uid_t           new_user_id,
               gid_t           new_group_id,
-              mode_t          new_permissions)
+              mode_t          new_permissions,
+              struct timespec new_mtime)
 {
   int filedesc;
   int rc = 0;
@@ -189,10 +189,10 @@ set_symlink_metadata (const char *    path,
                       unsigned char   reset_modtime,
                       unsigned char   reset_ownership,
                       unsigned char   reset_permissions,
-                      struct timespec new_mtime,
                       uid_t           new_user_id,
                       gid_t           new_group_id,
-                      mode_t          new_permissions)
+                      mode_t          new_permissions,
+                      struct timespec new_mtime)
 {
   int rc = 0;
   const struct timespec times[2] = {{0, UTIME_OMIT}, new_mtime};

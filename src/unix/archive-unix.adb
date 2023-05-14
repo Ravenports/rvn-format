@@ -386,20 +386,20 @@ package body Archive.Unix is
                reset_modtime     => do_mtime,
                reset_ownership   => do_owner,
                reset_permissions => do_perms,
-               new_mtime         => ctimespec,
                new_user_id       => c_uid,
                new_group_id      => c_gid,
-               new_permissions   => c_perms);
+               new_permissions   => c_perms,
+               new_mtime         => ctimespec);
          when symlink =>
             rescode := set_symlink_metadata
               (path              => cpath,
                reset_modtime     => do_mtime,
                reset_ownership   => do_owner,
                reset_permissions => do_perms,
-               new_mtime         => ctimespec,
                new_user_id       => c_uid,
                new_group_id      => c_gid,
-               new_permissions   => c_perms);
+               new_permissions   => c_perms,
+               new_mtime         => ctimespec);
          when unsupported | hardlink =>
             --  Skip hardlinks.  This is set on the target.
             --  Doing it again is redundant
