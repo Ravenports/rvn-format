@@ -4,3 +4,5 @@ obj/*
 lib/*.ali
 lib/libRvn.a
 *.sh
+src/*.o
+src/*.ali
