@@ -6,6 +6,7 @@ with Ada.Exceptions;
 with Ada.IO_Exceptions;
 with Ada.Directories;
 with Ada.Direct_IO;
+with Ada.Strings.Fixed;
 with Archive.Unix;
 with Zstandard;
 with Blake_3;
@@ -16,6 +17,7 @@ package body Archive.Pack is
    package DIR renames Ada.Directories;
    package EX  renames Ada.Exceptions;
    package IOX renames Ada.IO_Exceptions;
+   package ASF renames Ada.Strings.Fixed;
    package UNX renames Archive.Unix;
    package ZST renames Zstandard;
 
@@ -73,7 +75,7 @@ package body Archive.Pack is
             raise Constraint_Error with "Archive cannot support more than 255 owners.";
          end if;
          AS.owners.Append (owner);
-         AS.print (debug, "New owner " & owner);
+         AS.print (debug, "New owner " & trim_trailing_zeros (owner));
       end if;
 
       return one_byte (AS.owners.Find_Index (owner));
@@ -94,7 +96,7 @@ package body Archive.Pack is
             raise Constraint_Error with "Archive cannot support more than 255 groups.";
          end if;
          AS.groups.Append (group);
-         AS.print (debug, "New group " & group);
+         AS.print (debug, "New group " & trim_trailing_zeros (group));
       end if;
 
       return one_byte (AS.groups.Find_Index (group));
@@ -780,5 +782,22 @@ package body Archive.Pack is
       end;
    end write_metadata_block;
 
+
+   ------------------------------------------------------------------------------------------
+   --  trim_trailing_zeros
+   ------------------------------------------------------------------------------------------
+   function trim_trailing_zeros (full_string : String) return String
+   is
+      first_zero : Natural;
+      pattern    : constant String (1 .. 1) := (others => Character'Val (0));
+   begin
+      first_zero := ASF.Index (Source  => full_string, Pattern => pattern);
+      if first_zero = full_string'First then
+         return "";
+      elsif first_zero > full_string'First then
+         return full_string (full_string'First .. first_zero - 1);
+      end if;
+      return full_string;
+   end trim_trailing_zeros;
 
 end Archive.Pack;

@@ -155,5 +155,7 @@ private
    --  Write block 4 (the compressed single archive)
    procedure write_archive_block (AS : in out Arc_Structure; output_file_path : String);
 
+   --  Cut out trailing characters set to zero and return as a trimmed string
+   function trim_trailing_zeros (full_string : String) return String;
 
 end Archive.Pack;
