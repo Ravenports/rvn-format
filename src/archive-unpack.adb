@@ -799,7 +799,17 @@ package body Archive.Unpack is
       procedure make_fifo (fifo_path : String; perms : permissions)
       is
          fifo_perms : permissions := perms;
+         fifochar : Unix.File_Characteristics;
       begin
+         fifochar := Unix.get_charactistics (fifo_path);
+         if not fifochar.error then
+            DS.print (verbose, fifo_path & " already exists (will delete).");
+            if not Unix.unlink_file (fifo_path) then
+               DS.print (normal, "Failed to delete " & fifo_path & " file");
+               good_extraction := False;
+               return;
+            end if;
+         end if;
          if not set_perms then
             fifo_perms := rwx_filter (perms);
          end if;

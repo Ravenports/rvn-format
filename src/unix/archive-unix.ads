@@ -36,6 +36,9 @@ package Archive.Unix is
    --  Attempts to create FIFO file and returns True on success
    function create_fifo (fifo_path : String; perms : permissions) return Boolean;
 
+   --  Delete file via libc functions
+   function unlink_file (path : String) return Boolean;
+
    --  Attempts to set file permissions
    function change_mode (path : String; perms : permissions) return Boolean;
 
@@ -131,6 +134,9 @@ private
    function link (path1, path2 : IC.char_array) return IC.int;
    pragma Import (C, link);
 
+   function unlink (path : IC.char_array) return IC.int;
+   pragma Import (C, unlink);
+
    function mkfifo (path : IC.char_array; mode : IC.unsigned_short) return IC.int;
    pragma Import (C, mkfifo);
 
@@ -166,6 +172,18 @@ private
       new_mtime_epoch   : time_t;
       new_mtime_nsecs   : IC.long) return IC.unsigned_char;
    pragma Import (C, set_symlink_metadata);
+
+   function set_fifo_metadata
+     (path              : IC.char_array;
+      reset_modtime     : IC.unsigned_char;
+      reset_ownership   : IC.unsigned_char;
+      reset_permissions : IC.unsigned_char;
+      new_user_id       : IC.unsigned;
+      new_group_id      : IC.unsigned;
+      new_permissions   : IC.short;
+      new_mtime_epoch   : time_t;
+      new_mtime_nsecs   : IC.long) return IC.unsigned_char;
+   pragma Import (C, set_fifo_metadata);
 
    function stat_ok (path : String; sb : struct_stat_Access) return Boolean;
 

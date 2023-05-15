@@ -319,6 +319,21 @@ package body Archive.Unix is
 
 
    --------------------------------------------------------------------------------------------
+   --  unlink_file
+   --------------------------------------------------------------------------------------------
+   function unlink_file (path : String) return Boolean
+   is
+      use type IC.int;
+      cpath  : constant IC.char_array := IC.To_C (path);
+   begin
+      if path = "" then
+         return False;
+      end if;
+      return (unlink (cpath) = 0);
+   end unlink_file;
+
+
+   --------------------------------------------------------------------------------------------
    --  lookup_group
    --------------------------------------------------------------------------------------------
    function lookup_group (name : String) return owngrp_id
@@ -377,7 +392,7 @@ package body Archive.Unix is
          do_mtime := 1;
       end if;
       case type_of_file is
-         when regular | fifo | directory =>
+         when regular | directory =>
             rescode := set_metadata
               (path              => cpath,
                reset_modtime     => do_mtime,
@@ -390,6 +405,17 @@ package body Archive.Unix is
                new_mtime_nsecs   => IC.long (new_m_nano));
          when symlink =>
             rescode := set_symlink_metadata
+              (path              => cpath,
+               reset_modtime     => do_mtime,
+               reset_ownership   => do_owner,
+               reset_permissions => do_perms,
+               new_user_id       => c_uid,
+               new_group_id      => c_gid,
+               new_permissions   => c_perms,
+               new_mtime_epoch   => time_t (new_m_secs),
+               new_mtime_nsecs   => IC.long (new_m_nano));
+         when fifo =>
+            rescode := set_fifo_metadata
               (path              => cpath,
                reset_modtime     => do_mtime,
                reset_ownership   => do_owner,
