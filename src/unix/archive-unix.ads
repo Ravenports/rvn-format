@@ -151,7 +151,8 @@ private
       new_user_id       : IC.unsigned;
       new_group_id      : IC.unsigned;
       new_permissions   : IC.short;
-      new_mtime         : timespec) return IC.unsigned_char;
+      new_mtime_epoch   : time_t;
+      new_mtime_nsecs   : IC.long) return IC.unsigned_char;
    pragma Import (C, set_metadata);
 
    function set_symlink_metadata
@@ -162,7 +163,8 @@ private
       new_user_id       : IC.unsigned;
       new_group_id      : IC.unsigned;
       new_permissions   : IC.short;
-      new_mtime         : timespec) return IC.unsigned_char;
+      new_mtime_epoch   : time_t;
+      new_mtime_nsecs   : IC.long) return IC.unsigned_char;
    pragma Import (C, set_symlink_metadata);
 
    function stat_ok (path : String; sb : struct_stat_Access) return Boolean;

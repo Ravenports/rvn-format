@@ -753,7 +753,25 @@ package body Archive.Unpack is
       procedure make_symlink (link_path : String; link_len : max_path)
       is
          link_target : constant String := DS.retrieve_link_target (link_len);
+         linkchar : Unix.File_Characteristics;
       begin
+         linkchar := Unix.get_charactistics (link_path);
+         if not linkchar.error then
+            begin
+               DS.print (verbose, link_path & " already exists (will delete).");
+               DIR.Delete_File (link_path);
+            exception
+               when DIR.Use_Error =>
+                  DS.print (normal, "File " & link_target & " deletion unsupported");
+                  good_extraction := False;
+                  return;
+               when DIR.Name_Error =>
+                  DS.print (normal, "Failed to delete " & link_target & " file");
+                  good_extraction := False;
+                  return;
+            end;
+         end if;
+
          if Unix.create_symlink (actual_file    => link_target,
                                  link_to_create => link_path)
          then

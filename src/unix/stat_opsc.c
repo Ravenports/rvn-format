@@ -145,11 +145,12 @@ set_metadata (const char *    path,
               uid_t           new_user_id,
               gid_t           new_group_id,
               mode_t          new_permissions,
-              struct timespec new_mtime)
+              time_t          new_mtime_epoch,
+              long            new_mtime_nsecs)
 {
   int filedesc;
   int rc = 0;
-  const struct timespec times[2] = {{0, UTIME_OMIT}, new_mtime};
+  const struct timespec times[2] = {{0, UTIME_OMIT}, {new_mtime_epoch, new_mtime_nsecs}};
 
   /* It is possible all three actions are disabled, but it shouldn't happen */
   if (!(reset_modtime || reset_ownership || reset_permissions)) { return 0; }
@@ -192,10 +193,11 @@ set_symlink_metadata (const char *    path,
                       uid_t           new_user_id,
                       gid_t           new_group_id,
                       mode_t          new_permissions,
-                      struct timespec new_mtime)
+                      time_t          new_mtime_epoch,
+                      long            new_mtime_nsecs)
 {
   int rc = 0;
-  const struct timespec times[2] = {{0, UTIME_OMIT}, new_mtime};
+  const struct timespec times[2] = {{0, UTIME_OMIT}, {new_mtime_epoch, new_mtime_nsecs}};
 
   /* It is possible all three actions are disabled, but it shouldn't happen */
   if (!(reset_modtime || reset_ownership || reset_permissions)) { return 0; }

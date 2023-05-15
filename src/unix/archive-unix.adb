@@ -360,7 +360,6 @@ package body Archive.Unix is
       do_perms  : IC.unsigned_char := 0;
       do_mtime  : IC.unsigned_char := 0;
       rescode   : IC.unsigned_char := 0;
-      ctimespec : timespec;
       c_uid     : IC.unsigned := 0;
       c_gid     : IC.unsigned := 0;
       c_perms   : IC.short := 0;
@@ -376,8 +375,6 @@ package body Archive.Unix is
       end if;
       if reset_mtime then
          do_mtime := 1;
-         ctimespec.tv_sec  := time_t (new_m_secs);
-         ctimespec.tv_nsec := IC.long (new_m_nano);
       end if;
       case type_of_file is
          when regular | fifo | directory =>
@@ -389,7 +386,8 @@ package body Archive.Unix is
                new_user_id       => c_uid,
                new_group_id      => c_gid,
                new_permissions   => c_perms,
-               new_mtime         => ctimespec);
+               new_mtime_epoch   => time_t (new_m_secs),
+               new_mtime_nsecs   => IC.long (new_m_nano));
          when symlink =>
             rescode := set_symlink_metadata
               (path              => cpath,
@@ -399,7 +397,8 @@ package body Archive.Unix is
                new_user_id       => c_uid,
                new_group_id      => c_gid,
                new_permissions   => c_perms,
-               new_mtime         => ctimespec);
+               new_mtime_epoch   => time_t (new_m_secs),
+               new_mtime_nsecs   => IC.long (new_m_nano));
          when unsupported | hardlink =>
             --  Skip hardlinks.  This is set on the target.
             --  Doing it again is redundant
