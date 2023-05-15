@@ -9,7 +9,6 @@ with Ada.Directories;
 with Ada.Unchecked_Conversion;
 with Ada.Exceptions;
 with Ada.Strings.Fixed;
-with Zstandard;
 with Blake_3;
 with Archive.Unix;
 
@@ -635,8 +634,8 @@ package body Archive.Unpack is
          case block.type_of_file is
             when directory =>
                make_directory (Positive (block.directory_id));
-            when regular => null;
-               --  TODO: extract file
+            when regular =>
+               DS.extract_regular_file (file_path => file_path, file_len  => block.file_size_tb);
             when symlink =>
                make_symlink (link_path => file_path, link_len => block.link_length);
             when hardlink =>
@@ -649,9 +648,6 @@ package body Archive.Unpack is
          case block.type_of_file is
             when directory | unsupported =>
                --  Update directory metadata on second pass
-               null;
-            when regular =>
-               --  delete when regular file extraction implemented
                null;
             when others =>
                errcode := Unix.adjust_metadata
@@ -856,5 +852,160 @@ package body Archive.Unpack is
    begin
       return (perms and rwx);
    end rwx_filter;
+
+
+   ------------------------------------------------------------------------------------------
+   --  extract_regular_file
+   ------------------------------------------------------------------------------------------
+   procedure extract_regular_file (DS : in out DArc; file_path : String; file_len : size_type)
+   is
+      decomp_worked : Boolean;
+   begin
+      if DS.rolled_up then
+         --  This is the first time this procedure has been run.  Get first data chunk.
+         if DS.header.size_archive > zstd_size (KB256) then
+            --  streaming decompression
+            declare
+               chunk_size   : constant Natural := Zstandard.Natural_DStreamInSize;
+               local_buffer : Zstandard.Streaming_Decompression.Output_Data_Container;
+               content_len  : Natural;
+            begin
+               DS.expander.Initialize (input_stream => DS.rvn_stmaxs);
+               DS.expander.Decompress_Data (chunk_size   => chunk_size,
+                                            output_data  => local_buffer,
+                                            last_element => content_len);
+               DS.buffer := ASU.To_Unbounded_String (local_buffer (1 .. content_len));
+               DS.print (debug, "Streaming archive decompression block 1 successful.");
+            exception
+               when Zstandard.Streaming_Decompression.streaming_decompression_initialization =>
+                  DS.print (normal, "Failed to decompress archive (initialization).");
+                  return;
+               when Zstandard.Streaming_Decompression.streaming_decompression_error =>
+                  DS.print (normal, "Failed to decompress archive (needs initialization?)");
+                  return;
+            end;
+         else
+            --  single-shot decompression
+            DS.buffer := ASU.To_Unbounded_String
+              (Zstandard.Decompress (archive_saxs => DS.rvn_stmaxs,
+                                     data_length  => Natural (DS.header.size_archive),
+                                     successful   => decomp_worked));
+            DS.print (debug, "One shot archive decompression successful : " & decomp_worked'Img);
+         end if;
+         DS.buf_remain := ASU.Length (DS.buffer);
+         DS.rolled_up := False;
+         if ASU.Length (DS.buffer) > 0 then
+            DS.buf_arrow := 1;
+         end if;
+      end if;
+
+      if size_type (DS.buf_remain) >= file_len then
+         --  Write file in a single pass
+         declare
+            high : constant Natural := DS.buf_arrow + Natural (file_len) - 1;
+         begin
+            DS.direct_file_creation (target_file => file_path,
+                                     contents    => ASU.Slice (Source => DS.buffer,
+                                                               Low    => DS.buf_arrow,
+                                                               High   => high));
+            DS.buf_remain := DS.buf_remain - Natural (file_len);
+            DS.buf_arrow := high + 1;
+         end;
+      else
+         --  There's not enough data in the buffer.  We'll have to decompress more data and
+         --  do muliple writes to the output file.
+
+         declare
+            high          : Natural;
+            new_file      : SIO.File_Type;
+            local_stmaxs  : SIO.Stream_Access;
+            left_to_write : size_type := file_len;
+            read_block    : Natural := 1;
+
+            procedure append_target_file
+              (target_saxs : SIO.Stream_Access;
+               plain_text : String)
+            is
+               recsize : constant Natural := plain_text'Length;
+            begin
+               declare
+                  type tray is record
+                     payload : String (1 .. recsize);
+                  end record;
+                  pragma Pack (tray);
+
+                  data : tray;
+               begin
+                  data.payload := plain_text;
+                  tray'Output (target_saxs, data);
+               end;
+            end append_target_file;
+
+         begin
+            SIO.Open (File => new_file,
+                      Mode => SIO.Out_File,
+                      Name => file_path);
+
+            local_stmaxs := SIO.Stream (new_file);
+            high := DS.buf_arrow + DS.buf_remain - 1;
+            append_target_file (target_saxs => local_stmaxs,
+                                plain_text  => ASU.Slice (Source => DS.buffer,
+                                                          Low    => DS.buf_arrow,
+                                                          High   => high));
+            DS.print (debug, "First chunk of file written, chars:" & DS.buf_remain'Img);
+            left_to_write := left_to_write - size_type (DS.buf_remain);
+            DS.buf_arrow := high + 1;
+            DS.buf_remain := 0;
+
+            loop
+               declare
+                  --  For now assume we can just use 256 Kb block for every read.
+                  chunk_size   : constant Natural := Zstandard.Natural_DStreamInSize;
+                  local_buffer : Zstandard.Streaming_Decompression.Output_Data_Container;
+                  content_len  : Natural;
+               begin
+                  read_block := read_block + 1;
+                  DS.expander.Decompress_Data (chunk_size   => chunk_size,
+                                               output_data  => local_buffer,
+                                               last_element => content_len);
+                  DS.buffer := ASU.To_Unbounded_String (local_buffer (1 .. content_len));
+                  DS.print (debug, "Decompressed streaming block" & read_block'Img);
+               exception
+                  when others =>
+                     null;
+               end;
+               DS.buf_remain := ASU.Length (DS.buffer);
+               if ASU.Length (DS.buffer) > 0 then
+                  DS.buf_arrow := 1;
+               end if;
+
+               if size_type (DS.buf_remain) >= left_to_write then
+                  high := DS.buf_arrow + Natural (left_to_write) - 1;
+                  append_target_file (target_saxs => local_stmaxs,
+                                      plain_text  => ASU.Slice (Source => DS.buffer,
+                                                                Low    => DS.buf_arrow,
+                                                                High   => high));
+                  SIO.Close (new_file);
+                  DS.print (debug, "Last chunk of file written, chars:" & left_to_write'Img);
+                  left_to_write := 0;
+                  DS.buf_arrow := high + 1;
+                  DS.buf_remain := DS.buf_remain - Natural (left_to_write);
+                  exit;
+               else
+                  high := DS.buf_arrow + DS.buf_remain - 1;
+                  append_target_file (target_saxs => local_stmaxs,
+                                      plain_text  => ASU.Slice (Source => DS.buffer,
+                                                                Low    => DS.buf_arrow,
+                                                                High   => high));
+                  DS.print (debug, "Next chunk of file written, chars:" & DS.buf_remain'Img);
+                  left_to_write := left_to_write - size_type (DS.buf_remain);
+                  DS.buf_arrow := high + 1;
+                  DS.buf_remain := 0;
+               end if;
+            end loop;
+         end;
+
+      end if;
+   end extract_regular_file;
 
 end Archive.Unpack;

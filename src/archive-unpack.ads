@@ -5,6 +5,7 @@
 with Ada.Containers.Vectors;
 with Ada.Streams.Stream_IO;
 with Ada.Strings.Unbounded;
+with Zstandard.Streaming_Decompression;
 
 package Archive.Unpack is
 
@@ -129,7 +130,12 @@ private
          files      : file_block_crate.Vector;
          folders    : directory_crate.Vector;
          processed  : Boolean := False;
+         rolled_up  : Boolean := False;
          link_index : Natural := 0;
+         buffer     : text;
+         buf_arrow  : Natural := 0;
+         buf_remain : Natural := 0;
+         expander   : Zstandard.Streaming_Decompression.Decompressor;
       end record;
 
    --  Prints message to standard out if the display level is high enough
@@ -165,5 +171,8 @@ private
    --  This function filters out permissions beyond read-write-execute for root, user,
    --  and other.  This is includes the SUID.
    function rwx_filter (perms : permissions) return permissions;
+
+   --  This procedure handles the extraction of files from the compressed archive
+   procedure extract_regular_file (DS : in out DArc; file_path : String; file_len : size_type);
 
 end Archive.Unpack;
