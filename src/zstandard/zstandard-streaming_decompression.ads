@@ -11,6 +11,13 @@ package Zstandard.Streaming_Decompression is
 
    type Decompressor is tagged private;
 
+   --  This function is provided stream access to the compressed input file and the
+   --  output file the uncompressed data should be extracted to.  The returned result
+   --  is the size of the uncompressed data
+   function file_to_file_decompression
+     (input_stream  : not null SIO.Stream_Access;
+      output_stream : not null SIO.Stream_Access) return File_Size;
+
    --  This is the initialization function.
    --  The result signifies the size of the next chunk to read.
    function Initialize
@@ -53,5 +60,10 @@ private
       end record;
 
    function fast_input_buffer (chunk : String) return data_in_type;
+
+   function read_compressed_data
+     (input_stream  : not null SIO.Stream_Access;
+      bytes_planned : Natural;
+      bytes_read    : out Natural) return data_in_type;
 
 end Zstandard.Streaming_Decompression;

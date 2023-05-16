@@ -134,4 +134,91 @@ package body Zstandard.Streaming_Decompression is
    end fast_input_buffer;
 
 
+   ----------------------------------
+   --  file_to_file_decompression  --
+   ----------------------------------
+   function file_to_file_decompression
+     (input_stream  : not null SIO.Stream_Access;
+      output_stream : not null SIO.Stream_Access) return File_Size
+   is
+      zstd_stream : ZSTD_DStream_ptr;
+      initResult  : IC.size_t;
+      plain_size  : File_Size := 0;
+   begin
+      zstd_stream := ZSTD_createDStream;
+
+      if zstd_stream = Null_DStream_pointer then
+         raise streaming_decompression_initialization with "ZSTD_createDStream failure";
+      end if;
+
+      initResult := ZSTD_initDStream (zds => zstd_stream);
+      if Natural (ZSTD_isError (code => initResult)) /= 0 then
+         raise streaming_decompression_initialization with "ZSTD_initDStream failure";
+      end if;
+
+      declare
+         data_in      : data_in_type;
+         bytes_read   : Natural;
+         planned      : Natural;
+         inbuffer     : aliased ZSTD_inBuffer_s;
+         max_out_size : constant IC.size_t := IC.size_t (Natural_DStreamOutSize);
+
+         type data_out_type is array (1 .. max_out_size) of aliased IC.unsigned_char;
+      begin
+         planned := Natural (initResult);
+         loop
+            data_in := read_compressed_data (input_stream, planned, bytes_read);
+            exit when bytes_read = 0;
+
+            inbuffer := (src  => data_in (data_in'First)'Unchecked_Access,
+                         size => IC.size_t (bytes_read),
+                         pos  => 0);
+            loop
+               exit when Natural (inbuffer.pos) < Natural (inbuffer.size);
+               declare
+                  decomp_rc : IC.size_t;
+                  outbuffer : aliased ZSTD_outBuffer_s;
+                  data_out  : data_out_type := (others => IC.unsigned_char (0));
+               begin
+                  outbuffer := (dst  => data_out (data_out'First)'Unchecked_Access,
+                                size => max_out_size,
+                                pos  => 0);
+                  decomp_rc := ZSTD_decompressStream (zds    => zstd_stream,
+                                                      output => outbuffer'Unchecked_Access,
+                                                      input  => inbuffer'Unchecked_Access);
+                  if Natural (ZSTD_isError (decomp_rc)) /= 0 then
+                     declare
+                        errmsg : constant IC.Strings.chars_ptr := ZSTD_getErrorName (decomp_rc);
+                     begin
+                        Ada.Text_IO.Put_Line ("ZDECOMPERR: " & IC.Strings.Value (errmsg));
+                        return File_Size'Last;
+                     end;
+                  end if;
+                  planned := Natural (decomp_rc);
+
+                  declare
+                     outsize : constant Natural := Natural (outbuffer.pos);
+                     type payload_type is array (1 .. outsize) of IC.unsigned_char;
+                     type tray is record
+                        payload : payload_type;
+                     end record;
+                     pragma Pack (tray);
+
+                     data : tray;
+                  begin
+                     data.payload := payload_type (data_out (1 .. outbuffer.pos));
+                     tray'Output (output_stream, data);
+                     plain_size := plain_size + File_Size (outsize);
+                  end;
+               end;
+            end loop;
+         end loop;
+
+         initResult := ZSTD_freeDStream (zstd_stream);
+         return plain_size;
+      end;
+
+   end file_to_file_decompression;
+
+
 end Zstandard.Streaming_Decompression;
