@@ -11,31 +11,47 @@ package Zstandard.Streaming_Decompression is
 
    type Decompressor is tagged private;
 
-   --  This is the initialization procedure.
-   --  The input stream and output buffer capacity are externally provided
-   procedure Initialize
-     (mechanism       : out Decompressor;
-      input_stream    : not null SIO.Stream_Access);
+   --  This is the initialization function.
+   --  The result signifies the size of the next chunk to read.
+   function Initialize
+     (mechanism : out Decompressor) return Natural;
 
-   --  Decompress data as each input chunk is received
-   --  Since the size of the compressed data is known before the first call, the caller
-   --  must track the remaining bytes, thus knowning when the decompression is complete.
-   --  The "last_element" is the end of the container range (e.g. 1 .. last_element)
-   procedure Decompress_Data
-     (mechanism    :     Decompressor;
-      chunk_size   :     Natural;
+   --  This frees up the resources used by the decompressor
+   procedure Finalize
+     (mechanism : Decompressor);
+
+   --  Keep calling until you run out of data or the request length is zero
+   procedure Push_Compressed_Data
+     (mechanism : in out Decompressor;
+      compressed_data : String);
+
+   --  Returns decompressed data after processing chunk.
+   --  Keep calling until "call_agein" is false.
+   --  Ignore return result until "call_again" is false, at which point
+   --  `push_compressed_data` is run again with the string the lenfth of the result.
+   --  The last_element specifies how much of the output buffer is used.
+   function Get_Uncompressed_Data
+     (mechanism    : in out Decompressor;
       output_data  : out Output_Data_Container;
-      last_element : out Natural);
+      last_element : out Natural;
+      call_again   : out Boolean) return Natural;
 
    streaming_decompression_initialization : exception;
    streaming_decompression_error          : exception;
 
 private
 
+   input_size : constant Natural := Natural_DStreamInSize;
+   type data_in_type  is array (1 .. input_size) of aliased IC.unsigned_char;
+
    type Decompressor is tagged
       record
-         source_stream    : SIO.Stream_Access;
-         zstd_stream      : ZSTD_DStream_ptr := Null_DStream_pointer;
+         zstd_stream : ZSTD_DStream_ptr := Null_DStream_pointer;
+         data_in     : data_in_type;
+         input_pos   : Natural;
+         input_size  : Natural;
       end record;
+
+   function fast_input_buffer (chunk : String) return data_in_type;
 
 end Zstandard.Streaming_Decompression;

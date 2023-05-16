@@ -8,6 +8,7 @@ with Ada.Direct_IO;
 with Ada.Directories;
 with Ada.Unchecked_Conversion;
 with Ada.Exceptions;
+with Ada.IO_Exceptions;
 with Ada.Strings.Fixed;
 with Blake_3;
 with Archive.Unix;
@@ -17,6 +18,7 @@ package body Archive.Unpack is
    package TIO renames Ada.Text_IO;
    package DIR renames Ada.Directories;
    package EX  renames Ada.Exceptions;
+   package IOX renames Ada.IO_Exceptions;
    package ASF renames Ada.Strings.Fixed;
    package ZST renames Zstandard;
 
@@ -866,11 +868,11 @@ package body Archive.Unpack is
          if DS.header.size_archive > zstd_size (KB256) then
             --  streaming decompression
             declare
-               chunk_size   : constant Natural := Zstandard.Natural_DStreamInSize;
                local_buffer : Zstandard.Streaming_Decompression.Output_Data_Container;
-               content_len  : Natural;
+               push_len : Natural;
             begin
-               DS.expander.Initialize (input_stream => DS.rvn_stmaxs);
+               push_len := DS.expander.Initialize (input_stream => DS.rvn_stmaxs);
+               DS.expander.Push_Compressed_Data (
                DS.expander.Decompress_Data (chunk_size   => chunk_size,
                                             output_data  => local_buffer,
                                             last_element => content_len);
@@ -942,9 +944,9 @@ package body Archive.Unpack is
             end append_target_file;
 
          begin
-            SIO.Open (File => new_file,
-                      Mode => SIO.Out_File,
-                      Name => file_path);
+            SIO.Create (File => new_file,
+                        Mode => SIO.Out_File,
+                        Name => file_path);
 
             local_stmaxs := SIO.Stream (new_file);
             high := DS.buf_arrow + DS.buf_remain - 1;
@@ -954,7 +956,7 @@ package body Archive.Unpack is
                                                           High   => high));
             DS.print (debug, "First chunk of file written, chars:" & DS.buf_remain'Img);
             left_to_write := left_to_write - size_type (DS.buf_remain);
-            DS.buf_arrow := high + 1;
+            DS.buf_arrow := 0;
             DS.buf_remain := 0;
 
             loop
@@ -971,8 +973,8 @@ package body Archive.Unpack is
                   DS.buffer := ASU.To_Unbounded_String (local_buffer (1 .. content_len));
                   DS.print (debug, "Decompressed streaming block" & read_block'Img);
                exception
-                  when others =>
-                     null;
+                  when unexpected : others =>
+                     DS.print (normal, "ERF/Charlie: " & EX.Exception_Information (unexpected));
                end;
                DS.buf_remain := ASU.Length (DS.buffer);
                if ASU.Length (DS.buffer) > 0 then
@@ -1003,6 +1005,11 @@ package body Archive.Unpack is
                   DS.buf_remain := 0;
                end if;
             end loop;
+         exception
+            when IOX.Use_Error =>
+               DS.print (normal, "Failed to open " & file_path & " for writing.");
+            when dunno : others =>
+               DS.print (normal, "ERF/Delta: " & EX.Exception_Information (dunno));
          end;
 
       end if;

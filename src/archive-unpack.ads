@@ -130,7 +130,7 @@ private
          files      : file_block_crate.Vector;
          folders    : directory_crate.Vector;
          processed  : Boolean := False;
-         rolled_up  : Boolean := False;
+         rolled_up  : Boolean := True;
          link_index : Natural := 0;
          buffer     : text;
          buf_arrow  : Natural := 0;
