@@ -782,14 +782,21 @@ package body Archive.Unpack is
 
       procedure make_hardlink (duplicate : String; link_len : max_path)
       is
-         source : constant String := DS.retrieve_link_target (link_len);
+         source : constant String := top_directory & "/" & DS.retrieve_link_target (link_len);
       begin
+         if DIR.Exists (duplicate) then
+            begin
+               DIR.Delete_Tree (duplicate);
+            exception
+               when others => null;
+            end;
+         end if;
          if Unix.create_hardlink (actual_file => source,
                                   destination => duplicate)
          then
-            DS.print (verbose, "Extracted hardlink " & source & " => " & duplicate);
+            DS.print (verbose, "Extracted hardlink " & duplicate & " => " & source);
          else
-            DS.print (normal, "Failed to extract hardlink " & source & " => " & duplicate);
+            DS.print (normal, "Failed to extract hardlink " & duplicate & " => " & source);
             good_extraction := False;
          end if;
       end make_hardlink;
