@@ -966,6 +966,7 @@ package body Archive.Unpack is
                      DS.call_again := DS.expander.Get_Uncompressed_Data (DS.buffer);
                      DS.print (debug, "Decompressed streaming block" & read_block'Img);
                      if not DS.call_again then
+                        DS.expander.Finalize;
                         DS.print (debug, "That's the end of the zstandard frame.");
                      end if;
                   else
