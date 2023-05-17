@@ -862,25 +862,19 @@ package body Archive.Unpack is
    procedure extract_regular_file (DS : in out DArc; file_path : String; file_len : size_type)
    is
       decomp_worked : Boolean;
+      call_again    : Boolean;
    begin
       if DS.rolled_up then
          --  This is the first time this procedure has been run.  Get first data chunk.
          if DS.header.size_archive > zstd_size (KB256) then
             --  streaming decompression
-            declare
-               local_buffer : Zstandard.Streaming_Decompression.Output_Data_Container;
-               push_len : Natural;
             begin
-               push_len := DS.expander.Initialize (input_stream => DS.rvn_stmaxs);
-               DS.expander.Push_Compressed_Data (
-               DS.expander.Decompress_Data (chunk_size   => chunk_size,
-                                            output_data  => local_buffer,
-                                            last_element => content_len);
-               DS.buffer := ASU.To_Unbounded_String (local_buffer (1 .. content_len));
+               DS.expander.Initialize (input_stream => DS.rvn_stmaxs);
+               call_again := DS.expander.Get_Uncompressed_Data (DS.buffer);
                DS.print (debug, "Streaming archive decompression block 1 successful.");
             exception
                when Zstandard.Streaming_Decompression.streaming_decompression_initialization =>
-                  DS.print (normal, "Failed to decompress archive (initialization).");
+                  DS.print (normal, "Failed to initialize streaming decompression.");
                   return;
                when Zstandard.Streaming_Decompression.streaming_decompression_error =>
                   DS.print (normal, "Failed to decompress archive (needs initialization?)");
@@ -960,18 +954,17 @@ package body Archive.Unpack is
             DS.buf_remain := 0;
 
             loop
-               declare
-                  --  For now assume we can just use 256 Kb block for every read.
-                  chunk_size   : constant Natural := Zstandard.Natural_DStreamInSize;
-                  local_buffer : Zstandard.Streaming_Decompression.Output_Data_Container;
-                  content_len  : Natural;
                begin
                   read_block := read_block + 1;
-                  DS.expander.Decompress_Data (chunk_size   => chunk_size,
-                                               output_data  => local_buffer,
-                                               last_element => content_len);
-                  DS.buffer := ASU.To_Unbounded_String (local_buffer (1 .. content_len));
-                  DS.print (debug, "Decompressed streaming block" & read_block'Img);
+                  if call_again then
+                     call_again := DS.expander.Get_Uncompressed_Data (DS.buffer);
+                     DS.print (debug, "Decompressed streaming block" & read_block'Img);
+                     if not call_again then
+                        DS.print (debug, "That's the end of the zstandard frame.");
+                     end if;
+                  else
+                     DS.print (normal, "Problem: There's no more data to decompress.");
+                  end if;
                exception
                   when unexpected : others =>
                      DS.print (normal, "ERF/Charlie: " & EX.Exception_Information (unexpected));

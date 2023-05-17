@@ -61,6 +61,13 @@ package body Zstandard.Streaming_Decompression is
 
       type data_out_type is array (1 .. max_out_size) of aliased IC.unsigned_char;
    begin
+      if mechanism.zstd_stream = Null_DStream_pointer then
+         raise streaming_decompression_error with "Run initialize procedure first";
+      end if;
+
+      --  Outgoing buffer needs to be empty
+      buffer := ASU.Null_Unbounded_String;
+
       --  We only loop when the outbuffer position is zero, meaning no output is
       --  written to the buffer.  So most of the time the logic flows straight through
       --  without looping.
