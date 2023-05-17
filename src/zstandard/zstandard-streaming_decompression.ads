@@ -64,6 +64,6 @@ private
    function read_compressed_data
      (input_stream  : not null SIO.Stream_Access;
       bytes_planned : Natural;
-      bytes_read    : out Natural) return data_in_type;
+      data_in       : out data_in_type) return Natural;
 
 end Zstandard.Streaming_Decompression;

@@ -157,7 +157,7 @@ package body Zstandard.Streaming_Decompression is
       end if;
 
       declare
-         data_in      : data_in_type;
+         data_in      : data_in_type := (others => IC.unsigned_char (0));
          bytes_read   : Natural;
          planned      : Natural;
          inbuffer     : aliased ZSTD_inBuffer_s;
@@ -167,14 +167,17 @@ package body Zstandard.Streaming_Decompression is
       begin
          planned := Natural (initResult);
          loop
-            data_in := read_compressed_data (input_stream, planned, bytes_read);
+            exit when planned = 0;
+            bytes_read := read_compressed_data (input_stream  => input_stream,
+                                                bytes_planned => planned,
+                                                data_in       => data_in);
             exit when bytes_read = 0;
 
             inbuffer := (src  => data_in (data_in'First)'Unchecked_Access,
                          size => IC.size_t (bytes_read),
                          pos  => 0);
             loop
-               exit when Natural (inbuffer.pos) < Natural (inbuffer.size);
+               exit when Natural (inbuffer.pos) >= Natural (inbuffer.size);
                declare
                   decomp_rc : IC.size_t;
                   outbuffer : aliased ZSTD_outBuffer_s;
@@ -196,20 +199,22 @@ package body Zstandard.Streaming_Decompression is
                   end if;
                   planned := Natural (decomp_rc);
 
-                  declare
-                     outsize : constant Natural := Natural (outbuffer.pos);
-                     type payload_type is array (1 .. outsize) of IC.unsigned_char;
-                     type tray is record
-                        payload : payload_type;
-                     end record;
-                     pragma Pack (tray);
+                  if Natural (outbuffer.pos) > 0 then
+                     declare
+                        type bin_array is array (1 ..
+                     Natural (outbuffer.pos)) of IC.unsigned_char;
+                        type tray is record
+                           payload : bin_array;
+                        end record;
+                        pragma Pack (tray);
 
-                     data : tray;
-                  begin
-                     data.payload := payload_type (data_out (1 .. outbuffer.pos));
-                     tray'Output (output_stream, data);
-                     plain_size := plain_size + File_Size (outsize);
-                  end;
+                        data : tray;
+                     begin
+                        data.payload := bin_array (data_out (1 .. outbuffer.pos));
+                        tray'Output (output_stream, data);
+                        plain_size := plain_size + File_Size (outbuffer.pos);
+                     end;
+                  end if;
                end;
             end loop;
          end loop;
@@ -219,6 +224,32 @@ package body Zstandard.Streaming_Decompression is
       end;
 
    end file_to_file_decompression;
+
+
+   ----------------------------
+   --  read_compressed_data  --
+   ----------------------------
+   function read_compressed_data
+     (input_stream  : not null SIO.Stream_Access;
+      bytes_planned : Natural;
+      data_in       : out data_in_type) return Natural
+   is
+      bytes_read : Natural := 0;
+   begin
+      declare
+         datum : Ada.Streams.Stream_Element;
+      begin
+         for sindex in 1 .. bytes_planned loop
+            Ada.Streams.Stream_Element'Read (input_stream, datum);
+            data_in (sindex) := IC.unsigned_char (datum);
+            bytes_read := bytes_read + 1;
+         end loop;
+      exception
+         when Ada.Streams.Stream_IO.End_Error =>
+            null;
+      end;
+      return bytes_read;
+   end read_compressed_data;
 
 
 end Zstandard.Streaming_Decompression;
