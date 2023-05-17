@@ -862,7 +862,6 @@ package body Archive.Unpack is
    procedure extract_regular_file (DS : in out DArc; file_path : String; file_len : size_type)
    is
       decomp_worked : Boolean;
-      call_again    : Boolean;
    begin
       if DS.rolled_up then
          --  This is the first time this procedure has been run.  Get first data chunk.
@@ -870,7 +869,7 @@ package body Archive.Unpack is
             --  streaming decompression
             begin
                DS.expander.Initialize (input_stream => DS.rvn_stmaxs);
-               call_again := DS.expander.Get_Uncompressed_Data (DS.buffer);
+               DS.call_again := DS.expander.Get_Uncompressed_Data (DS.buffer);
                DS.print (debug, "Streaming archive decompression block 1 successful.");
             exception
                when Zstandard.Streaming_Decompression.streaming_decompression_initialization =>
@@ -956,10 +955,10 @@ package body Archive.Unpack is
             loop
                begin
                   read_block := read_block + 1;
-                  if call_again then
-                     call_again := DS.expander.Get_Uncompressed_Data (DS.buffer);
+                  if DS.call_again then
+                     DS.call_again := DS.expander.Get_Uncompressed_Data (DS.buffer);
                      DS.print (debug, "Decompressed streaming block" & read_block'Img);
-                     if not call_again then
+                     if not DS.call_again then
                         DS.print (debug, "That's the end of the zstandard frame.");
                      end if;
                   else
@@ -980,11 +979,12 @@ package body Archive.Unpack is
                                       plain_text  => ASU.Slice (Source => DS.buffer,
                                                                 Low    => DS.buf_arrow,
                                                                 High   => high));
-                  SIO.Close (new_file);
                   DS.print (debug, "Last chunk of file written, chars:" & left_to_write'Img);
-                  left_to_write := 0;
-                  DS.buf_arrow := high + 1;
+                  SIO.Close (new_file);
+                  DS.print (debug, "Successful assembly of " & file_path);
                   DS.buf_remain := DS.buf_remain - Natural (left_to_write);
+                  left_to_write := 0;
+                  DS.buf_arrow  := high + 1;
                   exit;
                else
                   high := DS.buf_arrow + DS.buf_remain - 1;

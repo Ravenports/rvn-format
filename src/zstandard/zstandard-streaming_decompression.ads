@@ -45,7 +45,7 @@ private
    type Decompressor is tagged
       record
          zstd_stream : ZSTD_DStream_ptr := Null_DStream_pointer;
-         rvn_stmaxs  : not null SIO.Stream_Access;
+         rvn_stmaxs  : SIO.Stream_Access;
          planned     : Natural;
       end record;
 

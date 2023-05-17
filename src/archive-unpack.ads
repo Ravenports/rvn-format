@@ -131,6 +131,7 @@ private
          folders    : directory_crate.Vector;
          processed  : Boolean := False;
          rolled_up  : Boolean := True;
+         call_again : Boolean := False;
          link_index : Natural := 0;
          buffer     : text;
          buf_arrow  : Natural := 0;
