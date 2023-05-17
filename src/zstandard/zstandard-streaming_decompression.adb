@@ -11,11 +11,14 @@ package body Zstandard.Streaming_Decompression is
    ------------------
    --  Initialize  --
    ------------------
-   function Initialize (mechanism : out Decompressor) return Natural
+   procedure Initialize
+     (mechanism    : out Decompressor;
+      input_stream : not null SIO.Stream_Access)
    is
       initResult : IC.size_t;
    begin
-      mechanism.zstd_stream   := ZSTD_createDStream;
+      mechanism.rvn_stmaxs  := input_stream;
+      mechanism.zstd_stream := ZSTD_createDStream;
 
       if mechanism.zstd_stream = Null_DStream_pointer then
          raise streaming_decompression_initialization with "ZSTD_createDStream failure";
@@ -25,7 +28,7 @@ package body Zstandard.Streaming_Decompression is
       if Natural (ZSTD_isError (code => initResult)) /= 0 then
          raise streaming_decompression_initialization with "ZSTD_initDStream failure";
       end if;
-      return Natural (initResult);
+      mechanism.planned := Natural (initResult);
    end Initialize;
 
 
@@ -42,96 +45,87 @@ package body Zstandard.Streaming_Decompression is
    end Finalize;
 
 
-   ----------------------------
-   --  Push_Compressed_Data  --
-   ----------------------------
-   procedure Push_Compressed_Data
-     (mechanism : in out Decompressor;
-      compressed_data : String)
-   is
-   begin
-      mechanism.data_in := fast_input_buffer (compressed_data);
-      mechanism.input_size := Natural (compressed_data'Length);
-      mechanism.input_pos  := 0;
-   end Push_Compressed_Data;
-
-
    -----------------------------
    --  Get_Uncompressed_Data  --
    -----------------------------
    function Get_Uncompressed_Data
      (mechanism    : in out Decompressor;
-      output_data  : out Output_Data_Container;
-      last_element : out Natural;
-      call_again   : out Boolean) return Natural
+      buffer       : in out ASU.Unbounded_String) return Boolean
    is
-      decomp_rc : IC.size_t;
-      inbuffer  : aliased ZSTD_inBuffer_s;
-      outbuffer : aliased ZSTD_outBuffer_s;
+      data_in      : data_in_type := (others => IC.unsigned_char (0));
+      bytes_read   : Natural;
+      inbuffer     : aliased ZSTD_inBuffer_s;
+      max_out_size : constant IC.size_t := IC.size_t (Natural_DStreamOutSize);
+      call_again   : Boolean := False;
+      bytes_out    : Natural := 0;
 
-      type data_out_type is array (Output_Data_Container'Range) of aliased IC.unsigned_char;
-
-      data_out  : data_out_type := (others => IC.unsigned_char (0));
-
-      function data_out_to_container is
-        new Ada.Unchecked_Conversion (Source => data_out_type,
-                                      Target => Output_Data_Container);
+      type data_out_type is array (1 .. max_out_size) of aliased IC.unsigned_char;
    begin
-      call_again := False;
-      last_element := 0;
+      --  We only loop when the outbuffer position is zero, meaning no output is
+      --  written to the buffer.  So most of the time the logic flows straight through
+      --  without looping.
+      loop
+         exit when mechanism.planned = 0;
+         bytes_read := read_compressed_data (input_stream  => mechanism.rvn_stmaxs,
+                                             bytes_planned => mechanism.planned,
+                                             data_in       => data_in);
+         exit when bytes_read = 0;
 
-      if mechanism.zstd_stream = Null_DStream_pointer then
-         raise streaming_decompression_error with "Run initialize procedure first";
-      end if;
+         inbuffer := (src  => data_in (data_in'First)'Unchecked_Access,
+                      size => IC.size_t (bytes_read),
+                      pos  => 0);
 
-      if mechanism.input_size < mechanism.input_pos then
-         return 0;
-      end if;
+         loop
+            --  If data is properly encoded, this doesn't loop because inbuffer.pos
+            --  always equals inbuffer.size after the first pass, so it exits
 
-      inbuffer := (src  => mechanism.data_in (mechanism.data_in'First)'Unchecked_Access,
-                   size => IC.size_t (mechanism.input_size),
-                   pos  => IC.size_t (mechanism.input_pos));
+            exit when Natural (inbuffer.pos) >= Natural (inbuffer.size);
+            declare
+               decomp_rc : IC.size_t;
+               outbuffer : aliased ZSTD_outBuffer_s;
+               data_out  : data_out_type := (others => IC.unsigned_char (0));
+            begin
+               outbuffer := (dst  => data_out (data_out'First)'Unchecked_Access,
+                             size => max_out_size,
+                             pos  => 0);
+               decomp_rc := ZSTD_decompressStream (zds    => mechanism.zstd_stream,
+                                                   output => outbuffer'Unchecked_Access,
+                                                   input  => inbuffer'Unchecked_Access);
+               if Natural (ZSTD_isError (decomp_rc)) /= 0 then
+                  declare
+                     errmsg : constant IC.Strings.chars_ptr := ZSTD_getErrorName (decomp_rc);
+                  begin
+                     Ada.Text_IO.Put_Line ("ZDECOMPERR: " & IC.Strings.Value (errmsg));
+                     return False;
+                  end;
+               end if;
+               mechanism.planned := Natural (decomp_rc);
+               call_again := mechanism.planned > 0;
 
-      outbuffer := (dst  => data_out (data_out'First)'Unchecked_Access,
-                    size => IC.size_t (Output_Data_Container'Length),
-                    pos  => 0);
+               bytes_out := Natural (outbuffer.pos);
+               if bytes_out > 0 then
+                  declare
+                     type bin_array is array (1 .. bytes_out) of IC.unsigned_char;
+                     subtype bin_string is String (1 .. bytes_out);
+                     payload : bin_array;
+                     payload_string : bin_string;
 
-      decomp_rc := ZSTD_decompressStream (zds    => mechanism.zstd_stream,
-                                          output => outbuffer'Unchecked_Access,
-                                          input  => inbuffer'Unchecked_Access);
-      if Natural (ZSTD_isError (decomp_rc)) /= 0 then
-         declare
-            errmsg : constant IC.Strings.chars_ptr := ZSTD_getErrorName (decomp_rc);
-         begin
-            Ada.Text_IO.Put_Line ("ZDECOMPERR: " & IC.Strings.Value (errmsg));
-         end;
-      end if;
-
-      output_data := data_out_to_container (data_out);
-      last_element := Natural (outbuffer.pos);
-      mechanism.input_pos := Natural (inbuffer.pos);
-      call_again := True;
-
-      return Natural (decomp_rc);
-
+                     function bytes_to_string is
+                       new Ada.Unchecked_Conversion (Source => bin_array,
+                                                     Target => bin_string);
+                  begin
+                     payload := bin_array (data_out (1 .. outbuffer.pos));
+                     payload_string := bytes_to_string (payload);
+                     ASU.Append (buffer, payload_string);
+                  end;
+               end if;
+            end;
+         end loop;
+         exit when bytes_out > 0;
+      end loop;
+      return call_again;
    end Get_Uncompressed_Data;
 
-
-   -------------------------
-   --  fast_input_buffer  --
-   -------------------------
-   function fast_input_buffer (chunk : String) return data_in_type
-   is
-      subtype data_string is String (1 .. input_size);
-
-      function data_string_to_data_in is
-        new Ada.Unchecked_Conversion (Source => data_string,
-                                      Target => data_in_type);
-      cartridge : data_string := (others => Character'Val (0));
-   begin
-      cartridge (cartridge'First .. cartridge'First + chunk'Length - 1) := chunk;
-      return data_string_to_data_in (cartridge);
-   end fast_input_buffer;
 
 
    ----------------------------------
@@ -201,8 +195,7 @@ package body Zstandard.Streaming_Decompression is
 
                   if Natural (outbuffer.pos) > 0 then
                      declare
-                        type bin_array is array (1 ..
-                     Natural (outbuffer.pos)) of IC.unsigned_char;
+                        type bin_array is array (1 .. Natural (outbuffer.pos)) of IC.unsigned_char;
                         type tray is record
                            payload : bin_array;
                         end record;

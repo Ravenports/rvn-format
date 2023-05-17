@@ -2,12 +2,12 @@
 --  Reference: ../../License.txt
 
 with Ada.Streams.Stream_IO;
+with Ada.Strings.Unbounded;
 
 package Zstandard.Streaming_Decompression is
 
    package SIO renames Ada.Streams.Stream_IO;
-
-   subtype Output_Data_Container is String (1 .. Natural_DStreamOutSize);
+   package ASU renames Ada.Strings.Unbounded;
 
    type Decompressor is tagged private;
 
@@ -19,29 +19,20 @@ package Zstandard.Streaming_Decompression is
       output_stream : not null SIO.Stream_Access) return File_Size;
 
    --  This is the initialization function.
-   --  The result signifies the size of the next chunk to read.
-   function Initialize
-     (mechanism : out Decompressor) return Natural;
+   procedure Initialize
+     (mechanism    : out Decompressor;
+      input_stream : not null SIO.Stream_Access);
 
    --  This frees up the resources used by the decompressor
-   procedure Finalize
-     (mechanism : Decompressor);
+   procedure Finalize (mechanism : Decompressor);
 
-   --  Keep calling until you run out of data or the request length is zero
-   procedure Push_Compressed_Data
-     (mechanism : in out Decompressor;
-      compressed_data : String);
-
-   --  Returns decompressed data after processing chunk.
-   --  Keep calling until "call_agein" is false.
-   --  Ignore return result until "call_again" is false, at which point
-   --  `push_compressed_data` is run again with the string the lenfth of the result.
-   --  The last_element specifies how much of the output buffer is used.
+   --  This function reads compressed data from the input stream, decompresses it,
+   --  and appends the buffer (which is expected to be empty).  The function returns
+   --  True if theres more data to uncompress later, and False if the decompression
+   --  is finished.
    function Get_Uncompressed_Data
      (mechanism    : in out Decompressor;
-      output_data  : out Output_Data_Container;
-      last_element : out Natural;
-      call_again   : out Boolean) return Natural;
+      buffer       : in out ASU.Unbounded_String) return Boolean;
 
    streaming_decompression_initialization : exception;
    streaming_decompression_error          : exception;
@@ -54,12 +45,9 @@ private
    type Decompressor is tagged
       record
          zstd_stream : ZSTD_DStream_ptr := Null_DStream_pointer;
-         data_in     : data_in_type;
-         input_pos   : Natural;
-         input_size  : Natural;
+         rvn_stmaxs  : not null SIO.Stream_Access;
+         planned     : Natural;
       end record;
-
-   function fast_input_buffer (chunk : String) return data_in_type;
 
    function read_compressed_data
      (input_stream  : not null SIO.Stream_Access;
