@@ -64,6 +64,10 @@ package Archive.Unix is
    --  Return error description from adjust_metadata return code
    function metadata_error (errcode : metadata_rc) return String;
 
+   --  Ths function resolves all symbolic links, extra ``/'' characters and
+   --  references to /./ and /../ in path and returns the result
+   function real_path (path : String) return String;
+
 private
 
    function success (rc : IC.int) return Boolean;
@@ -142,6 +146,14 @@ private
 
    function chmod (path : IC.char_array; mode : IC.unsigned_short) return IC.int;
    pragma Import (C, chmod);
+
+   function realpath
+     (path : IC.char_array;
+      resolvedname : out IC.char_array) return IC.Strings.chars_ptr;
+   pragma Import (C, realpath);
+
+   function maximum_path_length return IC.size_t;
+   pragma Import (C, maximum_path_length);
 
    function clookup_group (name : IC.char_array) return IC.unsigned;
    pragma Import (C, clookup_group);

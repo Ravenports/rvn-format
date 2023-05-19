@@ -3,8 +3,14 @@
 
 
 with Ada.Strings.Hash;
+with Ada.Strings.Fixed;
+with Ada.Text_IO;
+with Archive.Unix;
 
 package body Archive.Whitelist is
+
+   package TIO renames Ada.Text_IO;
+   package ASF renames Ada.Strings.Fixed;
 
    -----------------------
    --  whiteist_in_use  --
@@ -20,16 +26,10 @@ package body Archive.Whitelist is
    -------------------------
    function file_on_whitelist
      (whitelist     : A_Whitelist;
-      file_path     : String;
-      file_data     : Unix.File_Characteristics) return Boolean
+      file_path     : String) return Boolean
    is
       file_hash : Blake_3.blake3_hash;
    begin
-      if file_data.error then
-         --  No file (or directory) exists at the given file_path
-         return False;
-      end if;
-
       file_hash := Blake_3.digest (file_path);
 
       return whitelist.files.Contains (file_hash);
@@ -41,14 +41,115 @@ package body Archive.Whitelist is
    --  ingest_file_manifest  --
    ----------------------------
    function ingest_file_manifest
-     (whitelist     : A_Whitelist;
+     (whitelist     : out A_Whitelist;
       manifest_file : String;
+      top_directory : String;
       level         : info_level) return Boolean
    is
+      features    : Unix.File_Characteristics;
+      file_handle : TIO.File_Type;
+      succeeded   : Boolean := True;
    begin
-      --  TODO: To be written
-      return False;
+      if top_directory (top_directory'Last) = '/' then
+         if level >= normal then
+            TIO.Put_Line ("The top directory [" & top_directory & "] can't end with '/'");
+         end if;
+         return False;
+      end if;
+      features := Unix.get_charactistics (manifest_file);
+      if features.error then
+         if level >= normal then
+            TIO.Put_Line ("The indicated manifest (" & manifest_file & ") does not exist.");
+         end if;
+         return False;
+      elsif features.ftype /= regular then
+         if level >= normal then
+            TIO.Put_Line ("The indicated manifest is not a regular file.");
+         end if;
+         return False;
+      end if;
+
+      TIO.Open (File => file_handle,
+                Mode => TIO.In_File,
+                Name => manifest_file);
+      while not TIO.End_Of_File (file_handle) loop
+         declare
+            line : constant String := ASF.Trim (TIO.Get_Line (file_handle), Ada.Strings.Both);
+            insert_succeeded : Boolean;
+         begin
+            if line = "" then
+               null;
+            elsif line (line'First) /= '/' then
+               if level >= normal then
+                  TIO.Put_Line ("Ignore [" & line & "] because it doesn't start with '/'");
+               end if;
+               succeeded := False;
+            else
+               insert_succeeded := whitelist.insert_file_into_whitelist
+                 (full_path => Unix.real_path (top_directory & line),
+                  level     => level);
+
+               if not insert_succeeded then
+                  succeeded := False;
+               end if;
+            end if;
+         end;
+      end loop;
+      TIO.Close (file_handle);
+      return succeeded;
+
    end ingest_file_manifest;
+
+
+   ----------------------------------
+   --  insert_file_into_whitelist  --
+   ----------------------------------
+   function insert_file_into_whitelist
+     (whitelist : in out A_Whitelist;
+      full_path : String;
+      level     : info_level) return Boolean
+   is
+      file_hash : Blake_3.blake3_hash;
+      features  : Unix.File_Characteristics;
+   begin
+      if not whitelist.file_on_whitelist (full_path) then
+         features := Unix.get_charactistics (full_path);
+         if features.error then
+            if level >= normal then
+               TIO.Put_Line ("The whitelisted file '" & full_path & "' does not exist.");
+               return False;
+            end if;
+         elsif features.ftype = directory then
+            if level >= normal then
+               TIO.Put_Line ("The whitelisted file '" & full_path & "' is actually a directory.");
+               return False;
+            end if;
+         else
+            file_hash := Blake_3.digest (full_path);
+            whitelist.files.Insert (file_hash, False);
+            if level >= verbose then
+               TIO.Put_Line ("Added to whitelist: " & full_path);
+            end if;
+         end if;
+      end if;
+
+      --  Now insert the base directory if it hasn't been seen before
+      declare
+         basedir : constant String := head (full_path, "/");
+      begin
+         if basedir /= "" then
+            if not whitelist.file_on_whitelist (basedir) then
+               file_hash := Blake_3.digest (basedir);
+               whitelist.files.Insert (file_hash, True);
+               if level >= debug then
+                  TIO.Put_Line ("Added directory to whitelist: " & basedir);
+               end if;
+            end if;
+         end if;
+      end;
+
+      return True;
+   end insert_file_into_whitelist;
 
 
    -------------------
@@ -69,5 +170,27 @@ package body Archive.Whitelist is
    begin
       return key1 = key2;
    end digest_equivalent;
+
+
+   ------------
+   --  head  --
+   ------------
+   function head (S  : String; delimiter : String) return String
+   is
+      dl_size      : constant Natural := delimiter'Length;
+      back_marker  : constant Natural := S'First;
+      front_marker : Natural := S'Last - dl_size + 1;
+   begin
+      loop
+         if front_marker < back_marker then
+            --  delimiter never found
+            return "";
+         end if;
+         if S (front_marker .. front_marker + dl_size - 1) = delimiter then
+            return S (back_marker .. front_marker - 1);
+         end if;
+         front_marker := front_marker - 1;
+      end loop;
+   end head;
 
 end Archive.Whitelist;

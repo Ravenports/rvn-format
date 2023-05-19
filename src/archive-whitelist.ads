@@ -1,7 +1,6 @@
 --  This file is covered by the Internet Software Consortium (ISC) License
 --  Reference: ../License.txt
 
-with Archive.Unix;
 private with Blake_3;
 private with Ada.Containers.Hashed_Maps;
 
@@ -21,16 +20,17 @@ package Archive.Whitelist is
    --  All directory components are individually whitelisted
    --  Returns True upon success, False if a single error occurs
    function ingest_file_manifest
-     (whitelist     : A_Whitelist;
+     (whitelist     : out A_Whitelist;
       manifest_file : String;
+      top_directory : String;
       level         : info_level) return Boolean;
 
 
    --  Returns true if given path has been whitelisted (and therefore needs to be archived).
    function file_on_whitelist
      (whitelist     : A_Whitelist;
-      file_path     : String;
-      file_data     : Unix.File_Characteristics) return Boolean;
+      file_path     : String) return Boolean;
+
 
 private
 
@@ -52,5 +52,16 @@ private
          files     : white_crate.Map;
       end record;
 
+   --  If the full path is not already in the whitelist, it will be inserted.
+   --  Morever, the directory portion will also be inserted if it hasn't already.
+   --  Returns false if the full_path doesn't point to a real object or if it's actually
+   --  a directory.
+   function insert_file_into_whitelist
+     (whitelist : in out A_Whitelist;
+      full_path : String;
+      level     : info_level) return Boolean;
+
+   --  Head (keep all but last delimiter and field)
+   function head (S  : String; delimiter : String) return String;
 
 end Archive.Whitelist;

@@ -503,4 +503,22 @@ package body Archive.Unix is
 
    end metadata_error;
 
+
+   --------------------------------------------------------------------------------------------
+   --  real_path
+   --------------------------------------------------------------------------------------------
+   function real_path (path : String) return String
+   is
+      use type IC.size_t;
+
+      cpath : constant IC.char_array := IC.To_C (path);
+      path_max : constant IC.size_t := maximum_path_length;
+      resolved_path : IC.char_array (0 .. path_max - 1);
+      respath : IC.Strings.chars_ptr;
+
+   begin
+      respath := realpath (path => cpath, resolvedname => resolved_path);
+      return IC.Strings.Value (respath);
+   end real_path;
+
 end Archive.Unix;

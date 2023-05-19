@@ -11,6 +11,7 @@
 #include <grp.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <limits.h>
 
 #ifndef S_ISUID
 #define S_ISUID 0
@@ -262,6 +263,12 @@ set_fifo_metadata (const char *    path,
   }
 
   return rc;
+}
+
+
+size_t
+maximum_path_length () {
+  return PATH_MAX;
 }
 
 #endif /* __WIN32 */
