@@ -71,13 +71,23 @@ package body Archive.Whitelist is
       features    : Unix.File_Characteristics;
       file_handle : TIO.File_Type;
       succeeded   : Boolean := True;
+      real_top_directory : constant String := Unix.real_path (top_directory);
    begin
-      if top_directory (top_directory'Last) = '/' then
+      if real_top_directory = "" then
          if level >= normal then
-            TIO.Put_Line ("The top directory [" & top_directory & "] can't end with '/'");
+            TIO.Put_Line ("The top directory [" & top_directory &
+                            "] does not resolve to a real path.");
          end if;
          return False;
       end if;
+      features := Unix.get_charactistics (real_top_directory);
+      if features.ftype /= directory then
+         if level >= normal then
+            TIO.Put_Line ("The top directory [" & top_directory & "] is not really a directory.");
+         end if;
+         return False;
+      end if;
+
       features := Unix.get_charactistics (manifest_file);
       if features.error then
          if level >= normal then
@@ -107,14 +117,23 @@ package body Archive.Whitelist is
                end if;
                succeeded := False;
             else
-               insert_succeeded := whitelist.insert_file_into_whitelist
-                 (full_path     => Unix.real_path (top_directory & "/" & line),
-                  real_top_path => Unix.real_path (top_directory),
-                  level         => level);
-
-               if not insert_succeeded then
-                  succeeded := False;
-               end if;
+               declare
+                  true_path : constant String := Unix.real_path (real_top_directory & "/" & line);
+               begin
+                  if true_path = "" then
+                     if level >= normal then
+                        TIO.Put_Line ("Manifest entity [" & line & "] does not exist, ignoring");
+                     end if;
+                  else
+                     insert_succeeded := whitelist.insert_file_into_whitelist
+                       (full_path     => true_path,
+                        real_top_path => real_top_directory,
+                        level         => level);
+                     if not insert_succeeded then
+                        succeeded := False;
+                     end if;
+                  end if;
+               end;
             end if;
          end;
       end loop;

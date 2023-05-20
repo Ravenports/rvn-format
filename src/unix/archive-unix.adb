@@ -510,6 +510,7 @@ package body Archive.Unix is
    function real_path (path : String) return String
    is
       use type IC.size_t;
+      use type IC.Strings.chars_ptr;
 
       cpath : constant IC.char_array := IC.To_C (path);
       path_max : constant IC.size_t := maximum_path_length;
@@ -518,6 +519,9 @@ package body Archive.Unix is
 
    begin
       respath := realpath (path => cpath, resolvedname => resolved_path);
+      if respath = IC.Strings.Null_Ptr then
+         return "";
+      end if;
       return IC.Strings.Value (respath);
    end real_path;
 
