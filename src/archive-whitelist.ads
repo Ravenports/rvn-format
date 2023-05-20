@@ -59,13 +59,21 @@ private
       end record;
 
    --  If the full path is not already in the whitelist, it will be inserted.
-   --  Morever, the directory portion will also be inserted if it hasn't already.
-   --  Returns false if the full_path doesn't point to a real object or if it's actually
-   --  a directory.
+   --  Returns false if the full_path doesn't point to a real object.
    function insert_file_into_whitelist
-     (whitelist : in out A_Whitelist;
-      full_path : String;
-      level     : info_level) return Boolean;
+     (whitelist     : in out A_Whitelist;
+      full_path     : String;
+      real_top_path : String;
+      level         : info_level) return Boolean;
+
+   --  This procedure is only called by `insert_file_into_whitelist`.  It ensures every
+   --  component of the directory tree has an entry.
+   --  The caller ensures dir_path points to a directory.
+   procedure insert_directory_into_whitelist
+     (whitelist     : in out A_Whitelist;
+      dir_path      : String;
+      real_top_path : String;
+      level         : info_level);
 
    --  Head (keep all but last delimiter and field)
    function head (S  : String; delimiter : String) return String;

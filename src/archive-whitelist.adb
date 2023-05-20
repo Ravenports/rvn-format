@@ -108,8 +108,9 @@ package body Archive.Whitelist is
                succeeded := False;
             else
                insert_succeeded := whitelist.insert_file_into_whitelist
-                 (full_path => Unix.real_path (top_directory & "/" & line),
-                  level     => level);
+                 (full_path     => Unix.real_path (top_directory & "/" & line),
+                  real_top_path => Unix.real_path (top_directory),
+                  level         => level);
 
                if not insert_succeeded then
                   succeeded := False;
@@ -128,9 +129,10 @@ package body Archive.Whitelist is
    --  insert_file_into_whitelist  --
    ----------------------------------
    function insert_file_into_whitelist
-     (whitelist : in out A_Whitelist;
-      full_path : String;
-      level     : info_level) return Boolean
+     (whitelist     : in out A_Whitelist;
+      full_path     : String;
+      real_top_path : String;
+      level         : info_level) return Boolean
    is
       file_hash : Blake_3.blake3_hash;
       features  : Unix.File_Characteristics;
@@ -143,36 +145,54 @@ package body Archive.Whitelist is
                return False;
             end if;
          elsif features.ftype = directory then
-            if level >= normal then
-               TIO.Put_Line ("The whitelisted file '" & full_path & "' is actually a directory.");
-               return False;
-            end if;
+            whitelist.insert_directory_into_whitelist (dir_path      => full_path,
+                                                       real_top_path => real_top_path,
+                                                       level         => level);
+            return True;
          else
+            if level >= verbose then
+               TIO.Put_Line ("Adding to whitelist: " & full_path);
+            end if;
             file_hash := Blake_3.digest (full_path);
             whitelist.files.Insert (file_hash, False);
-            if level >= verbose then
-               TIO.Put_Line ("Added to whitelist: " & full_path);
-            end if;
          end if;
       end if;
 
-      --  Now insert the base directory if it hasn't been seen before
-      declare
-         basedir : constant String := head (full_path, "/");
-      begin
-         if basedir /= "" then
-            if not whitelist.file_on_whitelist (basedir) then
-               file_hash := Blake_3.digest (basedir);
-               whitelist.files.Insert (file_hash, True);
-               if level >= debug then
-                  TIO.Put_Line ("Added directory to whitelist: " & basedir);
-               end if;
-            end if;
-         end if;
-      end;
-
+      --  Now insert the file's directory tree
+      whitelist.insert_directory_into_whitelist (dir_path      => head (full_path, "/"),
+                                                 real_top_path => real_top_path,
+                                                 level         => level);
       return True;
    end insert_file_into_whitelist;
+
+
+   ---------------------------------------
+   --  insert_directory_into_whitelist  --
+   ---------------------------------------
+   procedure insert_directory_into_whitelist
+     (whitelist     : in out A_Whitelist;
+      dir_path      : String;
+      real_top_path : String;
+      level         : info_level)
+   is
+      file_hash : Blake_3.blake3_hash;
+   begin
+      if real_top_path = dir_path then
+         --  stop recursion
+         return;
+      end if;
+      if not whitelist.file_on_whitelist (dir_path) then
+         if level >= debug then
+            TIO.Put_Line ("Adding directory to whitelist: " & dir_path);
+         end if;
+         file_hash := Blake_3.digest (dir_path);
+         whitelist.files.Insert (file_hash, True);
+      end if;
+      insert_directory_into_whitelist (whitelist     => whitelist,
+                                       dir_path      => head (dir_path, "/"),
+                                       real_top_path => real_top_path,
+                                       level         => level);
+   end insert_directory_into_whitelist;
 
 
    -------------------
