@@ -101,14 +101,14 @@ package body Archive.Whitelist is
          begin
             if line = "" then
                null;
-            elsif line (line'First) /= '/' then
+            elsif line (line'First) = '/' then
                if level >= normal then
-                  TIO.Put_Line ("Ignore [" & line & "] because it doesn't start with '/'");
+                  TIO.Put_Line ("Ignore [" & line & "] because it starts with '/'");
                end if;
                succeeded := False;
             else
                insert_succeeded := whitelist.insert_file_into_whitelist
-                 (full_path => Unix.real_path (top_directory & line),
+                 (full_path => Unix.real_path (top_directory & "/" & line),
                   level     => level);
 
                if not insert_succeeded then
