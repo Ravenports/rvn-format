@@ -149,7 +149,12 @@ package body Archive.Whitelist is
                                                     level         => level);
          return True;
       else
-         if not whitelist.file_on_whitelist (full_path) then
+         if whitelist.file_on_whitelist (full_path) then
+            if level >= normal then
+               TIO.Put_Line ("Duplicate line discovered: " & full_path);
+            end if;
+            return False;
+         else
             if level >= verbose then
                TIO.Put_Line ("Adding to whitelist: " & full_path);
             end if;
