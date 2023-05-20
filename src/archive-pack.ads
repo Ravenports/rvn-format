@@ -1,8 +1,10 @@
 --  This file is covered by the Internet Software Consortium (ISC) License
 --  Reference: ../License.txt
 
+
 with Ada.Containers.Vectors;
 with Ada.Streams.Stream_IO;
+with Archive.Whitelist;
 
 package Archive.Pack is
 
@@ -15,6 +17,7 @@ package Archive.Pack is
    procedure integrate
      (top_level_directory : String;
       metadata_file       : String;
+      manifest_file       : String;
       output_file         : String;
       verbosity           : info_level);
 
@@ -71,6 +74,7 @@ private
          tmp_size   : zstd_size := 0;
          ndx_size   : zstd_size := 0;
          meta_size  : zstd_size := 0;
+         white_list : Whitelist.A_Whitelist;
          serror     : Boolean := False;
       end record;
 

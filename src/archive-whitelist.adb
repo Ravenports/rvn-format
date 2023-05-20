@@ -32,9 +32,31 @@ package body Archive.Whitelist is
    begin
       file_hash := Blake_3.digest (file_path);
 
-      return whitelist.files.Contains (file_hash);
-
+      if whitelist.files.Contains (file_hash) then
+         --  True on files, False on directories
+         return not whitelist.files.Element (file_hash);
+      end if;
+      return False;
    end file_on_whitelist;
+
+
+   ------------------------------
+   --  directory_on_whitelist  --
+   ------------------------------
+   function directory_on_whitelist
+     (whitelist     : A_Whitelist;
+      file_path     : String) return Boolean
+   is
+      file_hash : Blake_3.blake3_hash;
+   begin
+      file_hash := Blake_3.digest (file_path);
+
+      if whitelist.files.Contains (file_hash) then
+         --  False on files, True on directories
+         return whitelist.files.Element (file_hash);
+      end if;
+      return False;
+   end directory_on_whitelist;
 
 
    ----------------------------
@@ -96,6 +118,7 @@ package body Archive.Whitelist is
          end;
       end loop;
       TIO.Close (file_handle);
+      whitelist.list_used := True;
       return succeeded;
 
    end ingest_file_manifest;
@@ -175,7 +198,7 @@ package body Archive.Whitelist is
    ------------
    --  head  --
    ------------
-   function head (S  : String; delimiter : String) return String
+   function head (S : String; delimiter : String) return String
    is
       dl_size      : constant Natural := delimiter'Length;
       back_marker  : constant Natural := S'First;

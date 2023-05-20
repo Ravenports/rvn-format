@@ -27,10 +27,16 @@ package Archive.Whitelist is
 
 
    --  Returns true if given path has been whitelisted (and therefore needs to be archived).
+   --  If the path is a directory, False is returned
    function file_on_whitelist
      (whitelist     : A_Whitelist;
       file_path     : String) return Boolean;
 
+
+   --  Returns true if given path has been whitelisted and is a directory.
+   function directory_on_whitelist
+     (whitelist     : A_Whitelist;
+      file_path     : String) return Boolean;
 
 private
 
@@ -47,7 +53,7 @@ private
 
    type A_Whitelist is tagged
       record
-         list_used : Boolean;
+         list_used : Boolean := False;
          level     : info_level;
          files     : white_crate.Map;
       end record;

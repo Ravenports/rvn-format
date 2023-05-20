@@ -27,6 +27,7 @@ package body Archive.Pack is
    procedure integrate
      (top_level_directory : String;
       metadata_file       : String;
+      manifest_file       : String;
       output_file         : String;
       verbosity           : info_level)
    is
@@ -34,6 +35,15 @@ package body Archive.Pack is
    begin
       metadata.set_verbosity (verbosity);
       metadata.record_directory (top_level_directory);
+
+      if manifest_file /= "" then
+         if not metadata.white_list.ingest_file_manifest (manifest_file => manifest_file,
+                                                          top_directory => top_level_directory,
+                                                          level         => verbosity)
+         then
+            return;
+         end if;
+      end if;
 
       metadata.initialize_archive_file (output_file);
       metadata.scan_directory (top_level_directory, 0);
@@ -159,7 +169,13 @@ package body Archive.Pack is
                features  : UNX.File_Characteristics;
             begin
                features := UNX.get_charactistics (DIR.Full_Name (item));
-               if features.ftype /= directory then
+               if features.ftype = directory then
+                  if AS.white_list.whitelist_in_use then
+                     if not AS.white_list.directory_on_whitelist (DIR.Full_Name (item)) then
+                        return;
+                     end if;
+                  end if;
+               else
                   return;
                end if;
 
@@ -212,7 +228,12 @@ package body Archive.Pack is
                AS.print
                  (normal, "NOTICE: Unsupported file " & item_path & " ignored.");
                return;
-            when others => null;
+            when others =>
+               if AS.white_list.whitelist_in_use then
+                  if not AS.white_list.file_on_whitelist (item_path) then
+                     return;
+                  end if;
+               end if;
          end case;
 
          declare
