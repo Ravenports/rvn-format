@@ -137,19 +137,19 @@ package body Archive.Whitelist is
       file_hash : Blake_3.blake3_hash;
       features  : Unix.File_Characteristics;
    begin
-      if not whitelist.file_on_whitelist (full_path) then
-         features := Unix.get_charactistics (full_path);
-         if features.error then
-            if level >= normal then
-               TIO.Put_Line ("The whitelisted file '" & full_path & "' does not exist.");
-               return False;
-            end if;
-         elsif features.ftype = directory then
-            whitelist.insert_directory_into_whitelist (dir_path      => full_path,
-                                                       real_top_path => real_top_path,
-                                                       level         => level);
-            return True;
-         else
+      features := Unix.get_charactistics (full_path);
+      if features.error then
+         if level >= normal then
+            TIO.Put_Line ("The whitelisted file '" & full_path & "' does not exist.");
+            return False;
+         end if;
+      elsif features.ftype = directory then
+         whitelist.insert_directory_into_whitelist (dir_path      => full_path,
+                                                    real_top_path => real_top_path,
+                                                    level         => level);
+         return True;
+      else
+         if not whitelist.file_on_whitelist (full_path) then
             if level >= verbose then
                TIO.Put_Line ("Adding to whitelist: " & full_path);
             end if;
@@ -181,7 +181,7 @@ package body Archive.Whitelist is
          --  stop recursion
          return;
       end if;
-      if not whitelist.file_on_whitelist (dir_path) then
+      if not whitelist.directory_on_whitelist (dir_path) then
          if level >= debug then
             TIO.Put_Line ("Adding directory to whitelist: " & dir_path);
          end if;
