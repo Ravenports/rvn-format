@@ -8,7 +8,7 @@ on the RVN library.
 This program constructs a rvn-formatted package.
 The command-line options it accepts:
 
-    packrvn [-v] -r rootdir [-o outdir] [-w whitelist] [-m metadata] filename
+#### packrvn [-v] -r rootdir [-o outdir] [-w whitelist] [-m metadata] filename
 
 ```
     -r rootdir, --root-dir rootdir
@@ -54,11 +54,13 @@ The command-line options it accepts:
 
 Note that only the following file types can be packaged:
 
-    directory
-    regular file
-    symbolic link
-    hard link
-    FIFO special file
+```
+- directory
+- regular file
+- symbolic link
+- hard link
+- FIFO special file
+```
 
 
 ## xrvn
@@ -66,12 +68,14 @@ Note that only the following file types can be packaged:
 This program performs various operations on an rvn-formatted package.
 It can:
 
-    - extract the contents of the package
-    - extract the metadata to a file or standard out
-    - extract the manifest to a file or standard out
-    - extract the manifest with blake3 digest to a file or standard out
+```
+- extract the contents of the package
+- extract the metadata to a file or standard out
+- extract the manifest to a file or standard out
+- extract the manifest with blake3 digest to a file or standard out
+```
 
-    xrvn [-v] [-xml] [-o outdir] filename
+#### xrvn [-v] [-xml] [-o outdir] filename
 
 ```
     -x, --extract
