@@ -105,11 +105,13 @@ is
                      end loop;
                   end;
                else
-                  if not filename_set then
-                     arg_filename := ASU.To_Unbounded_String (this_arg);
-                     filename_set := True;
+                  if next_parameter = waiting then
+                     if not filename_set then
+                        arg_filename := ASU.To_Unbounded_String (this_arg);
+                        filename_set := True;
+                     end if;
+                     --  Subsequent times here will drop the argument
                   end if;
-                  --  Subsequent times here will drop the argument
                end if;
             else
                null;   -- TODO something
