@@ -572,6 +572,53 @@ package body Archive.Unpack is
 
 
    ------------------------------------------------------------------------------------------
+   --  write_manifest_to_file
+   ------------------------------------------------------------------------------------------
+   procedure write_manifest_to_file
+     (DS         : in out DArc;
+      show_b3sum : Boolean := False;
+      filepath   : String)
+   is
+      procedure print (position : file_block_crate.Cursor);
+
+      output_handle : TIO.File_Type;
+
+      procedure print (position : file_block_crate.Cursor)
+      is
+         block : Scanned_File_Block renames file_block_crate.Element (position);
+      begin
+         if block.type_of_file /= directory then
+            declare
+               parent : constant Positive := Positive (block.index_parent);
+               fullpath : constant String := ASU.To_String (DS.folders.Element (parent).directory)
+                 & "/" & trim_trailing_zeros (block.filename);
+            begin
+               if show_b3sum then
+                  TIO.Put_Line (output_handle, Blake_3.hex (block.blake_sum) & " " & fullpath);
+               else
+                  TIO.Put_Line (output_handle, fullpath);
+               end if;
+            end;
+         end if;
+      end print;
+   begin
+      if not DS.processed then
+         DS.retrieve_file_index;
+      end if;
+      begin
+         TIO.Create (File => output_handle,
+                     Mode => TIO.Out_File,
+                     Name => filepath);
+         DS.files.Iterate (print'Access);
+         TIO.Close (output_handle);
+      exception
+         when others =>
+            DS.print (normal, "Encountered error creating " & filepath & " file.");
+      end;
+   end write_manifest_to_file;
+
+
+   ------------------------------------------------------------------------------------------
    --  retrieve_link_target
    ------------------------------------------------------------------------------------------
    function retrieve_link_target (DS : in out DArc; link_len : max_path) return String

@@ -75,7 +75,7 @@ It can:
 - extract the manifest with blake3 digest to a file or standard out
 ```
 
-#### xrvn [-v] [-xml] [-d] [-o outdir] filename
+#### xrvn [-vq] [-xml] [-d] [-t] [-o outdir] filename
 
 ```
     -x, --extract
@@ -112,7 +112,19 @@ It can:
     -v, --verbose
 
         Enable verbose output.  By default, all options that don't write
-        to standard out are silent by default.
+        to standard out are silent by default.  This option is mutually
+        exclusive with -q.
+
+    -q, --quiet
+
+        Disable all output, including error messages.  This option is
+        mutually exclusive with -v.
+
+    -t, --touch
+
+        For extraction mode (-x) only.  When --touch is in effect, the
+        file modification times are left as the current time rather than
+        setting them to the modification time stored in the archive.
 
     The filename argument is required.  It is the file being checked by xrvn.
 ```

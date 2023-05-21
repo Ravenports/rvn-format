@@ -68,10 +68,15 @@ package Archive.Unix is
    --  references to /./ and /../ in path and returns the result
    function real_path (path : String) return String;
 
+   --  Returns true if the user running the program is root.
+   function user_is_root return Boolean;
+
 private
 
    function success (rc : IC.int) return Boolean;
    function failure (rc : IC.int) return Boolean;
+
+   type uid_t is new Integer;
 
    type stat_block is array (1 .. 256) of IC.unsigned_char;
    type struct_stat is limited
@@ -151,6 +156,9 @@ private
      (path : IC.char_array;
       resolvedname : out IC.char_array) return IC.Strings.chars_ptr;
    pragma Import (C, realpath);
+
+   function geteuid return uid_t;
+   pragma Import (C, geteuid, "geteuid");
 
    function maximum_path_length return IC.size_t;
    pragma Import (C, maximum_path_length);

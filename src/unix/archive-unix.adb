@@ -525,4 +525,16 @@ package body Archive.Unix is
       return IC.Strings.Value (respath);
    end real_path;
 
+
+   --------------------------------------------------------------------------------------------
+   --  user_is_root
+   --------------------------------------------------------------------------------------------
+   function user_is_root return Boolean
+   is
+      myuid : uid_t;
+   begin
+      myuid := geteuid;
+      return (myuid = 0);
+   end user_is_root;
+
 end Archive.Unix;
