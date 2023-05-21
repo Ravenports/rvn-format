@@ -8,5 +8,7 @@ project Rvnprogs is
       for Switches ("ada") use ("-lzstd_pic", "-lblake3_pic");
    end Linker;
 
+   for Languages use ("Ada", "C");
+
 end Rvnprogs;
 
