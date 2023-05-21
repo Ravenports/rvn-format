@@ -82,6 +82,9 @@ is
                               when 'd' => opt_digest := True;
                               when 'q' => opt_quiet := True;
                               when 't' => opt_touch := True;
+                              when 'x' => opt_extract := True;
+                              when 'm' => opt_metadata := True;
+                              when 'l' => opt_manifest := True;
                               when 'o' =>
                                  case this_arg (single) is
                                     when 'o' => opt_outdir := True;
