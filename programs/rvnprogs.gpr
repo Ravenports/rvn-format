@@ -1,0 +1,8 @@
+project Rvnprogs is
+
+   for Source_Dirs use ("src", "../getopt-ada/**");
+   for Object_Dir use "obj";
+   for Main use ("xrvn.adb");
+
+end Rvnprogs;
+

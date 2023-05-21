@@ -75,7 +75,7 @@ It can:
 - extract the manifest with blake3 digest to a file or standard out
 ```
 
-#### xrvn [-v] [-xml] [-o outdir] filename
+#### xrvn [-v] [-xml] [-d] [-o outdir] filename
 
 ```
     -x, --extract
