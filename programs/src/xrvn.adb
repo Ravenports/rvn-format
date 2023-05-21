@@ -17,6 +17,7 @@ is
    procedure usage (error_msg : String);
    procedure error (error_msg : String);
    function extraction_directory return String;
+   function tail (S : String; delimiter : String) return String;
 
    opt_verbose  : Boolean := False;
    opt_quiet    : Boolean := False;
@@ -151,6 +152,25 @@ is
          return ".";
       end if;
    end;
+
+   function tail (S : String; delimiter : String) return String
+   is
+      dl_size      : constant Natural := delimiter'Length;
+      back_marker  : constant Natural := S'First;
+      front_marker : Natural := S'Last - dl_size + 1;
+   begin
+      loop
+         if front_marker < back_marker then
+            --  delimiter never found
+            return S;
+         end if;
+         if S (front_marker .. front_marker + dl_size - 1) = delimiter then
+            return S (front_marker + dl_size .. S'Last);
+         end if;
+         front_marker := front_marker - 1;
+      end loop;
+   end tail;
+
 begin
    process_arguments;
    declare
@@ -206,7 +226,8 @@ begin
 
    declare
       filename  : constant String := ASU.To_String (arg_filename);
-      outputdir : constant String := ASU.To_String (arg_outdir);
+      outputdir : constant String := Archive.Unix.real_path (ASU.To_String (arg_outdir));
+      basename  : constant String := tail (Archive.Unix.real_path (filename), "/");
       operation : Archive.Unpack.Darc;
       level     : Archive.info_level := Archive.normal;
    begin
@@ -231,7 +252,7 @@ begin
       if opt_manifest then
          if opt_outdir then
             declare
-               target : constant String := outputdir & "/" & filename & ".manfest";
+               target : constant String := outputdir & "/" & basename & ".manfest";
             begin
                operation.write_manifest_to_file (opt_digest, target);
             end;
@@ -241,7 +262,7 @@ begin
       elsif opt_metadata then
          if opt_outdir then
             declare
-               target : constant String := outputdir & "/" & filename & ".metadata";
+               target : constant String := outputdir & "/" & basename & ".metadata";
             begin
                operation.write_metadata_to_file (target);
             end;
