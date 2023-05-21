@@ -27,15 +27,12 @@ is
    opt_outdir   : Boolean := False;
    opt_touch    : Boolean := False;
    filename_set : Boolean := False;
-   arg_extract  : text;
-   arg_metadata : text;
-   arg_manifest : text;
    arg_outdir   : text;
    arg_filename : text;
 
    procedure process_arguments
    is
-      type compound is (waiting, extract, metadata, manifest, outdir);
+      type compound is (waiting, outdir);
       argx : Natural := 0;
       next_parameter : compound := waiting;
 
@@ -49,9 +46,6 @@ is
          begin
             case next_parameter is
                when waiting  => continue := True;
-               when extract  => arg_extract  := ASU.To_Unbounded_String (this_arg);
-               when metadata => arg_metadata := ASU.To_Unbounded_String (this_arg);
-               when manifest => arg_manifest := ASU.To_Unbounded_String (this_arg);
                when outdir   => arg_outdir   := ASU.To_Unbounded_String (this_arg);
             end case;
             next_parameter := waiting;
@@ -60,13 +54,10 @@ is
                   if this_arg (this_arg'First .. this_arg'First + 1) = "--" then
                      if this_arg = "--extract" then
                         opt_extract := True;
-                        next_parameter := extract;
                      elsif this_arg = "--metadata" then
                         opt_metadata := True;
-                        next_parameter := metadata;
                      elsif this_arg = "--list-manifest" then
                         opt_manifest := True;
-                        next_parameter := manifest;
                      elsif this_arg = "--out-dir" then
                         opt_outdir := True;
                         next_parameter := outdir;
@@ -91,19 +82,13 @@ is
                               when 'd' => opt_digest := True;
                               when 'q' => opt_quiet := True;
                               when 't' => opt_touch := True;
-                              when 'x' | 'm' | 'l' | 'o' =>
+                              when 'o' =>
                                  case this_arg (single) is
-                                    when 'x' => opt_extract := True;
-                                    when 'm' => opt_metadata := True;
-                                    when 'l' => opt_manifest := True;
                                     when 'o' => opt_outdir := True;
                                     when others => null;
                                  end case;
                                  if single = this_arg'Last then
                                     case this_arg (single) is
-                                       when 'x' => next_parameter := extract;
-                                       when 'm' => next_parameter := metadata;
-                                       when 'l' => next_parameter := manifest;
                                        when 'o' => next_parameter := outdir;
                                        when others => null;
                                     end case;
@@ -113,9 +98,6 @@ is
                                          (this_arg (single + 1 .. this_arg'Last));
                                     begin
                                        case this_arg (single) is
-                                       when 'x' => arg_extract  := remainder;
-                                       when 'm' => arg_metadata := remainder;
-                                       when 'l' => arg_manifest := remainder;
                                        when 'o' => arg_outdir   := remainder;
                                        when others => null;
                                        end case;
@@ -148,7 +130,7 @@ is
    procedure usage (error_msg : String) is
    begin
       TIO.Put_Line (error_msg);
-      TIO.Put_Line ("xrvn [-vq] [-xml] [-d] [-o outdir] filename");
+      TIO.Put_Line ("xrvn [-vq] [-xml] [-d] [-t] [-o outdir] filename");
    end usage;
 
    procedure error (error_msg : String) is
