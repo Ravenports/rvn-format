@@ -15,5 +15,11 @@ library project Rvn_Format is
       for Vcs_Kind use "git";
    end Ide;
 
+   package Linker is
+      for Linker_Options use ("-L/raven/lib", "-lblake3_pic", "-lzstd_pic");
+   end Linker;
+
+   for Externally_Built use "True";
+
 end Rvn_Format;
 
