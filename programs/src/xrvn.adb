@@ -252,7 +252,7 @@ begin
       if opt_manifest then
          if opt_outdir then
             declare
-               target : constant String := outputdir & "/" & basename & ".manfest";
+               target : constant String := outputdir & "/" & basename & ".manifest";
             begin
                operation.write_manifest_to_file (opt_digest, target);
             end;
