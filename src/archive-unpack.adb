@@ -940,7 +940,6 @@ package body Archive.Unpack is
                                      data_length  => Natural (DS.header.size_archive),
                                      successful   => decomp_worked));
             DS.print (debug, "One shot archive decompression successful : " & decomp_worked'Img);
-            DS.print (verbose, "Extracted " & file_path & " file");
          end if;
          DS.buf_remain := ASU.Length (DS.buffer);
          DS.rolled_up := False;
@@ -958,6 +957,7 @@ package body Archive.Unpack is
                                      contents    => ASU.Slice (Source => DS.buffer,
                                                                Low    => DS.buf_arrow,
                                                                High   => high));
+            DS.print (verbose, "Extracted " & file_path & " file");
             DS.buf_remain := DS.buf_remain - Natural (file_len);
             DS.buf_arrow := high + 1;
          end;
