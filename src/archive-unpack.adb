@@ -866,7 +866,7 @@ package body Archive.Unpack is
             fifo_perms := rwx_filter (perms);
          end if;
          if Unix.create_fifo (fifo_path, fifo_perms) then
-            DS.print (verbose, "Created fifo file " & fifo_path);
+            DS.print (verbose, "Extracted " & fifo_path & " FIFO");
          else
             DS.print (normal, "Failed to create fifo file " & fifo_path);
             good_extraction := False;
@@ -940,6 +940,7 @@ package body Archive.Unpack is
                                      data_length  => Natural (DS.header.size_archive),
                                      successful   => decomp_worked));
             DS.print (debug, "One shot archive decompression successful : " & decomp_worked'Img);
+            DS.print (verbose, "Extracted " & file_path & " file");
          end if;
          DS.buf_remain := ASU.Length (DS.buffer);
          DS.rolled_up := False;
@@ -1036,7 +1037,7 @@ package body Archive.Unpack is
                                                                 High   => high));
                   DS.print (debug, "Last chunk of file written, chars:" & left_to_write'Img);
                   SIO.Close (new_file);
-                  DS.print (debug, "Successful assembly of " & file_path);
+                  DS.print (verbose, "Extracted " & file_path & " file");
                   DS.buf_remain := DS.buf_remain - Natural (left_to_write);
                   left_to_write := 0;
                   DS.buf_arrow  := high + 1;
