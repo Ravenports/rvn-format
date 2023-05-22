@@ -785,7 +785,7 @@ package body Archive.Unpack is
             end case;
          end if;
          DIR.Create_Directory (New_Directory => full_path);
-         DS.print (verbose, "Extracted " & full_path & " directory");
+         DS.print (verbose, "Extracted [D] " & full_path);
       exception
          when DIR.Use_Error =>
             DS.print (normal, "Extract/create " & full_path & " directory unsupported");
