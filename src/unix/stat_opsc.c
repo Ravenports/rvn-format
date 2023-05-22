@@ -271,4 +271,9 @@ maximum_path_length () {
   return PATH_MAX;
 }
 
+int
+writable_access (const char * path) {
+  return access (path, W_OK);
+}
+
 #endif /* __WIN32 */

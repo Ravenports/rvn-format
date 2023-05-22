@@ -71,6 +71,9 @@ package Archive.Unix is
    --  Returns true if the user running the program is root.
    function user_is_root return Boolean;
 
+   --  Returns true if the user can write to the file (or directory)
+   function file_is_writable (path : String) return Boolean;
+
 private
 
    function success (rc : IC.int) return Boolean;
@@ -158,7 +161,10 @@ private
    pragma Import (C, realpath);
 
    function geteuid return uid_t;
-   pragma Import (C, geteuid, "geteuid");
+   pragma Import (C, geteuid);
+
+   function writable_access (path : IC.char_array) return IC.int;
+   pragma Import (C, writable_access);
 
    function maximum_path_length return IC.size_t;
    pragma Import (C, maximum_path_length);

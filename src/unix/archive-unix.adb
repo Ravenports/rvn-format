@@ -537,4 +537,21 @@ package body Archive.Unix is
       return (myuid = 0);
    end user_is_root;
 
+
+   --------------------------------------------------------------------------------------------
+   --  file_is_writable
+   --------------------------------------------------------------------------------------------
+   function file_is_writable (path : String) return Boolean
+   is
+      use type IC.int;
+
+      cpath : constant IC.char_array := IC.To_C (path);
+      rc : IC.int;
+   begin
+      rc := writable_access (cpath);
+
+      return (rc = 0);
+   end file_is_writable;
+
+
 end Archive.Unix;

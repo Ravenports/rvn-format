@@ -887,6 +887,11 @@ package body Archive.Unpack is
 
       use type SIO.Count;
    begin
+      if not Unix.file_is_writable (top_directory) then
+         DS.print (normal, "You do not have permission to write to " & top_directory);
+         return False;
+      end if;
+
       if not DS.processed then
          DS.retrieve_file_index;
       end if;
