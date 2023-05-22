@@ -998,10 +998,14 @@ package body Archive.Unpack is
 
          begin
             if DIR.Exists (file_path) then
-               if Unix.file_is_writable (file_path) then
-                  DIR.Delete_File (file_path);
-               else
-                  DS.print (normal, "File " & file_path & " already exists, but can't be erased.");
+               if not Unix.file_is_writable (file_path) then
+                  --  attempt to set the write permissions
+                  DS.print (verbose, file_path & " exists but can't be overwritten.");
+                  if Unix.change_mode (file_path, 2#111_111_111#) then
+                     DS.print (verbose, "Mode change to 0777 successful");
+                  else
+                     DS.print (verbose, "Mode change to 0777 failed.");
+                  end if;
                end if;
             end if;
             SIO.Create (File => new_file,
