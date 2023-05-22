@@ -831,13 +831,7 @@ package body Archive.Unpack is
       is
          source : constant String := top_directory & "/" & DS.retrieve_link_target (link_len);
       begin
-         if DIR.Exists (duplicate) then
-            begin
-               DIR.Delete_Tree (duplicate);
-            exception
-               when others => null;
-            end;
-         end if;
+         DS.prepare_for_overwrite (duplicate);
          if Unix.create_hardlink (actual_file => source,
                                   destination => duplicate)
          then
@@ -997,17 +991,7 @@ package body Archive.Unpack is
             end append_target_file;
 
          begin
-            if DIR.Exists (file_path) then
-               if not Unix.file_is_writable (file_path) then
-                  --  attempt to set the write permissions
-                  DS.print (verbose, file_path & " exists but can't be overwritten.");
-                  if Unix.change_mode (file_path, 2#111_111_111#) then
-                     DS.print (verbose, "Mode change to 0777 successful");
-                  else
-                     DS.print (verbose, "Mode change to 0777 failed.");
-                  end if;
-               end if;
-            end if;
+            DS.prepare_for_overwrite (file_path);
             SIO.Create (File => new_file,
                         Mode => SIO.Out_File,
                         Name => file_path);
@@ -1079,5 +1063,24 @@ package body Archive.Unpack is
 
       end if;
    end extract_regular_file;
+
+
+   ------------------------------------------------------------------------------------------
+   --  prepare_for_overwrite
+   ------------------------------------------------------------------------------------------
+   procedure prepare_for_overwrite (DS : DArc; file_path : String) is
+   begin
+      if DIR.Exists (file_path) then
+         if not Unix.file_is_writable (file_path) then
+            --  attempt to set the write permissions
+            DS.print (verbose, file_path & " exists but is currently unwritable.");
+            if Unix.change_mode (file_path, 2#111_111_111#) then
+               DS.print (verbose, "Mode change to 0777 successful");
+            else
+               DS.print (verbose, "Mode change to 0777 failed.");
+            end if;
+         end if;
+      end if;
+   end prepare_for_overwrite;
 
 end Archive.Unpack;

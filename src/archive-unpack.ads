@@ -182,4 +182,8 @@ private
    --  This procedure handles the extraction of files from the compressed archive
    procedure extract_regular_file (DS : in out DArc; file_path : String; file_len : size_type);
 
+   --  This procedure checks if file exists.  If it does, it checks if it's writable by
+   --  the current user.  If it's not, it attempts to change mode to make it so.
+   procedure prepare_for_overwrite (DS : DArc; file_path : String);
+
 end Archive.Unpack;
