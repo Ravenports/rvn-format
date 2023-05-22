@@ -997,6 +997,13 @@ package body Archive.Unpack is
             end append_target_file;
 
          begin
+            if DIR.Exists (file_path) then
+               if Unix.file_is_writable (file_path) then
+                  DIR.Delete_File (file_path);
+               else
+                  DS.print (normal, "File " & file_path & " already exists, but can't be erased.");
+               end if;
+            end if;
             SIO.Create (File => new_file,
                         Mode => SIO.Out_File,
                         Name => file_path);
