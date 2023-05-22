@@ -820,7 +820,7 @@ package body Archive.Unpack is
          if Unix.create_symlink (actual_file    => link_target,
                                  link_to_create => link_path)
          then
-            DS.print (verbose, "Extracted symlink " & link_path & " => " & link_target);
+            DS.print (verbose, "Extracted [S] " & link_path & " => " & link_target);
          else
             DS.print (normal, "Failed to extract symlink " & link_path & " => " & link_target);
             good_extraction := False;
@@ -841,7 +841,7 @@ package body Archive.Unpack is
          if Unix.create_hardlink (actual_file => source,
                                   destination => duplicate)
          then
-            DS.print (verbose, "Extracted hardlink " & duplicate & " => " & source);
+            DS.print (verbose, "Extracted [H] " & duplicate & " => " & source);
          else
             DS.print (normal, "Failed to extract hardlink " & duplicate & " => " & source);
             good_extraction := False;
@@ -866,7 +866,7 @@ package body Archive.Unpack is
             fifo_perms := rwx_filter (perms);
          end if;
          if Unix.create_fifo (fifo_path, fifo_perms) then
-            DS.print (verbose, "Extracted " & fifo_path & " FIFO");
+            DS.print (verbose, "Extracted [F] " & fifo_path);
          else
             DS.print (normal, "Failed to create fifo file " & fifo_path);
             good_extraction := False;
@@ -957,7 +957,7 @@ package body Archive.Unpack is
                                      contents    => ASU.Slice (Source => DS.buffer,
                                                                Low    => DS.buf_arrow,
                                                                High   => high));
-            DS.print (verbose, "Extracted " & file_path & " file");
+            DS.print (verbose, "Extracted [R] " & file_path);
             DS.buf_remain := DS.buf_remain - Natural (file_len);
             DS.buf_arrow := high + 1;
          end;
@@ -1037,7 +1037,7 @@ package body Archive.Unpack is
                                                                 High   => high));
                   DS.print (debug, "Last chunk of file written, chars:" & left_to_write'Img);
                   SIO.Close (new_file);
-                  DS.print (verbose, "Extracted " & file_path & " file");
+                  DS.print (verbose, "Extracted [R] " & file_path);
                   DS.buf_remain := DS.buf_remain - Natural (left_to_write);
                   left_to_write := 0;
                   DS.buf_arrow  := high + 1;
