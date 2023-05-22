@@ -1076,6 +1076,12 @@ package body Archive.Unpack is
             DS.print (verbose, file_path & " exists but is currently unwritable.");
             if Unix.change_mode (file_path, 2#111_111_111#) then
                DS.print (verbose, "Mode change to 0777 successful");
+               begin
+                  DIR.Delete_File (file_path);
+               exception
+                  when others =>
+                     DS.print (verbose, "Failed to delete " & file_path);
+               end;
             else
                DS.print (verbose, "Mode change to 0777 failed.");
             end if;
