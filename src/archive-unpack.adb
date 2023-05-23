@@ -560,14 +560,14 @@ package body Archive.Unpack is
                else
                   DS.print (normal, fullpath);
                end if;
-            exception
-               when Constraint_Error =>
-                  DS.print (normal, "CORRUPTION");
-                  DS.print (normal, "Filename    : " & trim_trailing_zeros (block.filename));
-                  DS.print (normal, "index_parent: " & block.index_parent'Img);
-                  DS.print (normal, "file type   : " & block.type_of_file'Img);
             end;
          end if;
+      exception
+         when Constraint_Error =>
+            DS.print (normal, "CORRUPTION");
+            DS.print (normal, "Filename    : " & trim_trailing_zeros (block.filename));
+            DS.print (normal, "index_parent: " & block.index_parent'Img);
+            DS.print (normal, "file type   : " & block.type_of_file'Img);
       end print;
    begin
       if not DS.processed then
