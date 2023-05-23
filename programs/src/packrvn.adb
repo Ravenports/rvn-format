@@ -245,17 +245,16 @@ is
    function rvn_file return String
    is
       filename  : constant String := ASU.To_String (arg_filename);
-      basename  : constant String := tail (Archive.Unix.real_path (filename), "/");
+      fname     : constant String := tail (filename, "/");
       out_level : constant String := Archive.Unix.real_path (creation_directory);
       extension : constant String := ".rvn";
-      bsindex   : constant Natural := basename'Last - extension'Length - 1;
    begin
-      if basename'Length > extension'Length and then
-        HAN.To_Lower (basename (bsindex .. basename'Last)) = extension
+      if fname'Length > extension'Length and then
+        HAN.To_Lower (fname (fname'Last - extension'Length - 1 .. fname'Last)) = extension
       then
-         return out_level & "/" & basename;
+         return out_level & "/" & fname;
       end if;
-      return out_level & "/" & basename & extension;
+      return out_level & "/" & fname & extension;
    end rvn_file;
 
 begin
