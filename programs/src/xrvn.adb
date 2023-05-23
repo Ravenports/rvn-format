@@ -102,8 +102,8 @@ is
                                          (this_arg (single + 1 .. this_arg'Last));
                                     begin
                                        case this_arg (single) is
-                                       when 'o' => arg_outdir   := remainder;
-                                       when others => null;
+                                          when 'o' => arg_outdir   := remainder;
+                                          when others => null;
                                        end case;
                                     end;
                                     single := this_arg'Last;
@@ -151,7 +151,7 @@ is
       else
          return ".";
       end if;
-   end;
+   end extraction_directory;
 
    function tail (S : String; delimiter : String) return String
    is
@@ -280,6 +280,11 @@ begin
                                                   set_owners    => set_owners,
                                                   set_perms     => set_perms,
                                                   set_modtime   => set_modtime);
+            if not success then
+               if not opt_quiet then
+                  TIO.Put_Line ("Extraction did not fully succeed.");
+               end if;
+            end if;
          end;
       else
          TIO.Put_Line ("programming error - fallthrough can't happen.");

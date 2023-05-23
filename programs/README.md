@@ -8,7 +8,7 @@ on the RVN library.
 This program constructs a rvn-formatted package.
 The command-line options it accepts:
 
-#### packrvn [-v] -r rootdir [-o outdir] [-w whitelist] [-m metadata] filename
+#### packrvn [-vq] -r rootdir [-o outdir] [-w whitelist] [-m metadata] filename
 
 ```
     -r rootdir, --root-dir rootdir
@@ -46,6 +46,11 @@ The command-line options it accepts:
 
         Enable verbose output.  By default, creating a package is a silent
         operation.
+
+    -q, --quiet
+
+        Disable all output, including error messages.  This option is
+        mutually exclusive with -v.
 
     The filename argument is required.  This is the name of the created
     package file.  If filename does not end with the ".rvn" extension,
