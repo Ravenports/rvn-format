@@ -547,13 +547,24 @@ package body Archive.Unpack is
       procedure print (position : file_block_crate.Cursor);
       procedure print (position : file_block_crate.Cursor)
       is
+         function get_fullpath (index_parent : index_type; fname : A_filename) return String;
+
          block : Scanned_File_Block renames file_block_crate.Element (position);
+
+         function get_fullpath (index_parent : index_type; fname : A_filename) return String
+         is
+            parent   : constant Natural := Natural (index_parent);
+            filename : constant String := trim_trailing_zeros (fname);
+         begin
+            if parent = 0 then
+               return filename;
+            end if;
+            return ASU.To_String (DS.folders.Element (parent).directory) & "/" & filename;
+         end get_fullpath;
       begin
          if block.type_of_file /= directory then
             declare
-               parent : constant Natural := Natural (block.index_parent);
-               fullpath : constant String := ASU.To_String (DS.folders.Element (parent).directory)
-                 & "/" & trim_trailing_zeros (block.filename);
+               fullpath : constant String := get_fullpath (block.index_parent, block.filename);
             begin
                if show_b3sum then
                   DS.print (normal, Blake_3.hex (block.blake_sum) & " " & fullpath);
