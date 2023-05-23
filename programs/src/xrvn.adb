@@ -230,6 +230,7 @@ begin
       basename  : constant String := tail (Archive.Unix.real_path (filename), "/");
       operation : Archive.Unpack.Darc;
       level     : Archive.info_level := Archive.normal;
+      exitcode  : CLI.Exit_Status := 0;
    begin
       if not DIR.Exists (filename) then
          error ("The rvn archive (" & filename & ") does not exist.");
@@ -284,6 +285,7 @@ begin
                if not opt_quiet then
                   TIO.Put_Line ("Extraction did not fully succeed.");
                end if;
+               exitcode := CLI.Exit_Status (-1);
             end if;
          end;
       else
@@ -291,6 +293,7 @@ begin
       end if;
 
       operation.close_rvn_archive;
+      CLI.Set_Exit_Status (exitcode);
    end;
 end Xrvn;
 
