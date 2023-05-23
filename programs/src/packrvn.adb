@@ -287,6 +287,7 @@ begin
    declare
       top_level : constant String := Archive.Unix.real_path (ASU.To_String (arg_rootdir));
       level     : Archive.info_level := Archive.normal;
+      exitcode  : CLI.Exit_Status := 0;
    begin
       if opt_verbose then
          level := Archive.verbose;
@@ -294,11 +295,16 @@ begin
          level := Archive.silent;
       end if;
 
-      Archive.Pack.integrate (top_level_directory => top_level,
-                              metadata_file       => ASU.To_String (arg_metadata),
-                              manifest_file       => ASU.To_String (arg_whitelist),
-                              output_file         => rvn_file,
-                              verbosity           => level);
+      if not Archive.Pack.integrate (top_level_directory => top_level,
+                                     metadata_file       => ASU.To_String (arg_metadata),
+                                     manifest_file       => ASU.To_String (arg_whitelist),
+                                     output_file         => rvn_file,
+                                     verbosity           => level)
+      then
+         error ("Archive creation failed.");
+         exitcode := CLI.Exit_Status (-1);
+      end if;
+      CLI.Set_Exit_Status (exitcode);
    end;
 
 end Packrvn;

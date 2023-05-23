@@ -24,24 +24,28 @@ package body Archive.Pack is
    ------------------------------------------------------------------------------------------
    --  integrate
    ------------------------------------------------------------------------------------------
-   procedure integrate
+   function integrate
      (top_level_directory : String;
       metadata_file       : String;
       manifest_file       : String;
       output_file         : String;
-      verbosity           : info_level)
+      verbosity           : info_level) return Boolean
    is
       metadata : Arc_Structure;
    begin
       metadata.set_verbosity (verbosity);
       metadata.record_directory (top_level_directory);
 
+      if not metadata.able_to_write_rvn_archive (output_file) then
+         return False;
+      end if;
+
       if manifest_file /= "" then
          if not metadata.white_list.ingest_file_manifest (manifest_file => manifest_file,
                                                           top_directory => top_level_directory,
                                                           level         => verbosity)
          then
-            return;
+            return False;
          end if;
       end if;
 
@@ -51,7 +55,7 @@ package body Archive.Pack is
 
       if metadata.serror then
          metadata.remove_archive_file (output_file);
-         return;
+         return False;
       end if;
 
       metadata.initialize_index_file (output_file);
@@ -68,6 +72,7 @@ package body Archive.Pack is
 
       metadata.remove_index_file (output_file);
       metadata.remove_archive_file (output_file);
+      return True;
    end integrate;
 
 
@@ -820,5 +825,43 @@ package body Archive.Pack is
       end if;
       return full_string;
    end trim_trailing_zeros;
+
+
+   ------------------------------------------------------------------------------------------
+   --  trim_trailing_zeros
+   ------------------------------------------------------------------------------------------
+   function able_to_write_rvn_archive
+     (AS : Arc_Structure;
+      output_file_path : String) return Boolean
+   is
+      function parent_dir return String;
+      function parent_dir return String
+      is
+         S : String renames output_file_path;
+
+         back_marker  : constant Natural := S'First;
+         front_marker : Natural := S'Last;
+      begin
+         loop
+            if front_marker < back_marker then
+               --  delimiter never found
+               return ".";
+            end if;
+            if S (front_marker) = '/' then
+               return S (back_marker .. front_marker - 1);
+            end if;
+            front_marker := front_marker - 1;
+         end loop;
+      end parent_dir;
+
+      out_dir : constant String := parent_dir;
+      dir_is_writable : Boolean;
+   begin
+      dir_is_writable := Unix.file_is_writable (out_dir);
+      if not dir_is_writable then
+         AS.print (normal, "You do not have permission to write to " & out_dir & " directory.");
+      end if;
+      return dir_is_writable;
+   end able_to_write_rvn_archive;
 
 end Archive.Pack;

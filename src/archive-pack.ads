@@ -14,12 +14,12 @@ package Archive.Pack is
    --  Assemble contents of directory tree into a single file.
    --  Special files like character devices and block devices are excluded.
 
-   procedure integrate
+   function integrate
      (top_level_directory : String;
       metadata_file       : String;
       manifest_file       : String;
       output_file         : String;
-      verbosity           : info_level);
+      verbosity           : info_level) return Boolean;
 
 private
 
@@ -161,5 +161,10 @@ private
 
    --  Cut out trailing characters set to zero and return as a trimmed string
    function trim_trailing_zeros (full_string : String) return String;
+
+   --  Returns false if the part of output_file_path is not writable
+   function able_to_write_rvn_archive
+     (AS : Arc_Structure;
+      output_file_path : String) return Boolean;
 
 end Archive.Pack;
