@@ -551,7 +551,7 @@ package body Archive.Unpack is
       begin
          if block.type_of_file /= directory then
             declare
-               parent : constant Positive := Positive (block.index_parent);
+               parent : constant Natural := Natural (block.index_parent);
                fullpath : constant String := ASU.To_String (DS.folders.Element (parent).directory)
                  & "/" & trim_trailing_zeros (block.filename);
             begin
