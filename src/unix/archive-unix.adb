@@ -554,4 +554,92 @@ package body Archive.Unix is
    end file_is_writable;
 
 
+   --------------------------------------------------------------------------------------------
+   --  uid_on_exec_bit_set
+   --------------------------------------------------------------------------------------------
+   function uid_on_exec_bit_set (perms : permissions) return Boolean
+   is
+      use type IC.short;
+      res : constant IC.short := cuid_on_exec_bit_set (IC.short (perms));
+   begin
+      return (res > 0);
+   end uid_on_exec_bit_set;
+
+
+   --------------------------------------------------------------------------------------------
+   --  gid_on_exec_bit_set
+   --------------------------------------------------------------------------------------------
+   function gid_on_exec_bit_set (perms : permissions) return Boolean
+   is
+      use type IC.short;
+      res : constant IC.short := cgid_on_exec_bit_set (IC.short (perms));
+   begin
+      return (res > 0);
+   end gid_on_exec_bit_set;
+
+
+   --------------------------------------------------------------------------------------------
+   --  sticky_bit_set
+   --------------------------------------------------------------------------------------------
+   function sticky_bit_set (perms : permissions) return Boolean
+   is
+      use type IC.short;
+      res : constant IC.short := csticky_bit_set (IC.short (perms));
+   begin
+      return (res > 0);
+   end sticky_bit_set;
+
+
+   --------------------------------------------------------------------------------------------
+   --  display_permissions
+   --------------------------------------------------------------------------------------------
+   function display_permissions (perms : permissions) return String
+   is
+      --                             UUUGGGOOO
+      all_set : constant String := "rwxrwxrwx";
+      result  : String := "---------";
+      mask    : permissions;
+      bpos    : Natural := 8;
+      rpos    : Natural := result'First;
+   begin
+      for x in all_set'Range loop
+         mask := 2 ** bpos;
+         bpos := bpos - 1;
+         if (perms and mask) > 0 then
+            result (rpos) := all_set (x);
+         end if;
+         rpos := rpos + 1;
+      end loop;
+
+      if uid_on_exec_bit_set (perms) then
+         mask := 2 ** 6;
+         if (perms and mask) > 0 then
+            result (result'First + 2) := 's';
+         else
+            result (result'First + 2) := 'S';
+         end if;
+      end if;
+
+      if gid_on_exec_bit_set (perms) then
+         mask := 2 ** 3;
+         if (perms and mask) > 0 then
+            result (result'First + 5) := 's';
+         else
+            result (result'First + 5) := 'S';
+         end if;
+      end if;
+
+      if sticky_bit_set (perms) then
+         mask := 2 ** 0;
+         if (perms and mask) > 0 then
+            result (result'First + 8) := 't';
+         else
+            result (result'First + 8) := 'T';
+         end if;
+      end if;
+
+      return result;
+   end display_permissions;
+
+
 end Archive.Unix;

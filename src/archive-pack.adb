@@ -864,4 +864,56 @@ package body Archive.Pack is
       return dir_is_writable;
    end able_to_write_rvn_archive;
 
+
+   ------------------------------------------------------------------------------------------
+   --  verbose_display_owngrp
+   ------------------------------------------------------------------------------------------
+   function verbose_display_owngrp (owngrp : ownergroup) return String
+   is
+      name   : constant String := trim_trailing_zeros (owngrp);
+      result : String (1 .. 9) := (others => ' ');
+   begin
+      if name'Length > 8 then
+         result := name (name'First .. name'First + 6) & "* ";
+      else
+         result (result'First .. result'First + result'Length - 1) := name;
+      end if;
+      return result;
+   end verbose_display_owngrp;
+
+
+   ------------------------------------------------------------------------------------------
+   --  verbose_display_filesize
+   ------------------------------------------------------------------------------------------
+   function verbose_display_filesize (fsize : size_type) return String
+   is
+      result : String (1 .. 9) := (others => ' ');
+   begin
+      if fsize < 100_000_000 then
+         declare
+            myimage : constant String := fsize'Img;
+         begin
+            result (result'Last - myimage'Length + 1 .. result'Last - 1) :=
+              myimage (myimage'First + 1 .. myimage'Last);
+         end;
+      elsif fsize < 10_000_000_000 then
+         declare
+            basenum : constant Natural := Natural (fsize / 1_000_000);
+            myimage : constant String := basenum'Img;
+         begin
+            result (result'Last - myimage'Length -1 .. result'Last - 1) :=
+              myimage (myimage'First + 1 .. myimage'Last) & "M+";
+         end;
+      else
+         declare
+            basenum : constant Natural := Natural (fsize / 1_000_000_000);
+            myimage : constant String := basenum'Img;
+         begin
+            result (result'Last - myimage'Length -1 .. result'Last - 1) :=
+              myimage (myimage'First + 1 .. myimage'Last) & "G+";
+         end;
+      end if;
+      return result;
+   end verbose_display_filesize;
+
 end Archive.Pack;

@@ -74,6 +74,15 @@ package Archive.Unix is
    --  Returns true if the user can write to the file (or directory)
    function file_is_writable (path : String) return Boolean;
 
+   --  Returns true if the setuid on exec bit is set
+   function uid_on_exec_bit_set (perms : permissions) return Boolean;
+
+   --  Returns true if the setgid on exec bit is set
+   function gid_on_exec_bit_set (perms : permissions) return Boolean;
+
+   --  Returns true if the sticky bit is set
+   function sticky_bit_set (perms : permissions) return Boolean;
+
 private
 
    function success (rc : IC.int) return Boolean;
@@ -175,6 +184,15 @@ private
    function clookup_user (name : IC.char_array) return IC.unsigned;
    pragma Import (C, clookup_user);
 
+   function cuid_on_exec_bit_set (permissions : IC.short) return IC.short;
+   pragma Import (C, cuid_on_exec_bit_set);
+
+   function cgid_on_exec_bit_set (permissions : IC.short) return IC.short;
+   pragma Import (C, cgid_on_exec_bit_set);
+
+   function csticky_bit_set (permissions : IC.short) return IC.short;
+   pragma Import (C, csticky_bit_set);
+
    function set_metadata
      (path              : IC.char_array;
       reset_modtime     : IC.unsigned_char;
@@ -229,5 +247,6 @@ private
 
    function int2str (A : Integer) return String;
 
+   function display_permissions (perms : permissions) return String;
 
 end Archive.Unix;

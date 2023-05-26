@@ -45,6 +45,21 @@ extract_permissions (struct stat *sb)
   return (sb->st_mode & (S_IRWXU | S_IRWXG | S_IRWXO | S_ISUID | S_ISGID | S_ISVTX));
 }
 
+mode_t
+cuid_on_exec_bit_set (mode_t permissions) {
+  return (permissions & S_ISUID);
+}
+
+mode_t
+cgid_on_exec_bit_set (mode_t permissions) {
+  return (permissions & S_ISGID;
+}
+
+mode_t
+csticky_bit_set (mode_t permissions) {
+  return (permissions & S_ISVTX);
+}
+
 char *
 get_owner_name (struct stat *sb)
 {
