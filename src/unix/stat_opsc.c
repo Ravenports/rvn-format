@@ -52,7 +52,7 @@ cuid_on_exec_bit_set (mode_t permissions) {
 
 mode_t
 cgid_on_exec_bit_set (mode_t permissions) {
-  return (permissions & S_ISGID;
+  return (permissions & S_ISGID);
 }
 
 mode_t
@@ -286,9 +286,22 @@ maximum_path_length () {
   return PATH_MAX;
 }
 
+
 int
 writable_access (const char * path) {
   return access (path, W_OK);
+}
+
+
+char *
+cformat_file_time (time_t mtime_epoch) {
+  // Format time, "yyyy-mm-dd hh:ss"
+  struct tm  ts;
+  char buf [20];
+
+  ts = *localtime(&mtime_epoch);
+  strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M", &ts);
+  return buf;
 }
 
 #endif /* __WIN32 */

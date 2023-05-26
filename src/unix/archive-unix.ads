@@ -83,6 +83,9 @@ package Archive.Unix is
    --  Returns true if the sticky bit is set
    function sticky_bit_set (perms : permissions) return Boolean;
 
+   --  Returns file modification time formated to yyyy-mm-dd HH:MM
+   function format_file_time (modtime : filetime) return String;
+
 private
 
    function success (rc : IC.int) return Boolean;
@@ -192,6 +195,9 @@ private
 
    function csticky_bit_set (permissions : IC.short) return IC.short;
    pragma Import (C, csticky_bit_set);
+
+   function cformat_file_time (mtime_epoch : filetime) return IC.Strings.chars_ptr;
+   pragma Import (C, cformat_file_time);
 
    function set_metadata
      (path              : IC.char_array;

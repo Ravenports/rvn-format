@@ -642,4 +642,19 @@ package body Archive.Unix is
    end display_permissions;
 
 
+   --------------------------------------------------------------------------------------------
+   --  format_file_time
+   --------------------------------------------------------------------------------------------
+   function format_file_time (modtime : filetime) return String
+   is
+      use type IC.Strings.chars_ptr;
+      timestring : IC.Strings.chars_ptr;
+   begin
+      timestring := cformat_file_time (modtime);
+      if timestring = IC.Strings.Null_Ptr then
+         return "????-??-?? ??:??";
+      end if;
+      return IC.Strings.Value (timestring);
+   end format_file_time;
+
 end Archive.Unix;
