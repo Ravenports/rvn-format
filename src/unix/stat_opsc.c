@@ -300,7 +300,7 @@ cformat_file_time (time_t mtime_epoch, char * restrict buf, size_t maxsize) {
   size_t res;
 
   ts = *localtime(&mtime_epoch);
-  return strftime(&buf, maxsize, "%Y-%m-%d %H:%M", &ts);
+  return strftime(buf, maxsize, "%Y-%m-%d %H:%M", &ts);
 }
 
 #endif /* __WIN32 */
