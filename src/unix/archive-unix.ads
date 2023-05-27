@@ -190,7 +190,9 @@ private
    function csticky_bit_set (permissions : IC.short) return IC.short;
    pragma Import (C, csticky_bit_set);
 
-   function cformat_file_time (mtime_epoch : filetime) return IC.Strings.chars_ptr;
+   function cformat_file_time (mtime_epoch : filetime;
+                               buf : access IC.unsigned_char;
+                               maxsize : IC.size_t) return IC.size_t;
    pragma Import (C, cformat_file_time);
 
    function set_metadata

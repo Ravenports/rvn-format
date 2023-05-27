@@ -647,14 +647,27 @@ package body Archive.Unix is
    --------------------------------------------------------------------------------------------
    function format_file_time (modtime : filetime) return String
    is
-      use type IC.Strings.chars_ptr;
-      timestring : IC.Strings.chars_ptr;
+      use type IC.size_t;
+      bufsize : constant IC.size_t := 20;
+      retsize : IC.size_t;
+      buffer  : array (1 .. bufsize) of aliased IC.unsigned_char;
    begin
-      timestring := cformat_file_time (modtime);
-      if timestring = IC.Strings.Null_Ptr then
+
+      retsize := cformat_file_time (mtime_epoch => modtime,
+                                    buf         => buffer (1)'Access,
+                                    maxsize     => bufsize);
+      if retsize = 0 then
          return "????-??-?? ??:??";
       end if;
-      return IC.Strings.Value (timestring);
+      declare
+         nsize  : constant Natural := Natural (retsize);
+         result : String (1 .. nsize);
+      begin
+         for x in 1 .. nsize loop
+            result (x) := Character'Val (buffer (IC.size_t (x)));
+         end loop;
+         return result;
+      end;
    end format_file_time;
 
 end Archive.Unix;

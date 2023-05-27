@@ -350,6 +350,7 @@ package body Archive.Pack is
                            (size_type (new_block.multiplier * (2 ** 32)) +
                               size_type (new_block.flat_size))
                          & Unix.format_file_time (new_block.modified_sec)
+                         & " "
                          & DIR.Simple_Name (item));
             end if;
          end;

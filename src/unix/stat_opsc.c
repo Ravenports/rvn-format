@@ -293,15 +293,14 @@ writable_access (const char * path) {
 }
 
 
-char *
-cformat_file_time (time_t mtime_epoch) {
+size_t
+cformat_file_time (time_t mtime_epoch, char * restrict buf, size_t maxsize) {
   // Format time, "yyyy-mm-dd hh:ss"
-  struct tm  ts;
-  char buf [20];
+  struct tm ts;
+  size_t res;
 
   ts = *localtime(&mtime_epoch);
-  strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M", &ts);
-  return buf;
+  return strftime(&buf, maxsize, "%Y-%m-%d %H:%M", &ts);
 }
 
 #endif /* __WIN32 */
