@@ -381,7 +381,9 @@ package body Archive.Pack is
                   Pattern   => "*",
                   Filter    => no_filter,
                   Process   => walkdir'Access);
+
       AS.print (verbose, "cd " & dir_path);
+
       DIR.Search (Directory => dir_path,
                   Pattern   => "*",
                   Filter    => no_filter,
