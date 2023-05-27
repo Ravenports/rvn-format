@@ -891,10 +891,10 @@ package body Archive.Pack is
       rindex : Natural;
    begin
       if name'Length > 8 then
-         result := name (name'First .. name'First + 6) & "* ";
+         result := " " & name (name'First .. name'First + 6) & "*";
       else
-         rindex := 9 - name'Length;
-         result (rindex .. 8) := name;
+         rindex := 10 - name'Length;
+         result (rindex .. 9) := name;
       end if;
       return result;
    end verbose_display_owngrp;
