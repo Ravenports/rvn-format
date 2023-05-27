@@ -74,14 +74,8 @@ package Archive.Unix is
    --  Returns true if the user can write to the file (or directory)
    function file_is_writable (path : String) return Boolean;
 
-   --  Returns true if the setuid on exec bit is set
-   function uid_on_exec_bit_set (perms : permissions) return Boolean;
-
-   --  Returns true if the setgid on exec bit is set
-   function gid_on_exec_bit_set (perms : permissions) return Boolean;
-
-   --  Returns true if the sticky bit is set
-   function sticky_bit_set (perms : permissions) return Boolean;
+   --  Display rwx permissions including sticky bit, setuid-on-exec, etc
+   function display_permissions (perms : permissions) return String;
 
    --  Returns file modification time formated to yyyy-mm-dd HH:MM
    function format_file_time (modtime : filetime) return String;
@@ -253,6 +247,13 @@ private
 
    function int2str (A : Integer) return String;
 
-   function display_permissions (perms : permissions) return String;
+   --  Returns true if the setuid on exec bit is set
+   function uid_on_exec_bit_set (perms : permissions) return Boolean;
+
+   --  Returns true if the setgid on exec bit is set
+   function gid_on_exec_bit_set (perms : permissions) return Boolean;
+
+   --  Returns true if the sticky bit is set
+   function sticky_bit_set (perms : permissions) return Boolean;
 
 end Archive.Unix;

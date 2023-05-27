@@ -208,6 +208,7 @@ package body Archive.Pack is
                AS.print (debug, "owner =" & new_block.index_owner'Img & "  group =" &
                            new_block.index_group'Img);
                AS.print (debug, "perms =" & features.perms'Img & "   mod =" & features.mtime'Img);
+               AS.print (verbose, "cd " & DIR.Full_Name (item));
             end;
             AS.scan_directory (DIR.Full_Name (item), AS.dtrack);
          end if;
@@ -340,6 +341,16 @@ package body Archive.Pack is
                   end if;
             end case;
             AS.files.Append (new_block);
+            if AS.level = verbose then
+               AS.print (verbose,
+                         Unix.display_permissions (new_block.file_perms)
+                         & verbose_display_owngrp (features.owner)
+                         & verbose_display_owngrp (features.group)
+                         & verbose_display_filesize
+                           (size_type (new_block.multiplier * (2 ** 32)) +
+                              size_type (new_block.flat_size))
+                         & DIR.Simple_Name (item));
+            end if;
          end;
 
          AS.print (debug, "file = " & item_path & " (" & features.ftype'Img & ")");
