@@ -883,11 +883,13 @@ package body Archive.Pack is
    is
       name   : constant String := trim_trailing_zeros (owngrp);
       result : String (1 .. 9) := (others => ' ');
+      rindex : Natural;
    begin
       if name'Length > 8 then
          result := name (name'First .. name'First + 6) & "* ";
       else
-         result (result'First .. result'First + result'Length - 1) := name;
+         rindex := 9 - name'Length;
+         result (rindex .. 8) := name;
       end if;
       return result;
    end verbose_display_owngrp;
