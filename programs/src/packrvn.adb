@@ -250,7 +250,7 @@ is
       extension : constant String := ".rvn";
    begin
       if fname'Length > extension'Length and then
-        HAN.To_Lower (fname (fname'Last - extension'Length - 1 .. fname'Last)) = extension
+        HAN.To_Lower (fname (fname'Last - extension'Length + 1 .. fname'Last)) = extension
       then
          return out_level & "/" & fname;
       end if;
