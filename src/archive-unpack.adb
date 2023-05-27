@@ -405,22 +405,30 @@ package body Archive.Unpack is
             procedure SFree is new Ada.Unchecked_Deallocation
               (Object => String, Name => String_Access);
 
+            fblock_size : constant Natural :=
+              Natural (DS.header.num_owners) * 32 +
+              Natural (DS.header.num_groups) * 32 +
+              Natural (DS.header.link_blocks) * 32 +
+              Natural (DS.header.file_blocks) * 320;
             index_dec   : ZST.Streaming_Decompression.Decompressor;
-            fblock_size : constant Natural := Natural (DS.header.file_blocks) * 320;
             heap_string : String_Access;
             recall      : Boolean;
             chunkbuffer : text;
             sindex      : Natural;
             findex      : Natural;
+            lindex      : Natural;
          begin
             heap_string := new String (1 .. fblock_size);
             sindex := heap_string'First;
             index_dec.Initialize (DS.rvn_stmaxs);
+            DS.print (debug, "heapstring 'last is" & fblock_size'Img);
             loop
                recall := index_dec.Get_Uncompressed_Data (chunkbuffer);
                findex := sindex;
                sindex := sindex + ASU.Length (chunkbuffer);
-               heap_string (findex .. sindex - 1) := ASU.To_String (chunkbuffer);
+               lindex := sindex -1 ;
+               DS.print (debug, "Setting heap_string range" & findex'Img & " .."  & lindex'Img);
+               heap_string (findex .. lindex) := ASU.To_String (chunkbuffer);
                exit when not recall;
             end loop;
             index_dec.Finalize;
