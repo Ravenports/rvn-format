@@ -905,30 +905,33 @@ package body Archive.Pack is
    ------------------------------------------------------------------------------------------
    function verbose_display_filesize (fsize : size_type) return String
    is
+      function trim_first (S : String) return String;
+      function trim_first (S : String) return String is
+      begin
+         return S (S'First + 1 .. S'Last);
+      end trim_first;
+
       result : String (1 .. 9) := (others => ' ');
    begin
       if fsize < 100_000_000 then
          declare
-            myimage : constant String := fsize'Img;
+            myimage : constant String := trim_first (fsize'Img);
          begin
-            result (result'Last - myimage'Length + 1 .. result'Last - 1) :=
-              myimage (myimage'First + 1 .. myimage'Last);
+            result (10 - result'Length .. result'Last) := myimage;
          end;
       elsif fsize < 10_000_000_000 then
          declare
             basenum : constant Natural := Natural (fsize / 1_000_000);
-            myimage : constant String := basenum'Img;
+            myimage : constant String := trim_first (basenum'Img & "M+");
          begin
-            result (result'Last - myimage'Length -1 .. result'Last - 1) :=
-              myimage (myimage'First + 1 .. myimage'Last) & "M+";
+            result (10 - result'Length .. result'Last) := myimage;
          end;
       else
          declare
             basenum : constant Natural := Natural (fsize / 1_000_000_000);
-            myimage : constant String := basenum'Img;
+            myimage : constant String := trim_first (basenum'Img & "G+");
          begin
-            result (result'Last - myimage'Length -1 .. result'Last - 1) :=
-              myimage (myimage'First + 1 .. myimage'Last) & "G+";
+            result (10 - result'Length .. result'Last) := myimage;
          end;
       end if;
       return result;
