@@ -7,6 +7,7 @@ with Ada.Text_IO;
 with Ada.Direct_IO;
 with Ada.Directories;
 with Ada.Unchecked_Conversion;
+with Ada.Unchecked_Deallocation;
 with Ada.Exceptions;
 with Ada.IO_Exceptions;
 with Ada.Strings.Fixed;
@@ -392,18 +393,51 @@ package body Archive.Unpack is
    procedure retrieve_file_index (DS : in out DArc)
    is
       use type SIO.Count;
+      left_over : Natural;
    begin
       if SIO.Index (DS.rvn_handle) /= DS.b3_index then
          SIO.Set_Index (DS.rvn_handle, DS.b3_index);
       end if;
 
       if Natural (DS.header.size_filedata) > KB256 then
-         --  TODO: retrieve_file_index implement > 256Kb block
-         DS.print (normal, "filedata > 256KB needs to be implemented");
+         declare
+            type String_Access is access String;
+            procedure SFree is new Ada.Unchecked_Deallocation
+              (Object => String, Name => String_Access);
+
+            index_dec   : ZST.Streaming_Decompression.Decompressor;
+            fblock_size : constant Natural := Natural (DS.header.file_blocks) * 320;
+            heap_string : String_Access;
+            recall      : Boolean;
+            chunkbuffer : text;
+            sindex      : Natural;
+            findex      : Natural;
+         begin
+            heap_string := new String (1 .. fblock_size);
+            sindex := heap_string'First;
+            index_dec.Initialize (DS.rvn_stmaxs);
+            loop
+               recall := index_dec.Get_Uncompressed_Data (chunkbuffer);
+               findex := sindex;
+               sindex := sindex + ASU.Length (chunkbuffer);
+               heap_string (findex .. sindex - 1) := ASU.To_String (chunkbuffer);
+               exit when not recall;
+            end loop;
+            index_dec.Finalize;
+            left_over := DS.consume_index (heap_string.all);
+            if left_over > 0 then
+               DS.print (normal, "Streaming index consumption has unexpected left over data.");
+            end if;
+            SFree (heap_string);
+         exception
+            when ZST.Streaming_Decompression.streaming_decompression_initialization =>
+               DS.print (normal, "Failed to initialize streaming decompression (RFI)");
+            when ZST.Streaming_Decompression.streaming_decompression_error =>
+               DS.print (normal, "Failed to decompress file index (RFI)");
+         end;
       else
          declare
             decompress_success : Boolean;
-            left_over : Natural;
             all_files : constant String :=
               ZST.Decompress (archive_saxs => DS.rvn_stmaxs,
                               data_length  => Natural (DS.header.size_filedata),
@@ -942,19 +976,19 @@ package body Archive.Unpack is
                DS.call_again := DS.expander.Get_Uncompressed_Data (DS.buffer);
                DS.print (debug, "Streaming archive decompression block 1 successful.");
             exception
-               when Zstandard.Streaming_Decompression.streaming_decompression_initialization =>
+               when ZST.Streaming_Decompression.streaming_decompression_initialization =>
                   DS.print (normal, "Failed to initialize streaming decompression.");
                   return;
-               when Zstandard.Streaming_Decompression.streaming_decompression_error =>
+               when ZST.Streaming_Decompression.streaming_decompression_error =>
                   DS.print (normal, "Failed to decompress archive (needs initialization?)");
                   return;
             end;
          else
             --  single-shot decompression
             DS.buffer := ASU.To_Unbounded_String
-              (Zstandard.Decompress (archive_saxs => DS.rvn_stmaxs,
-                                     data_length  => Natural (DS.header.size_archive),
-                                     successful   => decomp_worked));
+              (ZST.Decompress (archive_saxs => DS.rvn_stmaxs,
+                               data_length  => Natural (DS.header.size_archive),
+                               successful   => decomp_worked));
             DS.print (debug, "One shot archive decompression successful : " & decomp_worked'Img);
          end if;
          DS.buf_remain := ASU.Length (DS.buffer);
