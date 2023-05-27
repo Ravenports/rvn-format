@@ -599,12 +599,12 @@ package body Archive.Unix is
       all_set : constant String := "rwxrwxrwx";
       result  : String := "---------";
       mask    : permissions;
-      bpos    : Natural := 8;
+      bpos    : Natural := 9;
       rpos    : Natural := result'First;
    begin
       for x in all_set'Range loop
-         mask := 2 ** bpos;
          bpos := bpos - 1;
+         mask := 2 ** bpos;
          if (perms and mask) > 0 then
             result (rpos) := all_set (x);
          end if;
