@@ -918,21 +918,21 @@ package body Archive.Pack is
          declare
             myimage : constant String := trim_first (fsize'Img);
          begin
-            result (10 - result'Length .. result'Last) := myimage;
+            result (10 - myimage'Length .. result'Last) := myimage;
          end;
       elsif fsize < 10_000_000_000 then
          declare
             basenum : constant Natural := Natural (fsize / 1_000_000);
             myimage : constant String := trim_first (basenum'Img & "M+");
          begin
-            result (10 - result'Length .. result'Last) := myimage;
+            result (10 - myimage'Length .. result'Last) := myimage;
          end;
       else
          declare
             basenum : constant Natural := Natural (fsize / 1_000_000_000);
             myimage : constant String := trim_first (basenum'Img & "G+");
          begin
-            result (10 - result'Length .. result'Last) := myimage;
+            result (10 - myimage'Length .. result'Last) := myimage;
          end;
       end if;
       return result;
