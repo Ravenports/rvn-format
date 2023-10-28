@@ -54,6 +54,9 @@ package Archive.Unpack is
       set_perms     : Boolean;
       set_modtime   : Boolean) return Boolean;
 
+   --  This function sends some of the values of the uncompressed block 1 to standard out.
+   procedure print_magic_block (DS : DArc);
+
 private
 
    fblk_size    : constant Natural := File_Block'Size / 8;

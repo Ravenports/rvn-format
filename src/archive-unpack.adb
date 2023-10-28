@@ -1148,4 +1148,18 @@ package body Archive.Unpack is
       end if;
    end prepare_for_overwrite;
 
+
+   ------------------------------------------------------------------------------------------
+   --  print_magic_block
+   ------------------------------------------------------------------------------------------
+   procedure print_magic_block (DS : DArc)
+   is
+   begin
+      DS.print (normal, "RVN format version :" & DS.header.version'Img);
+      DS.print (normal, "            groups :" & DS.header.num_groups'Img);
+      DS.print (normal, "            owners :" & DS.header.num_owners'Img);
+      DS.print (normal, "             links :" & DS.header.link_blocks'Img);
+      DS.print (normal, "      dirs + files :" & DS.header.file_blocks'Img);
+   end print_magic_block;
+
 end Archive.Unpack;
