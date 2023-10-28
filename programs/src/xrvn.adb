@@ -27,6 +27,7 @@ is
    opt_manifest : Boolean := False;
    opt_outdir   : Boolean := False;
    opt_touch    : Boolean := False;
+   opt_counts   : Boolean := False;
    filename_set : Boolean := False;
    arg_outdir   : text;
    arg_filename : text;
@@ -70,6 +71,8 @@ is
                         opt_digest := True;
                      elsif this_arg = "--touch" then
                         opt_touch := True;
+                     elsif this_arg = "--counts" then
+                        opt_counts := True;
                      end if;
                   elsif this_arg (this_arg'First) = '-' then
                      declare
@@ -86,6 +89,7 @@ is
                               when 'x' => opt_extract := True;
                               when 'm' => opt_metadata := True;
                               when 'l' => opt_manifest := True;
+                              when 'c' => opt_counts := True;
                               when 'o' =>
                                  case this_arg (single) is
                                     when 'o' => opt_outdir := True;
@@ -134,7 +138,7 @@ is
    procedure usage (error_msg : String) is
    begin
       TIO.Put_Line (error_msg);
-      TIO.Put_Line ("xrvn [-vq] [-xml] [-d] [-t] [-o outdir] filename");
+      TIO.Put_Line ("xrvn [-vq] [-xmlc] [-d] [-t] [-o outdir] filename");
    end usage;
 
    procedure error (error_msg : String) is
@@ -174,23 +178,26 @@ is
 begin
    process_arguments;
    declare
-      xml : Natural := 0;
+      xmlc : Natural := 0;
    begin
       if opt_extract then
-         xml := xml + 1;
+         xmlc := xmlc + 1;
       end if;
       if opt_metadata then
-         xml := xml + 1;
+         xmlc := xmlc + 1;
       end if;
       if opt_manifest then
-         xml := xml + 1;
+         xmlc := xmlc + 1;
       end if;
-      if xml = 0 then
-         usage ("At least one argument of -x, -m, -l is required.");
+      if opt_counts then
+         xmlc := xmlc + 1;
+      end if;
+      if xmlc = 0 then
+         usage ("At least one argument of -x, -m, -l, -c is required.");
          return;
       end if;
-      if xml > 1 then
-         usage ("Only one argument of -x, -m, -l can be selected.");
+      if xmlc > 1 then
+         usage ("Only one argument of -x, -m, -l, -c can be selected.");
          return;
       end if;
    end;
@@ -288,6 +295,8 @@ begin
                exitcode := CLI.Exit_Status (-1);
             end if;
          end;
+      elsif opt_counts then
+         operation.print_magic_block;
       else
          TIO.Put_Line ("programming error - fallthrough can't happen.");
       end if;

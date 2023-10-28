@@ -78,23 +78,24 @@ It can:
 - extract the metadata to a file or standard out
 - extract the manifest to a file or standard out
 - extract the manifest with blake3 digest to a file or standard out
+- display file counts to standard out
 ```
 
-#### xrvn [-vq] [-xml] [-d] [-t] [-o outdir] filename
+#### xrvn [-vq] [-xmlc] [-d] [-t] [-o outdir] filename
 
 ```
     -x, --extract
 
         This option sets xrvn to extract the file contents of the package.
         If no output directory is given, it will extract in the current
-        working directory.  This is mutually exclusive with the -m and -l.
+        working directory.  This is mutually exclusive with -m, -l, and -c.
 
     -m, --metadata
 
         This option extracts just the metadata.  If the outdir argument
         is set, the output is written to <filename>.metadata, otherwise
         it is sent to standard out.  This is mutually exclusive with
-        -x and -l.
+        -x, -l, and -c.
 
     -l, --list-manifest
 
@@ -102,7 +103,14 @@ It can:
         If the -d option is set, each file is preceded by its Blake-3 digest.
         If the outdir argument is set, the output is written to
         <filename>.manifest, otherwise it is sent to standard out.  This is
-        mutually exclusive with -x and -m.
+        mutually exclusive with -x, -m, and -c.
+
+    -c, --counts
+
+        This option reads the first block of the archive, the one that
+        lists the number of files (including directories), groups, users,
+        and links.  It displays this information via standard-out.  This is
+        mutually exclusive with -x, -m, and -l.
 
     -d, --digests
 
