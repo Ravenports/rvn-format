@@ -208,7 +208,8 @@ private
    pragma Import (C, set_metadata);
 
    function set_symlink_metadata
-     (path              : IC.char_array;
+     (path_directory    : IC.char_array;
+      symlink_filename  : IC.char_array;
       reset_modtime     : IC.unsigned_char;
       reset_ownership   : IC.unsigned_char;
       reset_permissions : IC.unsigned_char;
@@ -257,5 +258,11 @@ private
 
    --  Returns true if the sticky bit is set
    function sticky_bit_set (perms : permissions) return Boolean;
+
+    --  Head (keep all but last delimiter and field)
+   function head (S : String; delimiter : String) return String;
+
+   --  Tail (keep only last field)
+   function tail (S : String; delimiter : String) return String;
 
 end Archive.Unix;

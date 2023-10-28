@@ -202,7 +202,8 @@ set_metadata (const char *    path,
 }
 
 unsigned char
-set_symlink_metadata (const char *    path,
+set_symlink_metadata (const char *    path_directory,
+                      const char *    symlink_filename,
                       unsigned char   reset_modtime,
                       unsigned char   reset_ownership,
                       unsigned char   reset_permissions,
@@ -213,6 +214,7 @@ set_symlink_metadata (const char *    path,
                       long            new_mtime_nsecs)
 {
   int rc = 0;
+  int root_fd;
   const struct timespec times[2] = {{0, UTIME_OMIT}, {new_mtime_epoch, new_mtime_nsecs}};
 
   /* It is possible all three actions are disabled, but it shouldn't happen */
@@ -231,10 +233,19 @@ set_symlink_metadata (const char *    path,
     }
   }
 
-  if (reset_modtime) {
-    if (utimensat (-1, path, times, AT_SYMLINK_NOFOLLOW) < 0) {
+  if (reset_modtime)
+  {
+
+    if ((root_fd = open (path_directory, O_DIRECTORY)) < 0)
+    {
+      rc += 16;
+      return rc;
+    }
+    if (utimensat (root_fd, symlink_filename, times, AT_SYMLINK_NOFOLLOW) < 0)
+    {
       rc += 16;
     }
+    close (root_fd);
   }
 
   return rc;

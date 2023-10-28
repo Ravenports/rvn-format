@@ -404,16 +404,22 @@ package body Archive.Unix is
                new_mtime_epoch   => time_t (new_m_secs),
                new_mtime_nsecs   => IC.long (new_m_nano));
          when symlink =>
-            rescode := set_symlink_metadata
-              (path              => cpath,
-               reset_modtime     => do_mtime,
-               reset_ownership   => do_owner,
-               reset_permissions => do_perms,
-               new_user_id       => c_uid,
-               new_group_id      => c_gid,
-               new_permissions   => c_perms,
-               new_mtime_epoch   => time_t (new_m_secs),
-               new_mtime_nsecs   => IC.long (new_m_nano));
+            declare
+               cfilename  : constant IC.char_array := IC.To_C (tail (path, "/"));
+               cdirectory : constant IC.char_array := IC.To_C (head (path, "/"));
+            begin
+               rescode := set_symlink_metadata
+                 (path_directory    => cdirectory,
+                  symlink_filename  => cfilename,
+                  reset_modtime     => do_mtime,
+                  reset_ownership   => do_owner,
+                  reset_permissions => do_perms,
+                  new_user_id       => c_uid,
+                  new_group_id      => c_gid,
+                  new_permissions   => c_perms,
+                  new_mtime_epoch   => time_t (new_m_secs),
+                  new_mtime_nsecs   => IC.long (new_m_nano));
+            end;
          when fifo =>
             rescode := set_fifo_metadata
               (path              => cpath,
@@ -669,5 +675,50 @@ package body Archive.Unix is
          return result;
       end;
    end format_file_time;
+
+
+   --------------------------------------------------------------------------------------------
+   --  tail
+   --------------------------------------------------------------------------------------------
+   function tail (S : String; delimiter : String) return String
+   is
+      dl_size      : constant Natural := delimiter'Length;
+      back_marker  : constant Natural := S'First;
+      front_marker : Natural := S'Last - dl_size + 1;
+   begin
+      loop
+         if front_marker < back_marker then
+            --  delimiter never found
+            return S;
+         end if;
+         if S (front_marker .. front_marker + dl_size - 1) = delimiter then
+            return S (front_marker + dl_size .. S'Last);
+         end if;
+         front_marker := front_marker - 1;
+      end loop;
+   end tail;
+
+
+   --------------------------------------------------------------------------------------------
+   --  head
+   --------------------------------------------------------------------------------------------
+   function head (S : String; delimiter : String) return String
+   is
+      dl_size      : constant Natural := delimiter'Length;
+      back_marker  : constant Natural := S'First;
+      front_marker : Natural := S'Last - dl_size + 1;
+   begin
+      loop
+         if front_marker < back_marker then
+            --  delimiter never found
+            return "";
+         end if;
+         if S (front_marker .. front_marker + dl_size - 1) = delimiter then
+            return S (back_marker .. front_marker - 1);
+         end if;
+         front_marker := front_marker - 1;
+      end loop;
+   end head;
+
 
 end Archive.Unix;
