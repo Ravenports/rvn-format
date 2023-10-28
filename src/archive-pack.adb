@@ -379,7 +379,7 @@ package body Archive.Pack is
       end get_filename;
    begin
       DIR.Search (Directory => dir_path,
-                  Pattern   => "*",
+                  Pattern   => "",
                   Filter    => no_filter,
                   Process   => walkdir'Access);
 
