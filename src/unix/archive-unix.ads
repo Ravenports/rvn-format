@@ -208,7 +208,8 @@ private
    pragma Import (C, set_metadata);
 
    function set_symlink_metadata
-     (path_directory    : IC.char_array;
+     (path              : IC.char_array;
+      path_directory    : IC.char_array;
       symlink_filename  : IC.char_array;
       reset_modtime     : IC.unsigned_char;
       reset_ownership   : IC.unsigned_char;

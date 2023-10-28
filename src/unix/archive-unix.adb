@@ -409,7 +409,8 @@ package body Archive.Unix is
                cdirectory : constant IC.char_array := IC.To_C (head (path, "/"));
             begin
                rescode := set_symlink_metadata
-                 (path_directory    => cdirectory,
+                 (path              => cpath,
+                  path_directory    => cdirectory,
                   symlink_filename  => cfilename,
                   reset_modtime     => do_mtime,
                   reset_ownership   => do_owner,

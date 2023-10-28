@@ -202,7 +202,8 @@ set_metadata (const char *    path,
 }
 
 unsigned char
-set_symlink_metadata (const char *    path_directory,
+set_symlink_metadata (const char *    path,
+                      const char *    path_directory,
                       const char *    symlink_filename,
                       unsigned char   reset_modtime,
                       unsigned char   reset_ownership,
