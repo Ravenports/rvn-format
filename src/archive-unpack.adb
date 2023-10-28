@@ -426,7 +426,7 @@ package body Archive.Unpack is
                recall := index_dec.Get_Uncompressed_Data (chunkbuffer);
                findex := sindex;
                sindex := sindex + ASU.Length (chunkbuffer);
-               lindex := sindex -1 ;
+               lindex := sindex - 1;
                DS.print (debug, "Setting heap_string range" & findex'Img & " .."  & lindex'Img);
                heap_string (findex .. lindex) := ASU.To_String (chunkbuffer);
                exit when not recall;
