@@ -57,7 +57,7 @@ package body Zstandard.Streaming_Compression is
    begin
       if mechanism.zstd_stream = Null_CStream_pointer then
          raise streaming_compression_error with "Run initialize procedure first";
-         end if;
+      end if;
       data_in := stream_to_char (data);
       loop
          exit when inbuffer.pos >= inbuffer.size;

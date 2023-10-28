@@ -126,6 +126,8 @@ package body Blake_3 is
    --------------------------------------------------------------------
    function file_digest (path : String; power : Positive := 16) return blake3_hash
    is
+      use type Ada.Streams.Stream_Element_Offset;
+
       chunk_size : constant Ada.Streams.Stream_Element_Offset := 2 ** power;
       subtype Buffer_Type is Ada.Streams.Stream_Element_Array (1 .. chunk_size);
       type data_type is array (Buffer_Type'Range) of aliased IC.unsigned_char;
@@ -134,8 +136,6 @@ package body Blake_3 is
       Buffer : Buffer_Type;
       File   : Ada.Streams.Stream_IO.File_Type;
       LastSE : Ada.Streams.Stream_Element_Offset;
-
-      use type Ada.Streams.Stream_Element_Offset;
 
       function buffer_to_data is new Ada.Unchecked_Conversion (Source => Buffer_Type,
                                                                Target => data_type);
