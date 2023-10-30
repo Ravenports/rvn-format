@@ -1159,6 +1159,9 @@ package body Archive.Unpack is
       DS.print (normal, "            owners :" & DS.header.num_owners'Img);
       DS.print (normal, "             links :" & DS.header.link_blocks'Img);
       DS.print (normal, "      dirs + files :" & DS.header.file_blocks'Img);
+      DS.print (normal, "    metadata bytes :" & DS.header.size_metadata'Img);
+      DS.print (normal, "  file index bytes :" & DS.header.size_filedata'Img);
+      DS.print (normal, "     archive bytes :" & DS.header.size_archive'Img);
    end print_magic_block;
 
 end Archive.Unpack;
