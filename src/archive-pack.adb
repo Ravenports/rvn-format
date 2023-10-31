@@ -595,7 +595,7 @@ package body Archive.Pack is
 
 
    ------------------------------------------------------------------------------------------
-   --  write_blank_header
+   --  overwrite_header
    ------------------------------------------------------------------------------------------
    procedure overwrite_header (AS : in out Arc_Structure; output_file_path : String)
    is
@@ -732,7 +732,7 @@ package body Archive.Pack is
       ZST.incorporate_regular_file
         (filename    => uncompressed_archive,
          file_size   => archive_size,
-         quality     => 7,
+         quality     => 9,
          target_saxs => AS.rvn_stmaxs,
          target_file => AS.rvn_handle,
          output_size => out_size,
@@ -760,7 +760,7 @@ package body Archive.Pack is
       ZST.incorporate_regular_file
         (filename    => uncompressed_archive,
          file_size   => archive_size,
-         quality     => 7,
+         quality     => 9,
          target_saxs => AS.rvn_stmaxs,
          target_file => AS.rvn_handle,
          output_size => out_size,
@@ -807,7 +807,7 @@ package body Archive.Pack is
          ZST.incorporate_regular_file
            (filename    => metadata_path,
             file_size   => dossier_size,
-            quality     => 7,
+            quality     => 9,
             target_saxs => AS.rvn_stmaxs,
             target_file => AS.rvn_handle,
             output_size => out_size,
@@ -845,7 +845,7 @@ package body Archive.Pack is
 
 
    ------------------------------------------------------------------------------------------
-   --  trim_trailing_zeros
+   --  able_to_write_rvn_archive
    ------------------------------------------------------------------------------------------
    function able_to_write_rvn_archive
      (AS : Arc_Structure;
