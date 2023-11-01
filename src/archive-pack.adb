@@ -765,7 +765,7 @@ package body Archive.Pack is
    procedure write_file_index_block (AS : in out Arc_Structure; output_file_path : String)
    is
       out_succ : Boolean;
-      out_size : Natural;
+      out_size : ZST.File_Size;
       uncompressed_archive : constant String := output_file_path & ".index";
       archive_size : constant ZST.File_Size := ZST.File_Size (DIR.Size (uncompressed_archive));
    begin
@@ -793,7 +793,7 @@ package body Archive.Pack is
    procedure write_archive_block (AS : in out Arc_Structure; output_file_path : String)
    is
       out_succ : Boolean;
-      out_size : Natural;
+      out_size : ZST.File_Size;
       uncompressed_archive : constant String := output_file_path & ".archive";
       archive_size : constant ZST.File_Size := ZST.File_Size (DIR.Size (uncompressed_archive));
    begin
@@ -837,7 +837,7 @@ package body Archive.Pack is
 
          dossier_size : ZST.File_Size;
          out_succ : Boolean;
-         out_size : Natural;
+         out_size : ZST.File_Size;
       begin
          dossier_size := ZST.File_Size (DIR.Size (metadata_path));
 

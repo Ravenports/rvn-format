@@ -68,7 +68,7 @@ package Zstandard is
       quality     : Compression_Level := Default_Compression;
       target_saxs : SIO.Stream_Access;
       target_file : SIO.File_Type;
-      output_size : out Natural;
+      output_size : out File_Size;
       successful  : out Boolean);
 
 

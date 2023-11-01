@@ -245,7 +245,7 @@ package body Zstandard is
       quality     : Compression_Level := Default_Compression;
       target_saxs : SIO.Stream_Access;
       target_file : SIO.File_Type;
-      output_size : out Natural;
+      output_size : out File_Size;
       successful  : out Boolean)
    is
       max_one_pass_size : constant File_Size := 2 ** 18;  --  256 kb
@@ -306,7 +306,7 @@ package body Zstandard is
          mech.Finalize_Compression_Frame;
          SIO.Close (src_file);
          last_size := SIO.Size (target_file);
-         output_size := Natural (last_size - tare_size);
+         output_size := File_Size (last_size - tare_size);
          successful := True;
       end;
 
