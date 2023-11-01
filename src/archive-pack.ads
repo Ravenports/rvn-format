@@ -5,6 +5,7 @@
 with Ada.Containers.Vectors;
 with Ada.Streams.Stream_IO;
 with Archive.Whitelist;
+with Zstandard;
 
 package Archive.Pack is
 
@@ -33,6 +34,7 @@ private
       "="          => "=");
 
    null_sum : constant A_checksum := (others => Character'Val (0));
+   rvn_compression_level : constant Zstandard.Compression_Level := 9;
 
    package file_block_crate is new CON.Vectors
      (Index_Type   => File_Count,

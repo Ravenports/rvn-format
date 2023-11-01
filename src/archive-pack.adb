@@ -8,7 +8,6 @@ with Ada.Directories;
 with Ada.Direct_IO;
 with Ada.Strings.Fixed;
 with Archive.Unix;
-with Zstandard;
 with Blake_3;
 
 package body Archive.Pack is
@@ -774,7 +773,7 @@ package body Archive.Pack is
       ZST.incorporate_regular_file
         (filename    => uncompressed_archive,
          file_size   => archive_size,
-         quality     => 9,
+         quality     => rvn_compression_level,
          target_saxs => AS.rvn_stmaxs,
          target_file => AS.rvn_handle,
          output_size => out_size,
@@ -802,7 +801,7 @@ package body Archive.Pack is
       ZST.incorporate_regular_file
         (filename    => uncompressed_archive,
          file_size   => archive_size,
-         quality     => 9,
+         quality     => rvn_compression_level,
          target_saxs => AS.rvn_stmaxs,
          target_file => AS.rvn_handle,
          output_size => out_size,
@@ -849,7 +848,7 @@ package body Archive.Pack is
          ZST.incorporate_regular_file
            (filename    => metadata_path,
             file_size   => dossier_size,
-            quality     => 9,
+            quality     => rvn_compression_level,
             target_saxs => AS.rvn_stmaxs,
             target_file => AS.rvn_handle,
             output_size => out_size,
