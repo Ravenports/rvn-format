@@ -45,7 +45,7 @@ package body Archive.Unpack is
          return;
       end if;
 
-      if ZST.File_Size (DIR.Size (rvn_archive)) < File_Block'Size then
+      if ZST.File_Size (DIR.Size (rvn_archive)) < (premier_block'Size / 8) then
          DS.print (normal, "The " & rvn_archive & " file is too small.  It's not an archive.");
          return;
       end if;
