@@ -75,6 +75,7 @@ package body Archive.Unpack is
       DS.print (debug, "    groups defined :" & DS.header.num_groups'Img);
       DS.print (debug, "    owners defined :" & DS.header.num_owners'Img);
       DS.print (debug, "     links defined :" & DS.header.link_blocks'Img);
+      DS.print (debug, " filenames defined :" & DS.header.fname_blocks'Img);
       DS.print (debug, "      number files :" & DS.header.file_blocks'Img);
       DS.print (debug, "    metadata bytes :" & DS.header.size_metadata'Img);
       DS.print (debug, "  file index bytes :" & DS.header.size_filedata'Img);
@@ -90,6 +91,7 @@ package body Archive.Unpack is
       DS.con_track.num_owners  := Natural (DS.header.num_owners);
       DS.con_track.link_blocks := Natural (DS.header.link_blocks);
       DS.con_track.file_blocks := Natural (DS.header.file_blocks);
+      DS.con_track.name_blocks := Natural (DS.header.fname_blocks);
 
    end open_rvn_archive;
 
@@ -237,18 +239,39 @@ package body Archive.Unpack is
    function consume_index (DS : in out DArc; index_data : String) return Natural
    is
       function sufficient_data (chars_needed : Natural) return Boolean;
+      function retrieve_filename (filename_length : max_fname) return A_filename;
 
-      sindex     : Natural := index_data'First;
-      data_left  : Natural := index_data'Length;
       num_groups : constant Natural := DS.con_track.num_groups;
       num_owners : constant Natural := DS.con_track.num_owners;
       num_links  : constant Natural := DS.con_track.link_blocks;
       num_files  : constant Natural := DS.con_track.file_blocks;
+      fn_index   : Natural := 32 * (num_groups + num_owners + num_links) + (64 * num_files);
+      sindex     : Natural := index_data'First;
+      data_left  : Natural := fn_index;
+      fn_remain  : Natural := index_data'Last - fn_index + 1;
 
       function sufficient_data (chars_needed : Natural) return Boolean is
       begin
          return chars_needed <= data_left;
       end sufficient_data;
+
+      function retrieve_filename (filename_length : max_fname) return A_filename
+      is
+         result : A_filename := (others => Character'Val (0));
+         natural_length : constant Natural := Natural (filename_length);
+         last_block_index : constant Natural := fn_index + natural_length - 1;
+         last_res_index : constant Natural := A_filename'First + natural_length - 1;
+      begin
+         if fn_remain < natural_length then
+            DS.print (normal, "consume_index:retrieve_filename error: insufficient data.");
+            return result;
+         end if;
+
+         result (A_filename'First .. last_res_index) := index_data (fn_index .. last_block_index);
+         fn_index := last_block_index + 1;
+         fn_remain := fn_remain - natural_length;
+         return result;
+      end retrieve_filename;
 
    begin
       --  Read in groups data
@@ -325,7 +348,7 @@ package body Archive.Unpack is
          end if;
       end loop;
 
-      --  Read in 320-byte file blocks
+      --  Read in 64-byte file blocks
       for x in 1 .. num_files loop
          if sufficient_data (fblk_size) then
             declare
@@ -336,12 +359,13 @@ package body Archive.Unpack is
                sindex := sindex + fblk_size;
                data_left := data_left - fblk_size;
                data := FBString_to_File_Block (datastr);
+               data.filename := retrieve_filename (data.fname_length);
                DS.files.Append (data);
                DS.con_track.file_blocks := DS.con_track.file_blocks - 1;
                if data.directory_id > 0 then
                   --  directory_ID starts with 1 and increases
                   declare
-                     base : constant String := trim_trailing_zeros (data.filename);
+                     base : constant String := extract_filename (data);
                      cart : A_Directory;
                      parent : Positive;
                   begin
@@ -361,7 +385,7 @@ package body Archive.Unpack is
                end if;
                if DS.level = debug then
                   DS.print (debug, "");
-                  DS.print (debug, "extract filename: " & trim_trailing_zeros (data.filename));
+                  DS.print (debug, "extract filename: " & extract_filename (data));
                   DS.print (debug, "          b3 sum: " & Blake_3.hex (data.blake_sum));
                   DS.print (debug, "    type of file: " & data.type_of_file'Img);
                   DS.print (debug, "       flat size:" & data.file_size_tb'Img);
@@ -408,7 +432,8 @@ package body Archive.Unpack is
               Natural (DS.header.num_owners) * 32 +
               Natural (DS.header.num_groups) * 32 +
               Natural (DS.header.link_blocks) * 32 +
-              Natural (DS.header.file_blocks) * 320;
+              Natural (DS.header.fname_blocks) * 32 +
+              Natural (DS.header.file_blocks) * 64;
             index_dec   : ZST.Streaming_Decompression.Decompressor;
             heap_string : String_Access;
             recall      : Boolean;
@@ -471,9 +496,15 @@ package body Archive.Unpack is
    is
       result : Scanned_File_Block;
 
+      function str_to_8bits  (index : Natural) return Natural;
       function str_to_16bits (index : Natural) return Natural;
       function str_to_32bits (index : Natural) return Natural;
       function str_to_64bits (index : Natural) return filetime;
+
+      function str_to_8bits (index : Natural) return Natural is
+      begin
+         return Natural (Character'Pos (Source (index)));
+      end str_to_8bits;
 
       function str_to_16bits (index : Natural) return Natural
       is
@@ -544,22 +575,34 @@ package body Archive.Unpack is
          return result;
       end str_to_64bits;
    begin
-      result.filename     := Source (Source'First .. Source'First + 255);
-      result.blake_sum    := Source (Source'First + 256 .. Source'First + 287);
-      result.modified_sec := str_to_64bits (Source'First + 288);
-      result.modified_ns  := nanoseconds (str_to_32bits (Source'First + 296));
-      result.index_owner  := owngrp_count (Character'Pos (Source (Source'First + 300)));
-      result.index_group  := owngrp_count (Character'Pos (Source (Source'First + 301)));
-      result.type_of_file := file_type'Val (Character'Pos (Source (Source'First + 302)));
-      result.file_size_tb := size_type (Character'Pos (Source (Source'First + 303))) * (2 ** 32) +
-                             size_type (str_to_32bits (Source'First + 304));
-      result.file_perms   := permissions (str_to_16bits (Source'First + 308));
-      result.link_length  := max_path (str_to_16bits (Source'First + 310));
-      result.index_parent := index_type (str_to_16bits (Source'First + 312));
-      result.directory_id := index_type (str_to_16bits (Source'First + 314));
+      --  result.filename populated later
+      result.blake_sum    := Source (Source'First .. Source'First + 31);
+      result.modified_sec := str_to_64bits (Source'First + 32);
+      result.modified_ns  := nanoseconds (str_to_32bits (Source'First + 40));
+      result.index_owner  := owngrp_count (Character'Pos (Source (Source'First + 44)));
+      result.index_group  := owngrp_count (Character'Pos (Source (Source'First + 45)));
+      result.type_of_file := file_type'Val (Character'Pos (Source (Source'First + 46)));
+      result.file_size_tb := size_type (Character'Pos (Source (Source'First + 47))) * (2 ** 32) +
+                             size_type (str_to_32bits (Source'First + 48));
+      result.file_perms   := permissions (str_to_16bits (Source'First + 52));
+      result.link_length  := max_path (str_to_16bits (Source'First + 54));
+      result.index_parent := index_type (str_to_16bits (Source'First + 56));
+      result.directory_id := index_type (str_to_16bits (Source'First + 58));
+      result.fname_length := max_fname (str_to_8bits (Source'First + 60));
 
       return result;
    end FBString_to_File_Block;
+
+
+   ------------------------------------------------------------------------------------------
+   --  extract_filename
+   ------------------------------------------------------------------------------------------
+   function extract_filename (sfb : Scanned_File_Block) return String
+   is
+      last_char : constant Natural := Natural (max_fname'First + sfb.fname_length - 1);
+   begin
+      return sfb.filename (A_filename'First .. last_char);
+   end extract_filename;
 
 
    ------------------------------------------------------------------------------------------
@@ -588,14 +631,13 @@ package body Archive.Unpack is
       procedure print (position : file_block_crate.Cursor);
       procedure print (position : file_block_crate.Cursor)
       is
-         function get_fullpath (index_parent : index_type; fname : A_filename) return String;
+         function get_fullpath (index_parent : index_type; filename : String) return String;
 
          block : Scanned_File_Block renames file_block_crate.Element (position);
 
-         function get_fullpath (index_parent : index_type; fname : A_filename) return String
+         function get_fullpath (index_parent : index_type; filename : String) return String
          is
-            parent   : constant Natural := Natural (index_parent);
-            filename : constant String := trim_trailing_zeros (fname);
+            parent : constant Natural := Natural (index_parent);
          begin
             if parent = 0 then
                return filename;
@@ -605,7 +647,8 @@ package body Archive.Unpack is
       begin
          if block.type_of_file /= directory then
             declare
-               fullpath : constant String := get_fullpath (block.index_parent, block.filename);
+               filename : constant String := extract_filename (block);
+               fullpath : constant String := get_fullpath (block.index_parent, filename);
             begin
                if show_b3sum then
                   DS.print (normal, Blake_3.hex (block.blake_sum) & " " & fullpath);
@@ -617,7 +660,7 @@ package body Archive.Unpack is
       exception
          when Constraint_Error =>
             DS.print (normal, "CORRUPTION");
-            DS.print (normal, "Filename    : " & trim_trailing_zeros (block.filename));
+            DS.print (normal, "Filename    : " & extract_filename (block));
             DS.print (normal, "index_parent: " & block.index_parent'Img);
             DS.print (normal, "file type   : " & block.type_of_file'Img);
       end print;
@@ -649,7 +692,7 @@ package body Archive.Unpack is
             declare
                parent : constant Positive := Positive (block.index_parent);
                fullpath : constant String := ASU.To_String (DS.folders.Element (parent).directory)
-                 & "/" & trim_trailing_zeros (block.filename);
+                 & "/" & extract_filename (block);
             begin
                if show_b3sum then
                   TIO.Put_Line (output_handle, Blake_3.hex (block.blake_sum) & " " & fullpath);
@@ -720,15 +763,14 @@ package body Archive.Unpack is
 
       procedure extract (position : file_block_crate.Cursor)
       is
-         block : Scanned_File_Block renames file_block_crate.Element (position);
+         block        : Scanned_File_Block renames file_block_crate.Element (position);
          errcode      : Unix.metadata_rc;
          block_uid    : owngrp_id;
          block_gid    : owngrp_id;
          valid_owngrp : Boolean;
          these_perms  : permissions := block.file_perms;
-         file_path    : constant String :=
-           absolute_path (parent_dir => block.index_parent,
-                          file_name  => trim_trailing_zeros (block.filename));
+         file_path    : constant String := absolute_path (parent_dir => block.index_parent,
+                                                          file_name  => extract_filename (block));
 
          use type Unix.metadata_rc;
       begin
@@ -782,10 +824,8 @@ package body Archive.Unpack is
          block_gid    : owngrp_id;
          valid_owngrp : Boolean;
          these_perms  : permissions := block.file_perms;
-         file_path    : constant String :=
-           absolute_path
-             (parent_dir => block.index_parent,
-              file_name  => trim_trailing_zeros (block.filename));
+         file_path    : constant String := absolute_path (parent_dir => block.index_parent,
+                                                          file_name  => extract_filename (block));
 
          use type Unix.metadata_rc;
       begin
@@ -1155,9 +1195,10 @@ package body Archive.Unpack is
    is
    begin
       DS.print (normal, "RVN format version :" & DS.header.version'Img);
-      DS.print (normal, "            groups :" & DS.header.num_groups'Img);
-      DS.print (normal, "            owners :" & DS.header.num_owners'Img);
-      DS.print (normal, "             links :" & DS.header.link_blocks'Img);
+      DS.print (normal, "   filename blocks :" & DS.header.fname_blocks'Img);
+      DS.print (normal, "     groups blocks :" & DS.header.num_groups'Img);
+      DS.print (normal, "     owners blocks :" & DS.header.num_owners'Img);
+      DS.print (normal, "      links blocks :" & DS.header.link_blocks'Img);
       DS.print (normal, "      dirs + files :" & DS.header.file_blocks'Img);
       DS.print (normal, "    metadata bytes :" & DS.header.size_metadata'Img);
       DS.print (normal, "  file index bytes :" & DS.header.size_filedata'Img);
