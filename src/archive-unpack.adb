@@ -166,8 +166,10 @@ package body Archive.Unpack is
          Blitz.Create (File => out_handle,
                        Mode => Blitz.Out_File,
                        Name => target_file);
-         Blitz.Write (File => out_handle,
-                      Item => file_contents (contents));
+         if contents'Length > 0 then
+            Blitz.Write (File => out_handle,
+                         Item => file_contents (contents));
+         end if;
          Blitz.Close (out_handle);
          DS.print (debug, "Successful direct file creation of " & target_file);
       exception
