@@ -18,24 +18,19 @@ package Archive is
    type filetime    is mod 2 ** 64;
    type nanoseconds is mod 2 ** 32;
    type max_path    is mod 2 ** 16;
+   type max_fname   is mod 2 ** 8;
    type inode_type  is mod 2 ** 64;
    type file_index  is mod 2 ** 32;
    type owngrp_id   is mod 2 ** 32;
 
    subtype A_filename is String (1 .. 256);
-   subtype A_fragment is String (1 .. 64);
    subtype A_checksum is String (1 .. 32);
    subtype Some_magic is String (1 .. 3);
 
-   type A_padding is array (1 .. 4) of one_byte;
-   type B_padding is array (1 .. 4) of one_byte;
+   type A_padding is array (1 .. 3) of one_byte;
 
    type File_Block is
       record
-         filename_p1  : A_fragment;
-         filename_p2  : A_fragment;
-         filename_p3  : A_fragment;
-         filename_p4  : A_fragment;
          blake_sum    : A_checksum;
          modified_sec : filetime;
          modified_ns  : nanoseconds;
@@ -48,30 +43,28 @@ package Archive is
          link_length  : max_path;
          index_parent : index_type;
          directory_id : index_type;
+         fname_length : max_fname;
          padding      : A_padding;
       end record;
 
-   for File_Block'Size use 2560;
+   for File_Block'Size use 512;
    for File_Block'Alignment use 8;
    for File_Block use
       record
-         filename_p1  at   0 range  0 .. 511;
-         filename_p2  at  64 range  0 .. 511;
-         filename_p3  at 128 range  0 .. 511;
-         filename_p4  at 192 range  0 .. 511;
-         blake_sum    at 256 range  0 .. 255;
-         modified_sec at 288 range  0 .. 63;
-         modified_ns  at 296 range  0 .. 31;
-         index_owner  at 300 range  0 .. 7;
-         index_group  at 301 range  0 .. 7;
-         type_of_file at 302 range  0 .. 7;
-         multiplier   at 303 range  0 .. 7;
-         flat_size    at 304 range  0 .. 31;
-         file_perms   at 308 range  0 .. 15;
-         link_length  at 310 range  0 .. 15;
-         index_parent at 312 range  0 .. 15;
-         directory_id at 314 range  0 .. 15;
-         padding      at 316 range  0 .. 31;
+         blake_sum    at  0 range  0 .. 255;
+         modified_sec at 32 range  0 .. 63;
+         modified_ns  at 40 range  0 .. 31;
+         index_owner  at 44 range  0 .. 7;
+         index_group  at 45 range  0 .. 7;
+         type_of_file at 46 range  0 .. 7;
+         multiplier   at 47 range  0 .. 7;
+         flat_size    at 48 range  0 .. 31;
+         file_perms   at 52 range  0 .. 15;
+         link_length  at 54 range  0 .. 15;
+         index_parent at 56 range  0 .. 15;
+         directory_id at 58 range  0 .. 15;
+         fname_length at 60 range  0 .. 7;
+         padding      at 61 range  0 .. 23;
       end record;
 
    type premier_block is
@@ -85,7 +78,7 @@ package Archive is
          size_metadata   : zstd_size;
          size_filedata   : zstd_size;
          size_archive    : zstd_size;
-         padding         : B_padding;
+         fname_blocks    : file_index;
       end record;
 
    for premier_block'Size use 256;
@@ -101,11 +94,11 @@ package Archive is
          size_metadata   at 16 range  0 .. 31;
          size_filedata   at 20 range  0 .. 31;
          size_archive    at 24 range  0 .. 31;
-         padding         at 28 range  0 .. 31;
+         fname_blocks    at 28 range  0 .. 31;
       end record;
 
    magic : constant Some_magic := Character'Val (200) & Character'Val (100) & Character'Val (50);
    KB256 : constant Natural := 262_144;
-   format_version : constant one_byte := 1;
+   format_version : constant one_byte := 2;
 
 end Archive;

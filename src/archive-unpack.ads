@@ -83,6 +83,7 @@ private
          link_length  : max_path;
          index_parent : index_type;
          directory_id : index_type;
+         fname_length : max_fname;
       end record;
 
    type A_Directory is
@@ -120,6 +121,7 @@ private
          num_owners  : Natural;
          link_blocks : Natural;
          file_blocks : Natural;
+         name_blocks : Natural;
       end record;
 
    type DArc is tagged limited
@@ -165,8 +167,11 @@ private
    --  to prefix the next extraction of the index data.
    function consume_index (DS : in out DArc; index_data : String) return Natural;
 
-   --  This function converts the 320-byte string into a File_Block structure
+   --  This function converts the 64-byte string into a File_Block structure
    function FBString_to_File_Block (Source : FBString) return Scanned_File_Block;
+
+   --  Same result as trimming trailing zeros from the 256 filename container
+   function extract_filename (sfb : Scanned_File_Block) return String;
 
    --  Cut out trailing characters set to zero and return as a trimmed string
    function trim_trailing_zeros (full_string : String) return String;

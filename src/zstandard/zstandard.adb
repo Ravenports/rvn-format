@@ -241,16 +241,16 @@ package body Zstandard is
 
    procedure incorporate_regular_file
      (filename    : String;
-      file_size   : Natural;
+      size        : File_Size;
       quality     : Compression_Level := Default_Compression;
       target_saxs : SIO.Stream_Access;
       target_file : SIO.File_Type;
-      output_size : out Natural;
+      output_size : out File_Size;
       successful  : out Boolean)
    is
-      max_one_pass_size : constant Natural := 2 ** 18;  --  256 kb
+      max_one_pass_size : constant File_Size := 2 ** 18;  --  256 kb
    begin
-      if file_size <= max_one_pass_size then
+      if size <= max_one_pass_size then
          declare
             compression_successful : Boolean;
             compressed_bytes : constant String :=
@@ -306,7 +306,7 @@ package body Zstandard is
          mech.Finalize_Compression_Frame;
          SIO.Close (src_file);
          last_size := SIO.Size (target_file);
-         output_size := Natural (last_size - tare_size);
+         output_size := File_Size (last_size - tare_size);
          successful := True;
       end;
 

@@ -5,6 +5,7 @@
 with Ada.Containers.Vectors;
 with Ada.Streams.Stream_IO;
 with Archive.Whitelist;
+with Zstandard;
 
 package Archive.Pack is
 
@@ -33,6 +34,7 @@ private
       "="          => "=");
 
    null_sum : constant A_checksum := (others => Character'Val (0));
+   rvn_compression_level : constant Zstandard.Compression_Level := 9;
 
    package file_block_crate is new CON.Vectors
      (Index_Type   => File_Count,
@@ -53,12 +55,17 @@ private
      (Index_Type   => Natural,
       Element_Type => Character);
 
+   package filename_crate is new CON.Vectors
+     (Index_Type   => Natural,
+      Element_Type => Character);
+
    type Arc_Structure is tagged limited
       record
          owners : owngrp_crate.Vector;
          groups : owngrp_crate.Vector;
          files  : file_block_crate.Vector;
          inodes : inode_crate.Vector;
+         fnames : filename_crate.Vector;
          links  : link_crate.Vector;
          level  : info_level := silent;
          dtrack : index_type := 0;
@@ -134,6 +141,9 @@ private
    --  Push a link on top of the link block
    procedure push_link (AS : in out Arc_Structure; link : String);
 
+   --  Push a filename on top of the fname block
+   procedure push_filename (AS : in out Arc_Structure; simple_name : String);
+
    --  Create the output file stream and write a blank premier block to it
    procedure write_blank_header (AS : in out Arc_Structure; output_file_path : String);
 
@@ -148,6 +158,9 @@ private
 
    --  Write block FD (All the file header blocks) to temporary file
    procedure write_file_index_block (AS : Arc_Structure);
+
+   --  Write block FE (contiguous strings of filenames) to temporary file
+   procedure write_filename_block (AS : Arc_Structure);
 
    --  Compress and insert given metadata file (block 2).  If the file does not exist or if
    --  an error occurs, 0 will be set for metadata (meaning it's not provided).
