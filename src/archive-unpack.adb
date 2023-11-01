@@ -27,6 +27,7 @@ package body Archive.Unpack is
       rvn_archive : String;
       verbosity   : info_level)
    is
+      use type ZST.File_Size;
       use type SIO.Count;
    begin
       DS.valid := False;
@@ -44,7 +45,7 @@ package body Archive.Unpack is
          return;
       end if;
 
-      if Natural (DIR.Size (rvn_archive)) < File_Block'Size then
+      if ZST.File_Size (DIR.Size (rvn_archive)) < File_Block'Size then
          DS.print (normal, "The " & rvn_archive & " file is too small.  It's not an archive.");
          return;
       end if;
