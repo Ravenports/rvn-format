@@ -245,10 +245,10 @@ package body Archive.Unpack is
       num_owners : constant Natural := DS.con_track.num_owners;
       num_links  : constant Natural := DS.con_track.link_blocks;
       num_files  : constant Natural := DS.con_track.file_blocks;
-      fn_index   : Natural := 32 * (num_groups + num_owners + num_links) + (64 * num_files);
-      sindex     : Natural := index_data'First;
-      data_left  : Natural := fn_index;
-      fn_remain  : Natural := index_data'Last - fn_index + 1;
+      sindex    : Natural := index_data'First;
+      fn_index  : Natural := 32 * (num_groups + num_owners + num_links) + (64 * num_files) + sindex;
+      data_left : Natural := fn_index;
+      fn_remain : Natural := index_data'Last - fn_index + 1;
 
       function sufficient_data (chars_needed : Natural) return Boolean is
       begin
@@ -599,7 +599,7 @@ package body Archive.Unpack is
    ------------------------------------------------------------------------------------------
    function extract_filename (sfb : Scanned_File_Block) return String
    is
-      last_char : constant Natural := Natural (max_fname'First + sfb.fname_length - 1);
+      last_char : constant Natural := A_filename'First + Natural (sfb.fname_length) - 1;
    begin
       return sfb.filename (A_filename'First .. last_char);
    end extract_filename;
