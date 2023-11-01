@@ -62,6 +62,7 @@ package body Archive.Pack is
       metadata.write_owngrp_blocks;                  --  block FA and FB
       metadata.write_link_block;                     --  block FC
       metadata.write_file_index_block;               --  block FD
+      metadata.write_filename_block;                 --  block FE
       metadata.finalize_index_file;
 
       metadata.write_blank_header (output_file);     --  block 1
@@ -155,7 +156,6 @@ package body Archive.Pack is
    is
       procedure walkdir   (item : DIR.Directory_Entry_Type);
       procedure walkfiles (item : DIR.Directory_Entry_Type);
-      function get_filename (item : DIR.Directory_Entry_Type; part : Positive) return A_fragment;
 
       no_filter : constant DIR.Filter_Type := (others => True);
 
@@ -172,6 +172,7 @@ package body Archive.Pack is
             declare
                new_block : File_Block;
                features  : UNX.File_Characteristics;
+               filename  : constant String := DIR.Simple_Name (item);
             begin
                features := UNX.get_charactistics (DIR.Full_Name (item));
                if features.ftype = directory then
@@ -185,10 +186,7 @@ package body Archive.Pack is
                end if;
 
                AS.dtrack := AS.dtrack + 1;
-               new_block.filename_p1  := get_filename (item, 1);
-               new_block.filename_p2  := get_filename (item, 2);
-               new_block.filename_p3  := get_filename (item, 3);
-               new_block.filename_p4  := get_filename (item, 4);
+               AS.push_filename (filename);
                new_block.blake_sum    := null_sum;
                new_block.modified_sec := features.mtime;
                new_block.modified_ns  := features.mnsec;
@@ -201,6 +199,7 @@ package body Archive.Pack is
                new_block.link_length  := 0;
                new_block.index_parent := dir_index;
                new_block.directory_id := AS.dtrack;
+               new_block.fname_length := max_fname (filename'Length);
                new_block.padding      := (others => 0);
 
                AS.files.Append (new_block);
@@ -246,13 +245,11 @@ package body Archive.Pack is
             --  Blake3 sums for regular files and hardlinks
             --  The first hardlink is written as a regular file.
             new_block : File_Block;
+            filename  : constant String := DIR.Simple_Name (item);
 
             use type DIR.File_Size;
          begin
-            new_block.filename_p1  := get_filename (item, 1);
-            new_block.filename_p2  := get_filename (item, 2);
-            new_block.filename_p3  := get_filename (item, 3);
-            new_block.filename_p4  := get_filename (item, 4);
+            AS.push_filename (filename);
             new_block.modified_sec := features.mtime;
             new_block.modified_ns  := features.mnsec;
             new_block.index_owner  := AS.get_owner_index (features.owner);
@@ -260,6 +257,7 @@ package body Archive.Pack is
             new_block.file_perms   := features.perms;
             new_block.index_parent := dir_index;
             new_block.directory_id := 0;
+            new_block.fname_length := max_fname (filename'Length);
             new_block.padding      := (others => 0);
 
             case features.ftype is
@@ -365,18 +363,6 @@ package body Archive.Pack is
                         "  file: " & item_path);
       end walkfiles;
 
-      function get_filename (item : DIR.Directory_Entry_Type; part : Positive) return A_fragment
-      is
-         result : A_fragment;
-         tray   : A_filename := (others => Character'Val (0));
-         sname  : constant String := DIR.Simple_Name (item);
-         head   : constant Natural := tray'First + (part - 1) * A_fragment'Length;
-         tail   : constant Natural := head + A_fragment'Length - 1;
-      begin
-         tray (result'First .. result'First + sname'Length - 1) := sname;
-         result := tray (head .. tail);
-         return result;
-      end get_filename;
    begin
       DIR.Search (Directory => dir_path,
                   Pattern   => "",
@@ -496,11 +482,23 @@ package body Archive.Pack is
    ------------------------------------------------------------------------------------------
    procedure push_link (AS : in out Arc_Structure; link : String) is
    begin
-      AS.print (debug, "Pushing " & link & " to stack");
+      AS.print (debug, "Pushing " & link & " link to stack");
       for index in link'Range loop
          AS.links.Append (link (index));
       end loop;
    end push_link;
+
+
+   ------------------------------------------------------------------------------------------
+   --  push_filename
+   ------------------------------------------------------------------------------------------
+   procedure push_filename (AS : in out Arc_Structure; simple_name : String) is
+   begin
+      AS.print (debug, "Pushing " & simple_name & " file to stack");
+      for index in simple_name'Range loop
+         AS.fnames.Append (simple_name (index));
+      end loop;
+   end push_filename;
 
 
    ------------------------------------------------------------------------------------------
@@ -601,6 +599,7 @@ package body Archive.Pack is
    is
       block    : premier_block;
       nlbfloat : constant Float := Float (AS.links.Length) / 32.0;
+      nfbfloat : constant Float := Float (AS.fnames.Length) / 32.0;
    begin
       SIO.Close (AS.rvn_handle);
 
@@ -613,7 +612,7 @@ package body Archive.Pack is
       block.size_metadata   := AS.meta_size;
       block.size_filedata   := AS.ndx_size;
       block.size_archive    := AS.tmp_size;
-      block.padding         := (others => 0);
+      block.fname_blocks    := file_index (Float'Ceiling (nfbfloat));
 
       declare
          package Premier_IO is new Ada.Direct_IO (premier_block);
@@ -698,6 +697,49 @@ package body Archive.Pack is
          line_index := line_index + 32;
       end loop;
    end write_link_block;
+
+
+   ------------------------------------------------------------------------------------------
+   --  write_filename_block
+   ------------------------------------------------------------------------------------------
+   procedure write_filename_block (AS : Arc_Structure)
+   is
+      procedure construct (position : filename_crate.Cursor);
+
+      nfbfloat   : constant Float := Float (AS.fnames.Length) / 32.0;
+      num_lines  : constant Natural := Natural (Float'Ceiling (nfbfloat));
+      block_size : constant Natural := num_lines * 32;
+
+      type block_type is array (1 .. block_size) of one_byte;
+      type line_type is array (1 .. 32) of one_byte;
+      type single_line is record
+         contents : line_type;
+      end record;
+      for single_line'Size use 256;
+
+      block      : block_type := (others => 0);
+      index      : Natural := 0;
+      line_index : Natural := 1;
+
+      procedure construct (position : filename_crate.Cursor)
+      is
+         item : Character renames filename_crate.Element (position);
+      begin
+         index := index + 1;
+         block (index) := one_byte (Character'Pos (item));
+      end construct;
+   begin
+      AS.fnames.Iterate (construct'Access);
+      for line in 1 .. num_lines loop
+         declare
+            line : single_line;
+         begin
+            line.contents := line_type (block (line_index .. line_index + 31));
+            single_line'Output (AS.ndx_stmaxs, line);
+         end;
+         line_index := line_index + 32;
+      end loop;
+   end write_filename_block;
 
 
    ------------------------------------------------------------------------------------------
