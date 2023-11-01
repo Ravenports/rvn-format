@@ -250,7 +250,7 @@ package body Archive.Unpack is
       num_files  : constant Natural := DS.con_track.file_blocks;
       sindex    : Natural := index_data'First;
       fn_index  : Natural := 32 * (num_groups + num_owners + num_links) + (64 * num_files) + sindex;
-      data_left : Natural := fn_index;
+      data_left : Natural := fn_index - 1;
       fn_remain : Natural := index_data'Last - fn_index + 1;
 
       function sufficient_data (chars_needed : Natural) return Boolean is
@@ -483,7 +483,7 @@ package body Archive.Unpack is
             else
                left_over := DS.consume_index (all_files);
                if left_over > 0 then
-                  DS.print (normal, "All file consumption left data over unexpectedly.");
+                  DS.print (normal, "Index consumption left data over unexpectedly.");
                end if;
             end if;
          end;
