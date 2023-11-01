@@ -767,12 +767,12 @@ package body Archive.Pack is
       out_succ : Boolean;
       out_size : Natural;
       uncompressed_archive : constant String := output_file_path & ".index";
-      archive_size : constant Natural := Natural (DIR.Size (uncompressed_archive));
+      archive_size : constant ZST.File_Size := ZST.File_Size (DIR.Size (uncompressed_archive));
    begin
       AS.ndx_size := 0;
       ZST.incorporate_regular_file
         (filename    => uncompressed_archive,
-         file_size   => archive_size,
+         size        => archive_size,
          quality     => rvn_compression_level,
          target_saxs => AS.rvn_stmaxs,
          target_file => AS.rvn_handle,
@@ -795,12 +795,12 @@ package body Archive.Pack is
       out_succ : Boolean;
       out_size : Natural;
       uncompressed_archive : constant String := output_file_path & ".archive";
-      archive_size : constant Natural := Natural (DIR.Size (uncompressed_archive));
+      archive_size : constant ZST.File_Size := ZST.File_Size (DIR.Size (uncompressed_archive));
    begin
       AS.tmp_size := 0;
       ZST.incorporate_regular_file
         (filename    => uncompressed_archive,
-         file_size   => archive_size,
+         size        => archive_size,
          quality     => rvn_compression_level,
          target_saxs => AS.rvn_stmaxs,
          target_file => AS.rvn_handle,
@@ -833,13 +833,15 @@ package body Archive.Pack is
       end if;
 
       declare
-         dossier_size : Natural;
+         use type ZST.File_Size;
+
+         dossier_size : ZST.File_Size;
          out_succ : Boolean;
          out_size : Natural;
       begin
-         dossier_size := Natural (DIR.Size (metadata_path));
+         dossier_size := ZST.File_Size (DIR.Size (metadata_path));
 
-         if dossier_size > KB256 then
+         if dossier_size > ZST.File_Size (KB256)  then
             AS.print (normal, "The metadata file size exceeds the 256 KB limit.");
             AS.print (normal, "The archive will be built without this file.");
             return;
@@ -847,7 +849,7 @@ package body Archive.Pack is
 
          ZST.incorporate_regular_file
            (filename    => metadata_path,
-            file_size   => dossier_size,
+            size        => dossier_size,
             quality     => rvn_compression_level,
             target_saxs => AS.rvn_stmaxs,
             target_file => AS.rvn_handle,

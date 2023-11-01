@@ -64,7 +64,7 @@ package Zstandard is
    --  262,144 bytes are read all at once, and bigger files are read in chunks.
    procedure incorporate_regular_file
      (filename    : String;
-      file_size   : Natural;
+      size        : File_Size;
       quality     : Compression_Level := Default_Compression;
       target_saxs : SIO.Stream_Access;
       target_file : SIO.File_Type;
