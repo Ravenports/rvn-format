@@ -79,9 +79,9 @@ package body Archive.Whitelist is
       function get_true_path (line : String) return String is
       begin
          if line (line'First) = '/' then
-            return Unix.real_path (real_top_directory & line);
+            return real_top_directory & line;
          end if;
-         return Unix.real_path (real_top_directory & prefix_directory & "/" & line);
+         return real_top_directory & prefix_directory & "/" & line;
       end get_true_path;
    begin
       if real_top_directory = "" then
