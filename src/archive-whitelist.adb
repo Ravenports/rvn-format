@@ -63,19 +63,30 @@ package body Archive.Whitelist is
    --  ingest_file_manifest  --
    ----------------------------
    function ingest_file_manifest
-     (whitelist     : out A_Whitelist;
-      manifest_file : String;
-      top_directory : String;
-      level         : info_level) return Boolean
+     (whitelist        : out A_Whitelist;
+      manifest_file    : String;
+      stage_directory  : String;
+      prefix_directory : String;
+      level            : info_level) return Boolean
    is
+      function get_true_path (line : String) return String;
+
       features    : Unix.File_Characteristics;
       file_handle : TIO.File_Type;
       succeeded   : Boolean := True;
-      real_top_directory : constant String := Unix.real_path (top_directory);
+      real_top_directory : constant String := Unix.real_path (stage_directory);
+
+      function get_true_path (line : String) return String is
+      begin
+         if line (line'First) = '/' then
+            return Unix.real_path (real_top_directory & line);
+         end if;
+         return Unix.real_path (real_top_directory & prefix_directory & "/" & line);
+      end get_true_path;
    begin
       if real_top_directory = "" then
          if level >= normal then
-            TIO.Put_Line ("The top directory [" & top_directory &
+            TIO.Put_Line ("The top directory [" & stage_directory &
                             "] does not resolve to a real path.");
          end if;
          return False;
@@ -83,7 +94,7 @@ package body Archive.Whitelist is
       features := Unix.get_charactistics (real_top_directory);
       if features.ftype /= directory then
          if level >= normal then
-            TIO.Put_Line ("The top directory [" & top_directory & "] is not really a directory.");
+            TIO.Put_Line ("The top directory [" & stage_directory & "] is not really a directory.");
          end if;
          return False;
       end if;
@@ -111,14 +122,9 @@ package body Archive.Whitelist is
          begin
             if line = "" then
                null;
-            elsif line (line'First) = '/' then
-               if level >= normal then
-                  TIO.Put_Line ("Ignore [" & line & "] because it starts with '/'");
-               end if;
-               succeeded := False;
             else
                declare
-                  true_path : constant String := Unix.real_path (real_top_directory & "/" & line);
+                  true_path : constant String := get_true_path (line);
                begin
                   if true_path = "" then
                      if level >= normal then

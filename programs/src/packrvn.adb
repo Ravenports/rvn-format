@@ -43,10 +43,11 @@ is
    arg_rootdir   : text;
    arg_outdir    : text;
    arg_filename  : text;
+   arg_prefix    : text;
 
    procedure process_arguments
    is
-      type compound is (waiting, rootdir, outdir, whitelist, metadata);
+      type compound is (waiting, rootdir, outdir, whitelist, metadata, prefix);
       argx : Natural := 0;
       next_parameter : compound := waiting;
 
@@ -64,6 +65,7 @@ is
                when outdir    => arg_outdir    := ASU.To_Unbounded_String (this_arg);
                when whitelist => arg_whitelist := ASU.To_Unbounded_String (this_arg);
                when metadata  => arg_metadata  := ASU.To_Unbounded_String (this_arg);
+               when prefix    => arg_prefix    := ASU.To_Unbounded_String (this_arg);
             end case;
             next_parameter := waiting;
             if continue then
@@ -81,6 +83,8 @@ is
                      elsif this_arg = "--metadata" then
                         opt_metadata := True;
                         next_parameter := metadata;
+                     elsif this_arg = "--prefix" then
+                        next_parameter := prefix;
                      elsif this_arg = "--verbose" then
                         opt_verbose := True;
                      elsif this_arg = "--quiet" then
@@ -96,7 +100,7 @@ is
                            case this_arg (single) is
                               when 'v' => opt_verbose := True;
                               when 'q' => opt_quiet := True;
-                              when 'r' | 'o' | 'w' | 'm' =>
+                              when 'r' | 'o' | 'w' | 'm' | 'p' =>
                                  case this_arg (single) is
                                     when 'r' => opt_rootdir   := True;
                                     when 'o' => opt_outdir    := True;
@@ -110,6 +114,7 @@ is
                                        when 'o' => next_parameter := outdir;
                                        when 'w' => next_parameter := whitelist;
                                        when 'm' => next_parameter := metadata;
+                                       when 'p' => next_parameter := prefix;
                                        when others => null;
                                     end case;
                                  else
@@ -122,6 +127,7 @@ is
                                           when 'o' => arg_outdir    := remainder;
                                           when 'w' => arg_whitelist := remainder;
                                           when 'm' => arg_metadata  := remainder;
+                                          when 'p' => arg_prefix    := remainder;
                                           when others => null;
                                        end case;
                                     end;
@@ -153,7 +159,8 @@ is
    procedure usage (error_msg : String) is
    begin
       TIO.Put_Line (error_msg);
-      TIO.Put_Line ("packrvn [-vq] -r rootdir [-o outdir] [-w whitelist] [-m metadata] filename");
+      TIO.Put_Line ("packrvn [-vq] -r rootdir [-o outdir] [-w whitelist] " &
+                      "[-p prefix] [-m metadata] filename");
    end usage;
 
    procedure error (error_msg : String) is
@@ -298,6 +305,7 @@ begin
       if not Archive.Pack.integrate (top_level_directory => top_level,
                                      metadata_file       => ASU.To_String (arg_metadata),
                                      manifest_file       => ASU.To_String (arg_whitelist),
+                                     prefix              => ASU.To_String (arg_prefix),
                                      output_file         => rvn_file,
                                      verbosity           => level)
       then

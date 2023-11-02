@@ -8,7 +8,7 @@ on the RVN library.
 This program constructs a rvn-formatted package.
 The command-line options it accepts:
 
-#### packrvn [-vq] -r rootdir [-o outdir] [-w whitelist] [-m metadata] filename
+#### packrvn [-vq] -r rootdir [-o outdir] [-w whitelist] [-p prefix] [-m metadata] filename
 
 ```
     -r rootdir, --root-dir rootdir
@@ -25,13 +25,20 @@ The command-line options it accepts:
     -w whitelist, --whitelist whitelist
 
         The whitelist argument is a path to a file that contains a list of
-        files (including empty directories) relative to the rootdir.  It
-        is considered an error to start the line with a forward slash.
+        files relative to the prefix (which is a subdirectory of the rootdir.
         The file paths are to be separated by a newline character, meaning
         there is one file path per line.  Lines containing only whitespace
         are ignored.  Paths that don't refer to existing files cause a
         notice to be emitted, but then will be ignored.  If the whitelist
         parameter is omitted, all entities in the rootdir will be packaged.
+
+        DO NOT ACCEPT LIST DIRECTORIES 
+        CHANGE: It is considered an error to start the line with a forward slash.
+
+    -p prefix, --prefix outdir
+
+        Set the prefix which is a subdirectory of the rootdir, e.g. /usr/local
+        or /prefix.
 
     -m metadata, --metadata metadata
 

@@ -29,6 +29,7 @@ package body Archive.Pack is
      (top_level_directory : String;
       metadata_file       : String;
       manifest_file       : String;
+      prefix              : String;
       output_file         : String;
       verbosity           : info_level) return Boolean
    is
@@ -42,9 +43,10 @@ package body Archive.Pack is
       end if;
 
       if manifest_file /= "" then
-         if not metadata.white_list.ingest_file_manifest (manifest_file => manifest_file,
-                                                          top_directory => top_level_directory,
-                                                          level         => verbosity)
+         if not metadata.white_list.ingest_file_manifest (manifest_file    => manifest_file,
+                                                          stage_directory  => top_level_directory,
+                                                          prefix_directory => prefix,
+                                                          level            => verbosity)
          then
             return False;
          end if;

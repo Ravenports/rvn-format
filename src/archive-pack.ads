@@ -19,6 +19,7 @@ package Archive.Pack is
      (top_level_directory : String;
       metadata_file       : String;
       manifest_file       : String;
+      prefix              : String;
       output_file         : String;
       verbosity           : info_level) return Boolean;
 
