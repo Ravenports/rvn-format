@@ -991,6 +991,8 @@ package body Archive.Unpack is
          DS.retrieve_file_index;
       end if;
       if SIO.Index (DS.rvn_handle) /= DS.b4_index then
+         DS.print (debug, "Stream index at" & SIO.Index (DS.rvn_handle)'Img & ", setting to " &
+                     DS.b4_index'Img);
          SIO.Set_Index (DS.rvn_handle, DS.b4_index);
       end if;
       DS.files.Iterate (extract'Access);

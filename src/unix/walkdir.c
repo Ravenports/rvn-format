@@ -33,6 +33,7 @@ walkdir_close_folder ()
 	if (closedir (FOLDER) < 0) {
 		return 1;
 	}
+	FOLDER = NULL;
 	return 0;
 }
 

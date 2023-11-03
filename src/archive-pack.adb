@@ -367,7 +367,7 @@ package body Archive.Pack is
 
 
    ------------------------------------------------------------------------------------------
-   --  record_redirectory
+   --  record_directory
    ------------------------------------------------------------------------------------------
    procedure record_directory (AS : in out Arc_Structure; top_directory : String)
    is
@@ -462,7 +462,7 @@ package body Archive.Pack is
    ------------------------------------------------------------------------------------------
    procedure push_link (AS : in out Arc_Structure; link : String) is
    begin
-      AS.print (debug, "Pushing " & link & " link to stack");
+      AS.print (debug, "Pushing " & link & " link target to stack");
       for index in link'Range loop
          AS.links.Append (link (index));
       end loop;
@@ -474,7 +474,7 @@ package body Archive.Pack is
    ------------------------------------------------------------------------------------------
    procedure push_filename (AS : in out Arc_Structure; simple_name : String) is
    begin
-      AS.print (debug, "Pushing " & simple_name & " file to stack");
+      AS.print (debug, "Pushing " & simple_name & " filename to stack");
       for index in simple_name'Range loop
          AS.fnames.Append (simple_name (index));
       end loop;
