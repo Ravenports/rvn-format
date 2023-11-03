@@ -155,26 +155,41 @@ private
       compressionLevel : IC.int) return IC.size_t;
    pragma Import (C, ZSTD_compress, "ZSTD_compress");
 
-   --  @return : decompressed size as a 64-bits value _if known_, 0 otherwise.
-   --   note 1 : decompressed size can be very large (64-bits value),
+   --  ZSTD_getFrameContentSize() : requires v1.3.0+
+   --  `src` should point to the start of a ZSTD encoded frame.
+   --  `srcSize` must be at least as large as the frame header.
+   --            hint : any size >= `ZSTD_frameHeaderSize_max` is large enough.
+   --  @return : - decompressed size of `src` frame content, if known
+   --            - ZSTD_CONTENTSIZE_UNKNOWN if the size cannot be determined
+   --            - ZSTD_CONTENTSIZE_ERROR if an error occurred (e.g. invalid magic number,
+   --              srcSize too small)
+   --   note 1 : a 0 return value means the frame is valid but "empty".
+   --   note 2 : decompressed size is an optional field, it may not be present, typically in
+   --            streaming mode.
+   --            When `return==ZSTD_CONTENTSIZE_UNKNOWN`, data to decompress could be any size.
+   --            In which case, it's necessary to use streaming mode to decompress data.
+   --            Optionally, application can rely on some implicit limit,
+   --            as ZSTD_decompress() only needs an upper bound of decompressed size.
+   --            (For example, data could be necessarily cut into blocks <= 16 KB).
+   --   note 3 : decompressed size is always present when compression is completed using
+   --            single-pass functions, such as ZSTD_compress(), ZSTD_compressCCtx()
+   --            ZSTD_compress_usingDict() or ZSTD_compress_usingCDict().
+   --   note 4 : decompressed size can be very large (64-bits value),
    --            potentially larger than what local system can handle as a single memory segment.
    --            In which case, it's necessary to use streaming mode to decompress data.
-   --   note 2 : decompressed size is an optional field, that may not be present.
-   --            When `return==0`, consider data to decompress could have any size.
-   --            In which case, it's necessary to use streaming mode to decompress data,
-   --            or rely on application's implied limits.
-   --            (e.g., it may know that its own data is necessarily cut into blocks <= 16 KB).
-   --   note 3 : decompressed size could be wrong or intentionally modified !
-   --            Always ensure result fits within application's authorized limits !
-   --            Each application can have its own set of conditions.
-   --            If the intention is to decompress public data compressed by zstd command line
-   --            utility, it is recommended to support at least 8 MB for extended compatibility.
-   --   note 4 : when `return==0`, if precise failure cause is needed, use ZSTD_getFrameParams()
-   --            to know more.
-   function ZSTD_getDecompressedSize
-     (src     : access IC.unsigned_char;
-      srcSize : IC.size_t) return Zstd_uint64;
-   pragma Import (C, ZSTD_getDecompressedSize, "ZSTD_getDecompressedSize");
+   --   note 5 : If source is untrusted, decompressed size could be wrong or intentionally modified.
+   --            Always ensure return value fits within application's authorized limits.
+   --            Each application can set its own limits.
+   --   note 6 : This function replaces ZSTD_getDecompressedSize()
+
+   function ZSTD_getFrameContentSize
+      (src     : access IC.unsigned_char;
+       srcSize : IC.size_t) return Zstd_uint64;
+   pragma Import (C, ZSTD_getFrameContentSize, "ZSTD_getFrameContentSize");
+
+   ZSTD_CONTENTSIZE_UNKNOWN : constant Zstd_uint64 := Zstd_uint64'Last;
+   ZSTD_CONTENTSIZE_ERROR   : constant Zstd_uint64 := Zstd_uint64'Last - 1;
+
 
    --  `compressedSize` : is the _exact_ size of compressed input, else decompression will fail.
    --  `dstCapacity` must be equal or larger than originalSize (see ZSTD_getDecompressedSize() ).
@@ -341,7 +356,6 @@ private
    Warn_decompress_fail : constant String := "ERROR: Failed to decompress data after reading " &
                                                     "source file";
    Warn_way_too_big     : constant String := "ERROR: Hit size limit imposed by this architecture";
-   Warn_orig_size_fail  : constant String := "ERROR: Original size unknown";
 
    --  Helper function to dump contents of a file into a string
    --  Potentially useful when desirable to have a compressed copy of the file in memory

@@ -74,15 +74,21 @@ package body Zstandard is
       srcSize     : constant IC.size_t := IC.size_t (source_data'Length);
 
       full_size   : constant Zstd_uint64 :=
-        ZSTD_getDecompressedSize
+        ZSTD_getFrameContentSize
           (src     => src (src'First)'Access,
            srcSize => srcSize);
 
       dstCapacity : constant IC.size_t := IC.size_t (full_size);
    begin
-      if full_size = 0 then
+      if full_size = ZSTD_CONTENTSIZE_UNKNOWN then
          successful := False;
-         return Warn_orig_size_fail;
+         return "Error: Flat size cannot be determined.";
+      elsif full_size = ZSTD_CONTENTSIZE_ERROR then
+         successful := False;
+         return "Error: invalid magic number or srcSize too small.";
+      elsif full_size = 0 then
+         successful := False;
+         return "Error: size is valid, but it evaluates to zero which is unexpected.";
       end if;
 
       declare
