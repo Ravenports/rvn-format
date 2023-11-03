@@ -8,6 +8,7 @@ with Ada.Directories;
 with Ada.Direct_IO;
 with Ada.Strings.Fixed;
 with Archive.Unix;
+with Archive.Dirent.Scan;
 with Blake_3;
 
 package body Archive.Pack is
@@ -18,6 +19,7 @@ package body Archive.Pack is
    package IOX renames Ada.IO_Exceptions;
    package ASF renames Ada.Strings.Fixed;
    package UNX renames Archive.Unix;
+   package SCN renames Archive.Dirent.Scan;
    package ZST renames Zstandard;
 
    ------------------------------------------------------------------------------------------
@@ -153,79 +155,70 @@ package body Archive.Pack is
       dir_path  : String;
       dir_index : index_type)
    is
-      procedure walkdir   (item : DIR.Directory_Entry_Type);
-      procedure walkfiles (item : DIR.Directory_Entry_Type);
+      procedure walkdir   (position : SCN.dscan_crate.Cursor);
+      procedure walkfiles (position : SCN.dscan_crate.Cursor);
 
-      no_filter : constant DIR.Filter_Type := (others => True);
+      dirfiles  : SCN.dscan_crate.Vector;
 
-      procedure walkdir (item : DIR.Directory_Entry_Type) is
+      procedure walkdir (position : SCN.dscan_crate.Cursor)
+      is
+         item      : Archive.Dirent.Directory_Entity renames SCN.dscan_crate.Element (position);
+         item_path : constant String := item.full_path;
+         filename  : constant String := item.simple_name;
+         features  : constant UNX.File_Characteristics := UNX.get_charactistics (item_path);
+         new_block : File_Block;
       begin
          --  We only want true directories.  Symbolic links to directories are ignored.
-         case DIR.Kind (item) is
-            when DIR.Directory => null;
+         case features.ftype is
+            when directory => null;
             when others => return;
          end case;
-         if DIR.Simple_Name (item) /= "." and then
-           DIR.Simple_Name (item) /= ".."
-         then
-            declare
-               new_block : File_Block;
-               features  : UNX.File_Characteristics;
-               filename  : constant String := DIR.Simple_Name (item);
-            begin
-               features := UNX.get_charactistics (DIR.Full_Name (item));
-               if features.ftype = directory then
-                  if AS.white_list.whitelist_in_use then
-                     if not AS.white_list.directory_on_whitelist (DIR.Full_Name (item)) then
-                        return;
-                     end if;
-                  end if;
-               else
-                  return;
-               end if;
 
-               AS.dtrack := AS.dtrack + 1;
-               AS.push_filename (filename);
-               new_block.blake_sum    := null_sum;
-               new_block.modified_sec := features.mtime;
-               new_block.modified_ns  := features.mnsec;
-               new_block.index_owner  := AS.get_owner_index (features.owner);
-               new_block.index_group  := AS.get_group_index (features.group);
-               new_block.type_of_file := directory;
-               new_block.multiplier   := 0;
-               new_block.flat_size    := 0;
-               new_block.file_perms   := features.perms;
-               new_block.link_length  := 0;
-               new_block.index_parent := dir_index;
-               new_block.directory_id := AS.dtrack;
-               new_block.fname_length := max_fname (filename'Length);
-               new_block.padding      := (others => 0);
-
-               AS.files.Append (new_block);
-               AS.print (debug, DIR.Full_Name (item) & " (" & AS.dtrack'Img & ")");
-               AS.print (debug, "owner =" & new_block.index_owner'Img & "  group =" &
-                           new_block.index_group'Img);
-               AS.print (debug, "perms =" & features.perms'Img & "   mod =" & features.mtime'Img);
-               AS.print (verbose, "Record directory " & DIR.Full_Name (item));
-            end;
-            AS.scan_directory (DIR.Full_Name (item), AS.dtrack);
+         if AS.white_list.whitelist_in_use then
+            if not AS.white_list.directory_on_whitelist (item_path) then
+               return;
+            end if;
          end if;
+
+         AS.dtrack := AS.dtrack + 1;
+         AS.push_filename (filename);
+         new_block.blake_sum    := null_sum;
+         new_block.modified_sec := features.mtime;
+         new_block.modified_ns  := features.mnsec;
+         new_block.index_owner  := AS.get_owner_index (features.owner);
+         new_block.index_group  := AS.get_group_index (features.group);
+         new_block.type_of_file := directory;
+         new_block.multiplier   := 0;
+         new_block.flat_size    := 0;
+         new_block.file_perms   := features.perms;
+         new_block.link_length  := 0;
+         new_block.index_parent := dir_index;
+         new_block.directory_id := AS.dtrack;
+         new_block.fname_length := max_fname (filename'Length);
+         new_block.padding      := (others => 0);
+
+         AS.files.Append (new_block);
+         AS.print (debug, item_path & " (" & AS.dtrack'Img & ")");
+         AS.print (debug, "owner =" & new_block.index_owner'Img & "  group =" &
+                     new_block.index_group'Img);
+         AS.print (debug, "perms =" & features.perms'Img & "   mod =" & features.mtime'Img);
+         AS.print (verbose, "Record directory " & item_path);
+
+         AS.scan_directory (item_path, AS.dtrack);
       exception
-         when DIR.Name_Error =>
-            AS.print (normal, "walkdir: " & dir_path & " directory does not exist");
          when failed : others =>
             AS.print (normal, "walkdir exception => " & EX.Exception_Information (failed) &
-                        "  file: " & DIR.Full_Name (item));
+                        "  file: " & item_path);
       end walkdir;
 
-      procedure walkfiles (item : DIR.Directory_Entry_Type)
+      procedure walkfiles (position : SCN.dscan_crate.Cursor)
       is
-         --  Reject directories, but accept symlinks to directories
-         features  : UNX.File_Characteristics;
-         item_path : constant String := DIR.Full_Name (item);
+         item      : Archive.Dirent.Directory_Entity renames SCN.dscan_crate.Element (position);
+         item_path : constant String := item.full_path;
+         filename  : constant String := item.simple_name;
+         features  : constant UNX.File_Characteristics := UNX.get_charactistics (item_path);
       begin
-         features := UNX.get_charactistics (item_path);
-
+         --  Reject directories, but accept symlinks to directories
          case features.ftype is
             when directory => return;
             when unsupported =>
@@ -244,7 +237,6 @@ package body Archive.Pack is
             --  Blake3 sums for regular files and hardlinks
             --  The first hardlink is written as a regular file.
             new_block : File_Block;
-            filename  : constant String := DIR.Simple_Name (item);
 
             use type DIR.File_Size;
          begin
@@ -282,8 +274,7 @@ package body Archive.Pack is
                   begin
                      new_block.blake_sum := Blake_3.file_digest (item_path);
                      if AS.level = debug then
-                        AS.print (debug, Blake_3.hex (new_block.blake_sum) &
-                                    " " & DIR.Simple_Name (item));
+                        AS.print (debug, Blake_3.hex (new_block.blake_sum) & " " & filename);
                      end if;
                   exception
                      when IOX.Use_Error =>
@@ -304,8 +295,7 @@ package body Archive.Pack is
                   begin
                      new_block.blake_sum := Blake_3.file_digest (item_path);
                      if AS.level = debug then
-                        AS.print (debug, Blake_3.hex (new_block.blake_sum) &
-                                    " " & DIR.Simple_Name (item));
+                        AS.print (debug, Blake_3.hex (new_block.blake_sum) & " " & filename);
                      end if;
                   exception
                      when IOX.Use_Error =>
@@ -349,7 +339,7 @@ package body Archive.Pack is
                          & " "
                          & Unix.format_file_time (new_block.modified_sec)
                          & " "
-                         & DIR.Simple_Name (item));
+                         & filename);
             end if;
          end;
 
@@ -363,22 +353,16 @@ package body Archive.Pack is
       end walkfiles;
 
    begin
-      DIR.Search (Directory => dir_path,
-                  Pattern   => "",
-                  Filter    => no_filter,
-                  Process   => walkdir'Access);
+      SCN.scan_directory (dir_path, dirfiles);
+      dirfiles.Iterate (walkdir'Access);
 
       AS.print (verbose, "cd " & dir_path);
 
-      DIR.Search (Directory => dir_path,
-                  Pattern   => "*",
-                  Filter    => no_filter,
-                  Process   => walkfiles'Access);
+      dirfiles.Iterate (walkfiles'Access);
+
    exception
-      when DIR.Name_Error =>
+      when SCN.dscan_open_failure =>
          AS.print (normal, "The " & dir_path & " directory does not exist");
-      when DIR.Use_Error =>
-         AS.print (normal, "Searching " & dir_path & " directory is not supported");
       when failed : others =>
          AS.print (normal, "scan_directory: Unknown error - directory search");
          AS.print (normal, "=> " & EX.Exception_Information (failed));
