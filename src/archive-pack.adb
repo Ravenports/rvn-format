@@ -345,8 +345,6 @@ package body Archive.Pack is
 
          AS.print (debug, "file = " & item_path & " (" & features.ftype'Img & ")");
       exception
-         when DIR.Name_Error =>
-            AS.print (normal, "walkfiles: " & dir_path & " directory does not exist");
          when failed : others =>
             AS.print (normal, "walkfiles exception => " & EX.Exception_Information (failed) &
                         "  file: " & item_path);
@@ -357,7 +355,6 @@ package body Archive.Pack is
       dirfiles.Iterate (walkdir'Access);
 
       AS.print (verbose, "cd " & dir_path);
-
       dirfiles.Iterate (walkfiles'Access);
 
    exception
