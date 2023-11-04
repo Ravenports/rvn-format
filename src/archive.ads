@@ -82,10 +82,10 @@ package Archive is
          size_archive    : zstd_size;
          fname_blocks    : file_index;
          flat_filedata   : zstd_size;
+         unused1         : zpadding;
          flat_arc_mod    : size_modulo;
          flat_arc_mult   : size_multi;
          flat_metadata   : mdata_size;
-         unused1         : zpadding;
          unused2         : zpadding;
          unused3         : zpadding;
          unused4         : zpadding;
