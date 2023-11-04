@@ -56,10 +56,13 @@ Index  Information           bytes
    20  File index comp size    4
    24  Archive comp size       4
    28  Number of fname blocks  4
-   32  Flatsize of file index  4
-   36  Flatsize of archive     5
-   41  Flatsize of Metadata    3
-   44  padding                20
+   32  Flatsize of metadata    4
+   36  Flatsize of file index  4
+   40  Flatsize of archive     8
+   48  unused1                 4
+   52  unused2                 4
+   56  unused3                 4
+   60  unused4                 4
 ```
 The first 64 bytes provides the number of groups, owners and files contained in the archive.
 It also contains the compressed size in bytes of the next three blocks.  The index of
