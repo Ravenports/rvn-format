@@ -593,15 +593,13 @@ package body Archive.Pack is
       block.size_filedata   := AS.ndx_size;
       block.size_archive    := AS.tmp_size;
       block.fname_blocks    := file_index (Float'Ceiling (nfbfloat));
-      block.flat_metadata   := AS.flat_meta;
+      block.flat_metadata   := zstd_size (AS.flat_meta);
       block.flat_filedata   := AS.flat_ndx;
-      block.flat_arc_mod    := size_modulo (AS.flat_arc mod 2 ** 32);
-      block.flat_arc_mult   := size_multi (AS.flat_arc / 2 ** 32);
+      block.flat_archive    := exabytes (AS.flat_arc);
       block.unused1         := 0;
       block.unused2         := 0;
       block.unused3         := 0;
       block.unused4         := 0;
-      block.unused5         := 0;
 
       declare
          package Premier_IO is new Ada.Direct_IO (premier_block);

@@ -21,6 +21,7 @@ package Archive is
    type max_path    is mod 2 ** 16;
    type max_fname   is mod 2 ** 8;
    type inode_type  is mod 2 ** 64;
+   type exabytes    is mod 2 ** 64;
    type file_index  is mod 2 ** 32;
    type owngrp_id   is mod 2 ** 32;
    type zpadding    is mod 2 ** 32;
@@ -81,15 +82,13 @@ package Archive is
          size_filedata   : zstd_size;
          size_archive    : zstd_size;
          fname_blocks    : file_index;
+         flat_metadata   : zstd_size;
          flat_filedata   : zstd_size;
+         flat_archive    : exabytes;
          unused1         : zpadding;
-         flat_arc_mod    : size_modulo;
-         flat_arc_mult   : size_multi;
-         flat_metadata   : mdata_size;
          unused2         : zpadding;
          unused3         : zpadding;
          unused4         : zpadding;
-         unused5         : zpadding;
       end record;
 
    for premier_block'Size use 512;
@@ -108,16 +107,14 @@ package Archive is
          size_archive    at 24 range  0 .. 31;
          fname_blocks    at 28 range  0 .. 31;
 
-         flat_filedata   at 32 range  0 .. 31;
-         unused1         at 36 range  0 .. 31;
-         flat_arc_mod    at 40 range  0 .. 31;
-         flat_arc_mult   at 44 range  0 .. 7;
-         flat_metadata   at 45 range  0 .. 23;
+         flat_metadata   at 32 range  0 .. 31;
+         flat_filedata   at 36 range  0 .. 31;
+         flat_archive    at 40 range  0 .. 63;
 
-         unused2         at 48 range  0 .. 31;
-         unused3         at 52 range  0 .. 31;
-         unused4         at 56 range  0 .. 31;
-         unused5         at 60 range  0 .. 31;
+         unused1         at 48 range  0 .. 31;
+         unused2         at 52 range  0 .. 31;
+         unused3         at 56 range  0 .. 31;
+         unused4         at 60 range  0 .. 31;
       end record;
 
    magic : constant Some_magic := Character'Val (200) & Character'Val (100) & Character'Val (50);

@@ -194,7 +194,4 @@ private
    --  the current user.  If it's not, it attempts to change mode to make it so.
    procedure prepare_for_overwrite (DS : DArc; file_path : String);
 
-   --  Convenient function to join the two flat archive values to a single one
-   function flat_archive_size (header_block : premier_block) return size_type;
-
 end Archive.Unpack;
