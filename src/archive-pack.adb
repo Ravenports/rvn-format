@@ -580,6 +580,7 @@ package body Archive.Pack is
       block    : premier_block;
       nlbfloat : constant Float := Float (AS.links.Length) / 32.0;
       nfbfloat : constant Float := Float (AS.fnames.Length) / 32.0;
+      zeroes   : constant B_padding := (others => 0);
    begin
       SIO.Close (AS.rvn_handle);
 
@@ -595,8 +596,13 @@ package body Archive.Pack is
       block.fname_blocks    := file_index (Float'Ceiling (nfbfloat));
       block.flat_metadata   := AS.flat_meta;
       block.flat_filedata   := AS.flat_ndx;
-      block.flat_archive    := AS.flat_arc;
-      block.padding         := (others => 0);
+      block.flat_arc_mod    := size_modulo (AS.flat_arc mod 2 ** 32);
+      block.flat_arc_mult   := size_multi (AS.flat_arc / 2 ** 32);
+      block.unused1         := zeroes;
+      block.unused2         := zeroes;
+      block.unused3         := zeroes;
+      block.unused4         := zeroes;
+      block.unused5         := zeroes;
 
       declare
          package Premier_IO is new Ada.Direct_IO (premier_block);

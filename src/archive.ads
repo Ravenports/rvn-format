@@ -29,7 +29,7 @@ package Archive is
    subtype Some_magic is String (1 .. 3);
 
    type A_padding is array (1 .. 3) of one_byte;
-   type B_padding is array (1 .. 20) of one_byte;
+   type B_padding is array (1 .. 4) of one_byte;
 
    type File_Block is
       record
@@ -82,9 +82,14 @@ package Archive is
          size_archive    : zstd_size;
          fname_blocks    : file_index;
          flat_filedata   : zstd_size;
-         flat_archive    : size_type;
+         flat_arc_mod    : size_modulo;
+         flat_arc_mult   : size_multi;
          flat_metadata   : mdata_size;
-         padding         : B_padding;
+         unused1         : B_padding;
+         unused2         : B_padding;
+         unused3         : B_padding;
+         unused4         : B_padding;
+         unused5         : B_padding;
       end record;
 
    for premier_block'Size use 512;
@@ -95,16 +100,25 @@ package Archive is
          version         at  3 range  0 .. 7;
          num_groups      at  4 range  0 .. 15;
          num_owners      at  6 range  0 .. 15;
+
          link_blocks     at  8 range  0 .. 31;
          file_blocks     at 12 range  0 .. 31;
          size_metadata   at 16 range  0 .. 31;
          size_filedata   at 20 range  0 .. 31;
+
          size_archive    at 24 range  0 .. 31;
          fname_blocks    at 28 range  0 .. 31;
          flat_filedata   at 32 range  0 .. 31;
-         flat_archive    at 36 range  0 .. 39;
+         unused1         at 44 range  0 .. 31;
+
+         flat_arc_mod    at 36 range  0 .. 31;
+         flat_arc_mult   at 40 range  0 .. 7;
          flat_metadata   at 41 range  0 .. 23;
-         padding         at 44 range  0 .. 159;
+
+         unused2         at 48 range  0 .. 31;
+         unused3         at 52 range  0 .. 31;
+         unused4         at 56 range  0 .. 31;
+         unused5         at 60 range  0 .. 31;
       end record;
 
    magic : constant Some_magic := Character'Val (200) & Character'Val (100) & Character'Val (50);

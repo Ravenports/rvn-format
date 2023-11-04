@@ -82,7 +82,7 @@ package body Archive.Unpack is
       DS.print (debug, "        compressed :" & DS.header.size_metadata'Img);
       DS.print (debug, "  file index bytes :" & DS.header.flat_filedata'Img);
       DS.print (debug, "        compressed :" & DS.header.size_filedata'Img);
-      DS.print (debug, "     archive bytes :" & DS.header.flat_archive'Img);
+      DS.print (debug, "     archive bytes :" & flat_archive_size (DS.header)'Img);
       DS.print (debug, "        compressed :" & DS.header.size_archive'Img);
       DS.print (debug, "             index :" & SIO.Index (DS.rvn_handle)'Img);
 
@@ -1047,7 +1047,7 @@ package body Archive.Unpack is
             DS.buffer := ASU.To_Unbounded_String
               (ZST.Decompress (archive_saxs => DS.rvn_stmaxs,
                                data_length  => Natural (DS.header.size_archive),
-                               final_size   => ZST.File_Size (DS.header.flat_archive),
+                               final_size   => ZST.File_Size (flat_archive_size (DS.header)),
                                successful   => decomp_worked));
             DS.print (debug, "One shot archive decompression successful : " & decomp_worked'Img);
          end if;
@@ -1202,6 +1202,18 @@ package body Archive.Unpack is
 
 
    ------------------------------------------------------------------------------------------
+   --  flat_archive_size
+   ------------------------------------------------------------------------------------------
+   function flat_archive_size (header_block : premier_block) return size_type
+   is
+      result : size_type := size_type (header_block.flat_arc_mod);
+   begin
+      result := result + size_type (header_block.flat_arc_mult * (2 ** 32));
+      return result;
+   end flat_archive_size;
+
+
+   ------------------------------------------------------------------------------------------
    --  print_magic_block
    ------------------------------------------------------------------------------------------
    procedure print_magic_block (DS : DArc)
@@ -1217,7 +1229,7 @@ package body Archive.Unpack is
       DS.print (normal, "        compressed :" & DS.header.size_metadata'Img);
       DS.print (normal, "  file index bytes :" & DS.header.flat_filedata'Img);
       DS.print (normal, "        compressed :" & DS.header.size_filedata'Img);
-      DS.print (normal, "     archive bytes :" & DS.header.flat_archive'Img);
+      DS.print (normal, "     archive bytes :" & flat_archive_size (DS.header)'Img);
       DS.print (normal, "        compressed :" & DS.header.size_archive'Img);
    end print_magic_block;
 
