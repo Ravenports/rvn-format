@@ -23,13 +23,13 @@ package Archive is
    type inode_type  is mod 2 ** 64;
    type file_index  is mod 2 ** 32;
    type owngrp_id   is mod 2 ** 32;
+   type zpadding    is mod 2 ** 32;
 
    subtype A_filename is String (1 .. 256);
    subtype A_checksum is String (1 .. 32);
    subtype Some_magic is String (1 .. 3);
 
    type A_padding is array (1 .. 3) of one_byte;
-   type B_padding is array (1 .. 4) of one_byte;
 
    type File_Block is
       record
@@ -85,11 +85,11 @@ package Archive is
          flat_arc_mod    : size_modulo;
          flat_arc_mult   : size_multi;
          flat_metadata   : mdata_size;
-         unused1         : B_padding;
-         unused2         : B_padding;
-         unused3         : B_padding;
-         unused4         : B_padding;
-         unused5         : B_padding;
+         unused1         : zpadding;
+         unused2         : zpadding;
+         unused3         : zpadding;
+         unused4         : zpadding;
+         unused5         : zpadding;
       end record;
 
    for premier_block'Size use 512;
@@ -100,20 +100,19 @@ package Archive is
          version         at  3 range  0 .. 7;
          num_groups      at  4 range  0 .. 15;
          num_owners      at  6 range  0 .. 15;
-
          link_blocks     at  8 range  0 .. 31;
          file_blocks     at 12 range  0 .. 31;
+
          size_metadata   at 16 range  0 .. 31;
          size_filedata   at 20 range  0 .. 31;
-
          size_archive    at 24 range  0 .. 31;
          fname_blocks    at 28 range  0 .. 31;
-         flat_filedata   at 32 range  0 .. 31;
-         unused1         at 44 range  0 .. 31;
 
-         flat_arc_mod    at 36 range  0 .. 31;
-         flat_arc_mult   at 40 range  0 .. 7;
-         flat_metadata   at 41 range  0 .. 23;
+         flat_filedata   at 32 range  0 .. 31;
+         unused1         at 36 range  0 .. 31;
+         flat_arc_mod    at 40 range  0 .. 31;
+         flat_arc_mult   at 44 range  0 .. 7;
+         flat_metadata   at 45 range  0 .. 23;
 
          unused2         at 48 range  0 .. 31;
          unused3         at 52 range  0 .. 31;
