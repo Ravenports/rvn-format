@@ -15,6 +15,7 @@ package Archive is
    type size_modulo is mod 2 ** 32;
    type size_type   is mod 2 ** 40;
    type zstd_size   is mod 2 ** 32;
+   type mdata_size  is mod 2 ** 24;
    type filetime    is mod 2 ** 64;
    type nanoseconds is mod 2 ** 32;
    type max_path    is mod 2 ** 16;
@@ -28,6 +29,7 @@ package Archive is
    subtype Some_magic is String (1 .. 3);
 
    type A_padding is array (1 .. 3) of one_byte;
+   type B_padding is array (1 .. 20) of one_byte;
 
    type File_Block is
       record
@@ -79,9 +81,13 @@ package Archive is
          size_filedata   : zstd_size;
          size_archive    : zstd_size;
          fname_blocks    : file_index;
+         flat_filedata   : zstd_size;
+         flat_archive    : size_type;
+         flat_metadata   : mdata_size;
+         padding         : B_padding;
       end record;
 
-   for premier_block'Size use 256;
+   for premier_block'Size use 512;
    for premier_block'Alignment use 8;
    for premier_block use
       record
@@ -95,10 +101,15 @@ package Archive is
          size_filedata   at 20 range  0 .. 31;
          size_archive    at 24 range  0 .. 31;
          fname_blocks    at 28 range  0 .. 31;
+         flat_filedata   at 32 range  0 .. 31;
+         flat_archive    at 36 range  0 .. 39;
+         flat_metadata   at 41 range  0 .. 23;
+         padding         at 44 range  0 .. 159;
       end record;
 
    magic : constant Some_magic := Character'Val (200) & Character'Val (100) & Character'Val (50);
    KB256 : constant Natural := 262_144;
-   format_version : constant one_byte := 2;
+   KB512 : constant Natural := 524_288;
+   format_version : constant one_byte := 3;
 
 end Archive;

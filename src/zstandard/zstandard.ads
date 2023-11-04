@@ -44,6 +44,7 @@ package Zstandard is
    --  related error message.
    function Decompress
      (source_data : String;
+      final_size  : File_Size;
       successful  : out Boolean) return String;
 
    --  This function reads the entire block of compressed data from the archive and
@@ -52,6 +53,7 @@ package Zstandard is
    function Decompress
      (archive_saxs : SIO.Stream_Access;
       data_length  : Natural;
+      final_size   : File_Size;
       successful   : out Boolean) return String;
 
 

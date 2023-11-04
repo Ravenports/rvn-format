@@ -81,6 +81,9 @@ private
          tmp_size   : zstd_size := 0;
          ndx_size   : zstd_size := 0;
          meta_size  : zstd_size := 0;
+         flat_meta  : mdata_size := 0;
+         flat_ndx   : zstd_size := 0;
+         flat_arc   : size_type := 0;
          white_list : Whitelist.A_Whitelist;
          serror     : Boolean := False;
       end record;

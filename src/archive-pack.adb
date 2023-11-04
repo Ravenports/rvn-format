@@ -593,6 +593,10 @@ package body Archive.Pack is
       block.size_filedata   := AS.ndx_size;
       block.size_archive    := AS.tmp_size;
       block.fname_blocks    := file_index (Float'Ceiling (nfbfloat));
+      block.flat_metadata   := AS.flat_meta;
+      block.flat_filedata   := AS.flat_ndx;
+      block.flat_archive    := AS.flat_arc;
+      block.padding         := (others => 0);
 
       declare
          package Premier_IO is new Ada.Direct_IO (premier_block);
@@ -762,6 +766,7 @@ package body Archive.Pack is
       if out_succ then
          AS.print (debug, "Compressed index from" & archive_size'Img & " to" & out_size'Img);
          AS.ndx_size := zstd_size (out_size);
+         AS.flat_ndx := zstd_size (archive_size);
       else
          AS.print (normal, "Failed to compress " & uncompressed_archive);
       end if;
@@ -790,6 +795,7 @@ package body Archive.Pack is
       if out_succ then
          AS.print (debug, "Compressed archive from" & archive_size'Img & " to" & out_size'Img);
          AS.tmp_size := zstd_size (out_size);
+         AS.flat_arc := size_type (archive_size);
       else
          AS.print (normal, "Failed to compress " & uncompressed_archive);
       end if;
@@ -822,8 +828,8 @@ package body Archive.Pack is
       begin
          dossier_size := ZST.File_Size (DIR.Size (metadata_path));
 
-         if dossier_size > ZST.File_Size (KB256)  then
-            AS.print (normal, "The metadata file size exceeds the 256 KB limit.");
+         if dossier_size > ZST.File_Size (KB512)  then
+            AS.print (normal, "The metadata file size exceeds the 512 KB limit.");
             AS.print (normal, "The archive will be built without this file.");
             return;
          end if;
@@ -840,6 +846,7 @@ package body Archive.Pack is
          if out_succ then
             AS.print (debug, "Compressed metadata from" & dossier_size'Img & " to" & out_size'Img);
             AS.meta_size := zstd_size (out_size);
+            AS.flat_meta := mdata_size (dossier_size);
          else
             AS.print (normal, "Failed to compress " & metadata_path);
          end if;
