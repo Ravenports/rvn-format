@@ -189,7 +189,7 @@ package body Archive.Unpack is
      (DS      : in out DArc;
       filepath : String)
    is
-      --  metadata is always starts on index of 32.
+      --  metadata is always starts on index of 64.
       --  Move to this point if not already there.
       --  However, this is unnecessary if metadata is zero bytes.
       use type SIO.Count;

@@ -789,6 +789,7 @@ package body Archive.Pack is
       archive_size : constant ZST.File_Size := ZST.File_Size (DIR.Size (uncompressed_archive));
    begin
       AS.tmp_size := 0;
+      AS.flat_arc := 0;
       ZST.incorporate_regular_file
         (filename    => uncompressed_archive,
          size        => archive_size,
@@ -813,6 +814,7 @@ package body Archive.Pack is
    procedure write_metadata_block (AS : in out Arc_Structure; metadata_path : String) is
    begin
       AS.meta_size := 0;
+      AS.flat_meta := 0;
       if metadata_path = "" then
          AS.print (debug, "No metadata file has been provided.");
          return;
