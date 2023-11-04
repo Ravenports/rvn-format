@@ -6,11 +6,13 @@ with Ada.Strings.Hash;
 with Ada.Strings.Fixed;
 with Ada.Text_IO;
 with Archive.Unix;
+with GNAT.Regpat;
 
 package body Archive.Whitelist is
 
    package TIO renames Ada.Text_IO;
    package ASF renames Ada.Strings.Fixed;
+   package REX renames GNAT.Regpat;
 
    -----------------------
    --  whiteist_in_use  --
@@ -34,7 +36,7 @@ package body Archive.Whitelist is
 
       if whitelist.files.Contains (file_hash) then
          --  True on files, False on directories
-         return not whitelist.files.Element (file_hash);
+         return not whitelist.files.Element (file_hash).is_directory;
       end if;
       return False;
    end file_on_whitelist;
@@ -53,7 +55,7 @@ package body Archive.Whitelist is
 
       if whitelist.files.Contains (file_hash) then
          --  False on files, True on directories
-         return whitelist.files.Element (file_hash);
+         return whitelist.files.Element (file_hash).is_directory;
       end if;
       return False;
    end directory_on_whitelist;
@@ -69,11 +71,21 @@ package body Archive.Whitelist is
       prefix_directory : String;
       level            : info_level) return Boolean
    is
+      type linecat is (jump, external_keyword, file_path, mode_override, key_error);
+
       function get_true_path (line : String) return String;
+      function categorize_line (line : String) return linecat;
+      procedure handle_file_path (line : String);
+      procedure handle_mode_keyword (line : String);
 
       features    : Unix.File_Characteristics;
       file_handle : TIO.File_Type;
       succeeded   : Boolean := True;
+      regmech     : constant REX.Pattern_Matcher := REX.Compile ("^@[(].*,.*,.*[)] ");
+      captured    : constant REX.Pattern_Matcher := REX.Compile ("^@[(](.*),(.*),(.*)[)] (.*)");
+      match_jar   : REX.Match_Array (0 .. 0);
+      capture_jar : REX.Match_Array (0 .. 4);
+
       real_top_directory : constant String := Unix.real_path (stage_directory);
 
       function get_true_path (line : String) return String is
@@ -83,6 +95,95 @@ package body Archive.Whitelist is
          end if;
          return real_top_directory & prefix_directory & "/" & line;
       end get_true_path;
+
+      function categorize_line (line : String) return linecat
+      is
+         use type REX.Match_Location;
+
+         position : Integer;
+      begin
+         if line = "" then
+            return jump;
+         end if;
+         if line (line'First) = '@' then
+            if line (line'First .. line'First + 8) = "@comment " then
+               return jump;
+            end if;
+            position := ASF.Index (line, " ");
+            if position > 2 then
+               --  possible keyword.  See if it matches @(,,) pattern
+               REX.Match (Self => regmech, Data => line, Matches => match_jar);
+               if match_jar (0) = REX.No_Match then
+                  return external_keyword;
+               else
+                  return mode_override;
+               end if;
+            end if;
+            return key_error;
+         end if;
+         return file_path;
+      end categorize_line;
+
+      procedure handle_file_path (line : String)
+      is
+         true_path : constant String := get_true_path (line);
+         insert_succeeded : Boolean;
+      begin
+         if true_path = "" then
+            if level >= normal then
+               TIO.Put_Line ("Manifest entity [" & line & "] does not exist, ignoring");
+            end if;
+         else
+            insert_succeeded := whitelist.insert_file_into_whitelist
+              (full_path     => true_path,
+               real_top_path => real_top_directory,
+               level         => level);
+            if not insert_succeeded then
+               succeeded := False;
+            end if;
+         end if;
+      end handle_file_path;
+
+      procedure handle_mode_keyword (line : String)
+      is
+      begin
+         REX.Match (Self => captured, Data => line, Matches => capture_jar);
+         if ASF.Trim (line (capture_jar (3).First .. capture_jar (3).Last), Ada.Strings.Both) = ""
+         then
+            succeeded := False;
+            if level >= normal then
+               TIO.Put_Line ("Manifest entity [" & line & "] mode keyword has no path argument");
+            end if;
+            return;
+         end if;
+
+         declare
+            insert_succeeded : Boolean;
+            grp_owner : constant String := line (capture_jar (0).First .. capture_jar (0).Last);
+            grp_group : constant String := line (capture_jar (1).First .. capture_jar (1).Last);
+            grp_perms : constant String := line (capture_jar (2).First .. capture_jar (2).Last);
+            grp_path  : constant String := line (capture_jar (3).First .. capture_jar (3).Last);
+            true_path : constant String := get_true_path (ASF.Trim (grp_path, Ada.Strings.Both));
+         begin
+            if true_path = "" then
+               if level >= normal then
+                  TIO.Put_Line ("Manifest entity [" & line & "] does not exist, ignoring");
+               end if;
+            else
+               insert_succeeded := whitelist.ingest_manifest_with_mode_override
+                 (full_path     => true_path,
+                  real_top_path => real_top_directory,
+                  new_owner     => grp_owner,
+                  new_group     => grp_group,
+                  new_perms     => grp_perms,
+                  level         => level);
+               if not insert_succeeded then
+                  succeeded := False;
+               end if;
+            end if;
+         end;
+      end handle_mode_keyword;
+
    begin
       if real_top_directory = "" then
          if level >= normal then
@@ -117,30 +218,24 @@ package body Archive.Whitelist is
                 Name => manifest_file);
       while not TIO.End_Of_File (file_handle) loop
          declare
-            line : constant String := ASF.Trim (TIO.Get_Line (file_handle), Ada.Strings.Both);
-            insert_succeeded : Boolean;
+            line     : constant String := ASF.Trim (TIO.Get_Line (file_handle), Ada.Strings.Both);
+            category : constant linecat := categorize_line (line);
          begin
-            if line = "" then
-               null;
-            else
-               declare
-                  true_path : constant String := get_true_path (line);
-               begin
-                  if true_path = "" then
-                     if level >= normal then
-                        TIO.Put_Line ("Manifest entity [" & line & "] does not exist, ignoring");
-                     end if;
-                  else
-                     insert_succeeded := whitelist.insert_file_into_whitelist
-                       (full_path     => true_path,
-                        real_top_path => real_top_directory,
-                        level         => level);
-                     if not insert_succeeded then
-                        succeeded := False;
-                     end if;
+            case category is
+               when jump =>
+                  null;
+               when key_error =>
+                  if level >= normal then
+                     TIO.Put_Line ("Manifest entity [" & line & "] has invalid keyword, ignoring");
                   end if;
-               end;
-            end if;
+               when external_keyword =>
+                  --  TODO: call callback
+                  null;
+               when file_path  =>
+                  handle_file_path (line);
+               when mode_override =>
+                  handle_mode_keyword (line);
+            end case;
          end;
       end loop;
       TIO.Close (file_handle);
@@ -161,32 +256,36 @@ package body Archive.Whitelist is
    is
       file_hash : Blake_3.blake3_hash;
       features  : Unix.File_Characteristics;
+      props     : white_properties;
    begin
       features := Unix.get_charactistics (full_path);
       if features.error then
          if level >= normal then
             TIO.Put_Line ("The whitelisted file '" & full_path & "' does not exist.");
-            return False;
          end if;
-      elsif features.ftype = directory then
-         whitelist.insert_directory_into_whitelist (dir_path      => full_path,
-                                                    real_top_path => real_top_path,
-                                                    level         => level);
-         return True;
-      else
-         if whitelist.file_on_whitelist (full_path) then
-            if level >= normal then
-               TIO.Put_Line ("Duplicate line discovered: " & full_path);
-            end if;
-            return False;
-         else
-            if level >= verbose then
-               TIO.Put_Line ("Adding to whitelist: " & full_path);
-            end if;
-            file_hash := Blake_3.digest (full_path);
-            whitelist.files.Insert (file_hash, False);
-         end if;
+         return False;
       end if;
+
+      if features.ftype = directory then
+         if level >= normal then
+            TIO.Put_Line ("The whitelisted file '" & full_path & "' is of type directory.");
+         end if;
+         return False;
+      end if;
+
+      if whitelist.file_on_whitelist (full_path) then
+         if level >= normal then
+            TIO.Put_Line ("Duplicate line discovered: " & full_path);
+         end if;
+         return False;
+      end if;
+
+      if level >= verbose then
+         TIO.Put_Line ("Adding to whitelist: " & full_path);
+      end if;
+      file_hash := Blake_3.digest (full_path);
+      props.is_directory := False;
+      whitelist.files.Insert (file_hash, props);
 
       --  Now insert the file's directory tree
       whitelist.insert_directory_into_whitelist (dir_path      => head (full_path, "/"),
@@ -206,6 +305,7 @@ package body Archive.Whitelist is
       level         : info_level)
    is
       file_hash : Blake_3.blake3_hash;
+      props     : white_properties;
    begin
       if real_top_path = dir_path then
          --  stop recursion
@@ -216,13 +316,97 @@ package body Archive.Whitelist is
             TIO.Put_Line ("Adding directory to whitelist: " & dir_path);
          end if;
          file_hash := Blake_3.digest (dir_path);
-         whitelist.files.Insert (file_hash, True);
+         props.is_directory := True;
+         whitelist.files.Insert (file_hash, props);
       end if;
       insert_directory_into_whitelist (whitelist     => whitelist,
                                        dir_path      => head (dir_path, "/"),
                                        real_top_path => real_top_path,
                                        level         => level);
    end insert_directory_into_whitelist;
+
+
+   ------------------------------------------
+   --  ingest_manifest_with_mode_override  --
+   ------------------------------------------
+   function ingest_manifest_with_mode_override
+     (whitelist     : in out A_Whitelist;
+      full_path     : String;
+      real_top_path : String;
+      new_owner     : String;
+      new_group     : String;
+      new_perms     : String;
+      level         : info_level) return Boolean
+   is
+      file_hash  : Blake_3.blake3_hash;
+      features   : Unix.File_Characteristics;
+      props      : white_properties;
+   begin
+      features := Unix.get_charactistics (full_path);
+      if features.error then
+         if level >= normal then
+            TIO.Put_Line ("The whitelisted file '" & full_path & "' does not exist.");
+         end if;
+         return False;
+      end if;
+
+      if features.ftype = directory then
+         if level >= normal then
+            TIO.Put_Line ("The whitelisted file '" & full_path & "' is of type directory.");
+         end if;
+         return False;
+      end if;
+
+      if whitelist.file_on_whitelist (full_path) then
+         if level >= normal then
+            TIO.Put_Line ("Duplicate line discovered: " & full_path);
+         end if;
+         return False;
+      end if;
+
+      if level >= verbose then
+         TIO.Put_Line ("Adding to whitelist: " & full_path & " (" & new_owner & "," &
+                         new_group & "," & new_perms & ")");
+      end if;
+      file_hash := Blake_3.digest (full_path);
+      props.is_directory := False;
+
+      if new_owner /= "" then
+         props.override_owner := True;
+         props.owner_spec := Archive.Unix.str2owngrp (new_owner);
+      end if;
+
+      if new_group /= "" then
+         props.override_group := True;
+         props.group_spec := Archive.Unix.str2owngrp (new_group);
+      end if;
+
+      if new_perms /= "" then
+         declare
+            op_success  : Boolean;
+            octal_perms : permissions;
+         begin
+            octal_perms := convert_mode (new_perms, op_success);
+            if op_success then
+               props.override_perms := True;
+               props.perms_spec := octal_perms;
+            else
+               if level >= verbose then
+                  TIO.Put_Line ("failed to convert " & new_perms &
+                               " to an octal value, so mode change request ignored.");
+               end if;
+            end if;
+         end;
+      end if;
+
+      whitelist.files.Insert (file_hash, props);
+
+      --  Now insert the file's directory tree
+      whitelist.insert_directory_into_whitelist (dir_path      => head (full_path, "/"),
+                                                 real_top_path => real_top_path,
+                                                 level         => level);
+      return True;
+   end ingest_manifest_with_mode_override;
 
 
    -------------------
@@ -265,5 +449,38 @@ package body Archive.Whitelist is
          front_marker := front_marker - 1;
       end loop;
    end head;
+
+
+   --------------------
+   --  convert_mode  --
+   --------------------
+   function convert_mode (S : String; success : out Boolean) return permissions
+   is
+      no_permissions : constant permissions := 0;
+      index    : Natural := 0;
+      mychar   : Character;
+      result   : permissions;
+      fragment : permissions;
+   begin
+      result := 0;
+      success := False;
+      if S'Length < 3 or else S'Length > 4 then
+         return no_permissions;
+      end if;
+      for arrow in reverse S'Range loop
+         mychar := S (arrow);
+         case mychar is
+            when '0' .. '7' => null;
+               fragment := permissions (Character'Pos (mychar) - Character'Pos ('0'));
+               --  shift
+               fragment := fragment * (8 ** index);
+            when others =>
+               return no_permissions;
+         end case;
+         result := result + fragment;
+         index := index + 1;
+      end loop;
+      return result;
+   end convert_mode;
 
 end Archive.Whitelist;
