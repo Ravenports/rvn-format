@@ -22,6 +22,7 @@ is
    function creation_directory return String;
    function rvn_file return String;
    function tail (S : String; delimiter : String) return String;
+   function provide_timestamp (arg : text) return Archive.filetime;
    function valid_directory
      (opt_directory : Boolean;
       arg_directory : text;
@@ -44,10 +45,11 @@ is
    arg_outdir    : text;
    arg_filename  : text;
    arg_prefix    : text;
+   arg_timestamp : text;
 
    procedure process_arguments
    is
-      type compound is (waiting, rootdir, outdir, whitelist, metadata, prefix);
+      type compound is (waiting, rootdir, outdir, whitelist, metadata, prefix, timestamp);
       argx : Natural := 0;
       next_parameter : compound := waiting;
 
@@ -66,6 +68,7 @@ is
                when whitelist => arg_whitelist := ASU.To_Unbounded_String (this_arg);
                when metadata  => arg_metadata  := ASU.To_Unbounded_String (this_arg);
                when prefix    => arg_prefix    := ASU.To_Unbounded_String (this_arg);
+               when timestamp => arg_timestamp := ASU.To_Unbounded_String (this_arg);
             end case;
             next_parameter := waiting;
             if continue then
@@ -85,6 +88,8 @@ is
                         next_parameter := metadata;
                      elsif this_arg = "--prefix" then
                         next_parameter := prefix;
+                     elsif this_arg = "--timestamp" then
+                        next_parameter := timestamp;
                      elsif this_arg = "--verbose" then
                         opt_verbose := True;
                      elsif this_arg = "--quiet" then
@@ -100,7 +105,7 @@ is
                            case this_arg (single) is
                               when 'v' => opt_verbose := True;
                               when 'q' => opt_quiet := True;
-                              when 'r' | 'o' | 'w' | 'm' | 'p' =>
+                              when 'r' | 'o' | 'w' | 'm' | 'p' | 't' =>
                                  case this_arg (single) is
                                     when 'r' => opt_rootdir   := True;
                                     when 'o' => opt_outdir    := True;
@@ -115,6 +120,7 @@ is
                                        when 'w' => next_parameter := whitelist;
                                        when 'm' => next_parameter := metadata;
                                        when 'p' => next_parameter := prefix;
+                                       when 't' => next_parameter := timestamp;
                                        when others => null;
                                     end case;
                                  else
@@ -128,6 +134,7 @@ is
                                           when 'w' => arg_whitelist := remainder;
                                           when 'm' => arg_metadata  := remainder;
                                           when 'p' => arg_prefix    := remainder;
+                                          when 't' => arg_timestamp := remainder;
                                           when others => null;
                                        end case;
                                     end;
@@ -160,7 +167,7 @@ is
    begin
       TIO.Put_Line (error_msg);
       TIO.Put_Line ("packrvn [-vq] -r rootdir [-o outdir] [-w whitelist] " &
-                      "[-p prefix] [-m metadata] filename");
+                      "[-p prefix] [-m metadata] [-t timestamp] filename");
    end usage;
 
    procedure error (error_msg : String) is
@@ -264,6 +271,25 @@ is
       return out_level & "/" & fname & extension;
    end rvn_file;
 
+   function provide_timestamp (arg : text) return Archive.filetime
+   is
+      result : Archive.filetime := 0;
+   begin
+      if ASU.Length (arg) > 0 then
+         declare
+            argstr : constant String := ASU.To_String (arg);
+            tmpres : Archive.filetime;
+         begin
+            tmpres := Archive.filetime'Value (argstr);
+            result := tmpres;
+         exception
+            when Constraint_Error =>
+               error ("Unable to convert timestamp argument to an integer; skipping override");
+         end;
+      end if;
+      return result;
+   end provide_timestamp;
+
 begin
    process_arguments;
    if opt_quiet and then opt_verbose then
@@ -306,6 +332,7 @@ begin
                                      metadata_file       => ASU.To_String (arg_metadata),
                                      manifest_file       => ASU.To_String (arg_whitelist),
                                      prefix              => ASU.To_String (arg_prefix),
+                                     fixed_timestamp     => provide_timestamp (arg_timestamp),
                                      output_file         => rvn_file,
                                      verbosity           => level)
       then

@@ -31,9 +31,8 @@ The command-line options it accepts:
         are ignored.  Paths that don't refer to existing files cause a
         notice to be emitted, but then will be ignored.  If the whitelist
         parameter is omitted, all entities in the rootdir will be packaged.
-
-        DO NOT ACCEPT LIST DIRECTORIES 
-        CHANGE: It is considered an error to start the line with a forward slash.
+        If the line starts with a forward slash then the prefix is ignored
+        and the path is considered relative to the root directory.
 
     -p prefix, --prefix outdir
 
@@ -48,6 +47,11 @@ The command-line options it accepts:
         simply reproduces the metadata and does not process it in any way.
         This parameter is optional as there is no requirement to define
         metadata for the package.
+
+    -t, --timestamp
+
+        Override the modification time of all archived files to given unix
+        epoch.  This may be used to support reproducible packages.
 
     -v, --verbose
 

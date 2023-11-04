@@ -31,6 +31,7 @@ package body Archive.Pack is
       manifest_file       : String;
       prefix              : String;
       output_file         : String;
+      fixed_timestamp     : filetime;
       verbosity           : info_level) return Boolean
    is
       metadata : Arc_Structure;
@@ -53,7 +54,7 @@ package body Archive.Pack is
       end if;
 
       metadata.initialize_archive_file (output_file);
-      metadata.scan_directory (top_level_directory, 0);
+      metadata.scan_directory (top_level_directory, 0, fixed_timestamp);
       metadata.finalize_archive_file;
 
       if metadata.serror then
@@ -155,12 +156,14 @@ package body Archive.Pack is
    procedure scan_directory
      (AS        : in out Arc_Structure;
       dir_path  : String;
-      dir_index : index_type)
+      dir_index : index_type;
+      timestamp : filetime)
    is
       procedure walkdir   (position : SCN.dscan_crate.Cursor);
       procedure walkfiles (position : SCN.dscan_crate.Cursor);
 
       dirfiles  : SCN.dscan_crate.Vector;
+      override_mtime : constant Boolean := timestamp > 0;
 
       procedure walkdir (position : SCN.dscan_crate.Cursor)
       is
@@ -185,8 +188,6 @@ package body Archive.Pack is
          AS.dtrack := AS.dtrack + 1;
          AS.push_filename (filename);
          new_block.blake_sum    := null_sum;
-         new_block.modified_sec := features.mtime;
-         new_block.modified_ns  := features.mnsec;
          new_block.index_owner  := AS.get_owner_index (features.owner);
          new_block.index_group  := AS.get_group_index (features.group);
          new_block.type_of_file := directory;
@@ -199,6 +200,14 @@ package body Archive.Pack is
          new_block.fname_length := max_fname (filename'Length);
          new_block.padding      := (others => 0);
 
+         if override_mtime then
+            new_block.modified_sec := timestamp;
+            new_block.modified_ns  := 0;
+         else
+            new_block.modified_sec := features.mtime;
+            new_block.modified_ns  := features.mnsec;
+         end if;
+
          AS.files.Append (new_block);
          AS.print (debug, item_path & " (" & AS.dtrack'Img & ")");
          AS.print (debug, "owner =" & new_block.index_owner'Img & "  group =" &
@@ -206,7 +215,7 @@ package body Archive.Pack is
          AS.print (debug, "perms =" & features.perms'Img & "   mod =" & features.mtime'Img);
          AS.print (verbose, "Record directory " & item_path);
 
-         AS.scan_directory (item_path, AS.dtrack);
+         AS.scan_directory (item_path, AS.dtrack, timestamp);
       exception
          when failed : others =>
             AS.print (normal, "walkdir exception => " & EX.Exception_Information (failed) &
@@ -243,8 +252,6 @@ package body Archive.Pack is
             use type DIR.File_Size;
          begin
             AS.push_filename (filename);
-            new_block.modified_sec := features.mtime;
-            new_block.modified_ns  := features.mnsec;
             new_block.index_owner  := AS.get_owner_index (features.owner);
             new_block.index_group  := AS.get_group_index (features.group);
             new_block.file_perms   := features.perms;
@@ -252,6 +259,14 @@ package body Archive.Pack is
             new_block.directory_id := 0;
             new_block.fname_length := max_fname (filename'Length);
             new_block.padding      := (others => 0);
+
+            if override_mtime then
+               new_block.modified_sec := timestamp;
+               new_block.modified_ns  := 0;
+            else
+               new_block.modified_sec := features.mtime;
+               new_block.modified_ns  := features.mnsec;
+            end if;
 
             case features.ftype is
                when directory | unsupported => null;   --  impossible
