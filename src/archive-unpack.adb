@@ -78,13 +78,16 @@ package body Archive.Unpack is
       DS.print (debug, "     links defined :" & DS.header.link_blocks'Img);
       DS.print (debug, " filenames defined :" & DS.header.fname_blocks'Img);
       DS.print (debug, "      number files :" & DS.header.file_blocks'Img);
-      DS.print (debug, "    metadata bytes :" & DS.header.size_metadata'Img);
-      DS.print (debug, "  file index bytes :" & DS.header.size_filedata'Img);
-      DS.print (debug, "     archive bytes :" & DS.header.size_archive'Img);
+      DS.print (debug, "    metadata bytes :" & DS.header.flat_metadata'Img);
+      DS.print (debug, "        compressed :" & DS.header.size_metadata'Img);
+      DS.print (debug, "  file index bytes :" & DS.header.flat_filedata'Img);
+      DS.print (debug, "        compressed :" & DS.header.size_filedata'Img);
+      DS.print (debug, "     archive bytes :" & DS.header.flat_archive'Img);
+      DS.print (debug, "        compressed :" & DS.header.size_archive'Img);
       DS.print (debug, "             index :" & SIO.Index (DS.rvn_handle)'Img);
 
       DS.valid    := True;
-      DS.b2_index := 33;
+      DS.b2_index := 65;
       DS.b3_index := DS.b2_index + SIO.Count (DS.header.size_metadata);
       DS.b4_index := DS.b3_index + SIO.Count (DS.header.size_filedata);
 
@@ -186,7 +189,7 @@ package body Archive.Unpack is
      (DS      : in out DArc;
       filepath : String)
    is
-      --  metadata is always starts on index of 32.
+      --  metadata is always starts on index of 64.
       --  Move to this point if not already there.
       --  However, this is unnecessary if metadata is zero bytes.
       use type SIO.Count;
@@ -202,9 +205,11 @@ package body Archive.Unpack is
       DS.print (debug, "Single pass decompression for metadata, comp size:" & metasize'Img);
       declare
          decompress_success : Boolean;
-         plain_text : constant String := ZST.Decompress (archive_saxs => DS.rvn_stmaxs,
-                                                         data_length  => Natural (metasize),
-                                                         successful   => decompress_success);
+         plain_text : constant String :=
+           ZST.Decompress (archive_saxs => DS.rvn_stmaxs,
+                           data_length  => Natural (DS.header.size_metadata),
+                           final_size   => ZST.File_Size (DS.header.flat_metadata),
+                           successful   => decompress_success);
       begin
          if decompress_success then
             DS.direct_file_creation (target_file => filepath,
@@ -232,6 +237,7 @@ package body Archive.Unpack is
       end if;
       return ZST.Decompress (archive_saxs => DS.rvn_stmaxs,
                              data_length  => Natural (DS.header.size_metadata),
+                             final_size   => ZST.File_Size (DS.header.flat_metadata),
                              successful   => decompress_success);
    end extract_metadata;
 
@@ -476,6 +482,7 @@ package body Archive.Unpack is
             all_files : constant String :=
               ZST.Decompress (archive_saxs => DS.rvn_stmaxs,
                               data_length  => Natural (DS.header.size_filedata),
+                              final_size   => ZST.File_Size (DS.header.flat_filedata),
                               successful   => decompress_success);
          begin
             if not decompress_success then
@@ -991,6 +998,8 @@ package body Archive.Unpack is
          DS.retrieve_file_index;
       end if;
       if SIO.Index (DS.rvn_handle) /= DS.b4_index then
+         DS.print (debug, "Stream index at" & SIO.Index (DS.rvn_handle)'Img & ", setting to " &
+                     DS.b4_index'Img);
          SIO.Set_Index (DS.rvn_handle, DS.b4_index);
       end if;
       DS.files.Iterate (extract'Access);
@@ -1038,6 +1047,7 @@ package body Archive.Unpack is
             DS.buffer := ASU.To_Unbounded_String
               (ZST.Decompress (archive_saxs => DS.rvn_stmaxs,
                                data_length  => Natural (DS.header.size_archive),
+                               final_size   => ZST.File_Size (DS.header.flat_archive),
                                successful   => decomp_worked));
             DS.print (debug, "One shot archive decompression successful : " & decomp_worked'Img);
          end if;
@@ -1203,9 +1213,12 @@ package body Archive.Unpack is
       DS.print (normal, "     owners blocks :" & DS.header.num_owners'Img);
       DS.print (normal, "      links blocks :" & DS.header.link_blocks'Img);
       DS.print (normal, "      dirs + files :" & DS.header.file_blocks'Img);
-      DS.print (normal, "    metadata bytes :" & DS.header.size_metadata'Img);
-      DS.print (normal, "  file index bytes :" & DS.header.size_filedata'Img);
-      DS.print (normal, "     archive bytes :" & DS.header.size_archive'Img);
+      DS.print (normal, "    metadata bytes :" & DS.header.flat_metadata'Img);
+      DS.print (normal, "        compressed :" & DS.header.size_metadata'Img);
+      DS.print (normal, "  file index bytes :" & DS.header.flat_filedata'Img);
+      DS.print (normal, "        compressed :" & DS.header.size_filedata'Img);
+      DS.print (normal, "     archive bytes :" & DS.header.flat_archive'Img);
+      DS.print (normal, "        compressed :" & DS.header.size_archive'Img);
    end print_magic_block;
 
 end Archive.Unpack;

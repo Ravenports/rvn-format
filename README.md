@@ -42,7 +42,7 @@ The archive contains 4 non-aligned sequential blocks.
 
 ### Block 1
 
-32 bytes
+64 bytes
 ```
 Index  Information           bytes
 ------------------------------------------------------------
@@ -53,18 +53,25 @@ Index  Information           bytes
     8  Number of link blocks   4
    12  Number of files         4
    16  Metadata comp size      4
-   20  Files data comp size    4
+   20  File index comp size    4
    24  Archive comp size       4
    28  Number of fname blocks  4
+   32  Flatsize of metadata    4
+   36  Flatsize of file index  4
+   40  Flatsize of archive     8
+   48  unused1                 4
+   52  unused2                 4
+   56  unused3                 4
+   60  unused4                 4
 ```
-The first 32 bytes provides the number of groups, owners and files contained in the archive.
+The first 64 bytes provides the number of groups, owners and files contained in the archive.
 It also contains the compressed size in bytes of the next three blocks.  The index of
 each block can easily be calculated:
 
     Block 1 index =  0
-    Block 2 index = 32
-    Block 3 index = 32 + length of block 2
-    Block 4 index = 32 + length of block 2 + length of block 3
+    Block 2 index = 64
+    Block 3 index = 64 + length of block 2
+    Block 4 index = 64 + length of block 2 + length of block 3
 
 
 ### Block 2
@@ -74,7 +81,7 @@ By reading the first two blocks of the RVN archive, the manifest can be surgical
 extracted without unrolling the entire file.
 
 Due to the nature of this block being reserved for metadata, the size of the
-uncompressed file is limited to 256 kb (262,144 bytes) by rule.
+uncompressed file is limited to 512 kb (524,288 bytes) by rule.
 
 ### Block 3
 

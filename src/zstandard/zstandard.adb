@@ -64,6 +64,7 @@ package body Zstandard is
    ------------------
    function Decompress
      (source_data : String;
+      final_size  : File_Size;
       successful  : out Boolean) return String
    is
       type source_cdata is array (source_data'Range) of aliased IC.unsigned_char;
@@ -72,18 +73,8 @@ package body Zstandard is
 
       src         : source_cdata := string_to_cdata (source_data);
       srcSize     : constant IC.size_t := IC.size_t (source_data'Length);
-
-      full_size   : constant Zstd_uint64 :=
-        ZSTD_getDecompressedSize
-          (src     => src (src'First)'Access,
-           srcSize => srcSize);
-
-      dstCapacity : constant IC.size_t := IC.size_t (full_size);
+      dstCapacity : constant IC.size_t := IC.size_t (final_size);
    begin
-      if full_size = 0 then
-         successful := False;
-         return Warn_orig_size_fail;
-      end if;
 
       declare
          type cdestination is array (1 .. dstCapacity) of aliased IC.unsigned_char;
@@ -118,7 +109,8 @@ package body Zstandard is
    function Decompress
      (archive_saxs : SIO.Stream_Access;
       data_length  : Natural;
-      successful  : out Boolean) return String
+      final_size   : File_Size;
+      successful   : out Boolean) return String
    is
       type magazine_type is
          record
@@ -128,6 +120,7 @@ package body Zstandard is
    begin
       magazine_type'Read (archive_saxs, magazine);
       return Decompress (source_data => magazine.data,
+                         final_size  => final_size,
                          successful  => successful);
    exception
       when others =>

@@ -15,13 +15,16 @@ package Archive is
    type size_modulo is mod 2 ** 32;
    type size_type   is mod 2 ** 40;
    type zstd_size   is mod 2 ** 32;
+   type mdata_size  is mod 2 ** 24;
    type filetime    is mod 2 ** 64;
    type nanoseconds is mod 2 ** 32;
    type max_path    is mod 2 ** 16;
    type max_fname   is mod 2 ** 8;
    type inode_type  is mod 2 ** 64;
+   type exabytes    is mod 2 ** 64;
    type file_index  is mod 2 ** 32;
    type owngrp_id   is mod 2 ** 32;
+   type zpadding    is mod 2 ** 32;
 
    subtype A_filename is String (1 .. 256);
    subtype A_checksum is String (1 .. 32);
@@ -79,9 +82,16 @@ package Archive is
          size_filedata   : zstd_size;
          size_archive    : zstd_size;
          fname_blocks    : file_index;
+         flat_metadata   : zstd_size;
+         flat_filedata   : zstd_size;
+         flat_archive    : exabytes;
+         unused1         : zpadding;
+         unused2         : zpadding;
+         unused3         : zpadding;
+         unused4         : zpadding;
       end record;
 
-   for premier_block'Size use 256;
+   for premier_block'Size use 512;
    for premier_block'Alignment use 8;
    for premier_block use
       record
@@ -91,14 +101,25 @@ package Archive is
          num_owners      at  6 range  0 .. 15;
          link_blocks     at  8 range  0 .. 31;
          file_blocks     at 12 range  0 .. 31;
+
          size_metadata   at 16 range  0 .. 31;
          size_filedata   at 20 range  0 .. 31;
          size_archive    at 24 range  0 .. 31;
          fname_blocks    at 28 range  0 .. 31;
+
+         flat_metadata   at 32 range  0 .. 31;
+         flat_filedata   at 36 range  0 .. 31;
+         flat_archive    at 40 range  0 .. 63;
+
+         unused1         at 48 range  0 .. 31;
+         unused2         at 52 range  0 .. 31;
+         unused3         at 56 range  0 .. 31;
+         unused4         at 60 range  0 .. 31;
       end record;
 
    magic : constant Some_magic := Character'Val (200) & Character'Val (100) & Character'Val (50);
    KB256 : constant Natural := 262_144;
-   format_version : constant one_byte := 2;
+   KB512 : constant Natural := 524_288;
+   format_version : constant one_byte := 3;
 
 end Archive;
