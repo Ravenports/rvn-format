@@ -122,7 +122,7 @@ some.content
 other.content
 ```
 
-### [ escape sequences ]
+### [ other escape sequences ]
 
 If the input line subject to escape sequence expansion contains the following sequences,
 they will be expanded inline as follows.  For the purpose of illustration, assume the
@@ -197,3 +197,18 @@ EOS
 Shell script to be run during the post-deinstall phase.  It will be
 merged with any existing post-deinstall scripts.  The escape sequences will be
 expanded as described earlier.  See the post-install section for an example.
+
+# Variables present in environment during package phases
+
+This is out of scope for rvn format, but to put scripts in context, the following
+variables will be defined by the handler of the rvn-formatted packages:
+
+- PKG_ROOTDIR
+    - Represents the root directory where the package is installed.
+    - E.g `/opt/raven/bin/emacs` would have a PKG_ROOTDIR of `/opt`
+- PKG_NAMEBASE
+    - Equates to the namebase defined in the ucl manifest
+- PKG_SUBPACKAGE
+    - Equates to the subpackage defined in the ucl manifest
+- PKG_VARIANT
+    - Equates to the variant defined in the ucl manifest
