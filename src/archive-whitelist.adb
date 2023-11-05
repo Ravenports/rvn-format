@@ -77,12 +77,15 @@ package body Archive.Whitelist is
       function categorize_line (line : String) return linecat;
       procedure handle_file_path (line : String);
       procedure handle_mode_keyword (line : String);
+      procedure invoke_keyword_callback (line : String);
 
       features    : Unix.File_Characteristics;
       file_handle : TIO.File_Type;
       succeeded   : Boolean := True;
       regmech     : constant REX.Pattern_Matcher := REX.Compile ("^@[(].*,.*,.*[)] ");
       captured    : constant REX.Pattern_Matcher := REX.Compile ("^@[(](.*),(.*),(.*)[)] (.*)");
+      keymech     : constant REX.Pattern_Matcher := REX.compile ("^@([^(]\w*) (.*)");
+      key_jar     : REX.Match_Array (0 .. 1);
       match_jar   : REX.Match_Array (0 .. 0);
       capture_jar : REX.Match_Array (0 .. 4);
 
@@ -144,8 +147,7 @@ package body Archive.Whitelist is
          end if;
       end handle_file_path;
 
-      procedure handle_mode_keyword (line : String)
-      is
+      procedure handle_mode_keyword (line : String) is
       begin
          REX.Match (Self => captured, Data => line, Matches => capture_jar);
          if ASF.Trim (line (capture_jar (3).First .. capture_jar (3).Last), Ada.Strings.Both) = ""
@@ -183,6 +185,28 @@ package body Archive.Whitelist is
             end if;
          end;
       end handle_mode_keyword;
+
+      procedure invoke_keyword_callback (line : String)
+      is
+         use type REX.Match_Location;
+      begin
+         REX.Match (Self => keymech, Data => line, Matches => key_jar);
+         if key_jar (0) = REX.No_Match then
+            if level >= normal then
+               TIO.Put_Line ("Manifest entity [" & line & "] keyword line failed to parse");
+               return;
+            end if;
+            succeeded := False;
+            return;
+         end if;
+
+         declare
+            keyword   : constant String := line (key_jar (0).First .. key_jar (0).Last);
+            arguments : constant String := line (key_jar (1).First .. key_jar (1).Last);
+         begin
+            TIO.Put_line ("Todo: Handle keyword " & keyword & " (" & arguments & ")");
+         end;
+      end invoke_keyword_callback;
 
    begin
       if real_top_directory = "" then
@@ -229,8 +253,7 @@ package body Archive.Whitelist is
                      TIO.Put_Line ("Manifest entity [" & line & "] has invalid keyword, ignoring");
                   end if;
                when external_keyword =>
-                  --  TODO: call callback
-                  null;
+                  invoke_keyword_callback (line);
                when file_path  =>
                   handle_file_path (line);
                when mode_override =>
