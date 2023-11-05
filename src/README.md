@@ -51,12 +51,28 @@ Package list files can be extended by keywords that are defined in the Keywords 
 The settings for each keyword are stored in a UCL file named <keyword>.ucl. The file must
 contain at least one of these sections:
 
-- attributes
 - action
+- deprecated
+- deprecation_message
+- preformat_arguments
 - pre-install
 - post-install
 - pre-deinstall
 - post-deinstall
+
+### action
+
+Defines what happens to the keyword’s parameter. Contains an array where the possible values are:
+
+- dir
+    - Register a directory to be created on install and removed on deinstall.
+      This is ignored if the directory would be created anyway.
+    - If there are multiple arguments, the first is assumed to be the directory.
+    - Mutually exclusive with **file** action
+- file
+    - Registers a file (ignored if duplicated).
+    - If there are multiple arguments, the first is assumed to be the file.
+    - Mutually exclusive with **dir** action
 
 ### attributes
 
@@ -68,20 +84,116 @@ name, and a file mode. For example:
 attributes: { owner: "games", group: "games", mode: 0555 }
 ```
 
-### action
+If the **dir** or **file** action is set, and attributes is not an empty array, the target of
+the action will have the listed attributes overridden.
 
-Defines what happens to the keyword’s parameter. Contains an array where the possible values are:
+### deprecated
 
-- dir
-    - Register a directory to be created on install and removed on deinstall.
-      This is ignored if the directory would be created anyway.
-    - Mutually exclusive with **file** action
-- file
-    - Registers a file (ignored if duplicated).
-    - Mutually exclusive with **dir** action
-- setmode
-    - If mode attribute is set, and **dir** or **file** action set, the mode is overridden.
-- setgroup
-    - If group attribute is set, and **dir** or **file** action set, the group is overridden.
-- setowner
-    - If owner attribute is set, and **dir** or **file** action set, the owner is overridden.
+Boolean to mark a keyword as deprecated
+```
+deprecated: true
+```
+
+### deprecation_message
+
+Message to be show if the keyword is used and mark as deprecated
+```
+deprecation_message: <<EOM
+Use @preexec/@postexec instead
+EOM
+```
+
+### [ argument references ]
+
+Unlike FreeBSD's pkg, rvn automatically splits the argument line into multiple parts if they
+are separated by spaces.
+
+- The entire argument (including any spaces) is referred to be `%@`
+- The argument is automatically split along spaces into numbered arguments like `%1`, `%2`, etc.
+- If there are no spaces, `%1` is the same as `%@`
+
+for example,
+```
+@foo some.content other.content
+```
+`%1` and `%2` will contain:
+```
+some.content
+other.content
+```
+
+### [ escape sequences ]
+
+If the input line subject to escape sequence expansion contains the following sequences,
+they will be expanded inline as follows.  For the purpose of illustration, assume the
+defined prefix is `/raven` and the whitelist line equals `bin/emacs`.
+
+- `%F` Expands to the last filename extracted (as specified), in this case *bin/emacs*.
+- `%D` Expand to the defined prefix, in this case */raven*.
+- `%B` Expand to the "dirname" of the fully qualified filename (prefix joined with the last filespec), in this case */raven/bin*.
+- `%f` Expand to the "basename" of the fully qualified name, in this case *emacs*.
+
+### preformat_arguments
+
+Boolean to apply the escape sequence expansion to the given arguments of the keyword.  See `pre-install` action as an example.
+
+### pre-install
+
+Shell script to be run during the pre-install phase.  It will be
+merged with any existing pre-install scripts.  The escape sequences will be
+expanded as described earlier.
+
+```
+> cat preexec.ucl
+actions: []
+preformat_arguments: true
+pre-install: <<EOS
+%@
+EOS
+```
+
+### post-install
+
+Shell script to be run during the post-install phase.  It will be
+merged with any existing post-install scripts.  The escape sequences will be
+expanded as described earlier.
+
+```
+> cat info.ucl
+actions: [file]
+post-install: <<EOD
+  case "%@" in
+  /*) file="%@" ;;
+   *) file="%D/%@" ;;
+  esac
+  indexinfo ${PKG_ROOTDIR}${file%/*}
+EOD
+post-deinstall: <<EOD
+  case "%@" in
+  /*) file="%@" ;;
+   *) file="%D/%@" ;;
+  esac
+  indexinfo ${PKG_ROOTDIR}${file%/*}
+EOD
+```
+
+### pre-deinstall
+
+Shell script to be run during the pre-deinstall phase.  It will be
+merged with any existing pre-deinstall scripts.  The escape sequences will be
+expanded as described earlier.
+
+```
+> cat preunexec.ucl
+actions: []
+preformat_arguments: true
+pre-deinstall: <<EOS
+%@
+EOS
+```
+
+### post-deinstall
+
+Shell script to be run during the post-deinstall phase.  It will be
+merged with any existing post-deinstall scripts.  The escape sequences will be
+expanded as described earlier.  See the post-install section for an example.
