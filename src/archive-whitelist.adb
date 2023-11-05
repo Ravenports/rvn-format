@@ -150,7 +150,7 @@ package body Archive.Whitelist is
       procedure handle_mode_keyword (line : String) is
       begin
          REX.Match (Self => captured, Data => line, Matches => capture_jar);
-         if ASF.Trim (line (capture_jar (3).First .. capture_jar (3).Last), Ada.Strings.Both) = ""
+         if ASF.Trim (line (capture_jar (4).First .. capture_jar (4).Last), Ada.Strings.Both) = ""
          then
             succeeded := False;
             if level >= normal then
