@@ -58,5 +58,30 @@ contain at least one of these sections:
 - pre-deinstall
 - post-deinstall
 
+### attributes
 
+Assists the actions of changing the owner, group, or mode. It contains an associative array where the
+possible keys are owner, group, and mode. The values are, respectively, a user name, a group
+name, and a file mode. For example:
 
+```
+attributes: { owner: "games", group: "games", mode: 0555 }
+```
+
+### action
+
+Defines what happens to the keyword’s parameter. Contains an array where the possible values are:
+
+- dir
+    - Register a directory to be created on install and removed on deinstall.
+      This is ignored if the directory would be created anyway.
+    - Mutually exclusive with **file** action
+- file
+    - Registers a file (ignored if duplicated).
+    - Mutually exclusive with **dir** action
+- setmode
+    - If mode attribute is set, and **dir** or **file** action set, the mode is overridden.
+- setgroup
+    - If group attribute is set, and **dir** or **file** action set, the group is overridden.
+- setowner
+    - If owner attribute is set, and **dir** or **file** action set, the owner is overridden.
