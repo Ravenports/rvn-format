@@ -8,6 +8,13 @@ package Archive.Whitelist is
 
    type A_Whitelist is tagged private;
 
+   type white_features is
+      record
+         owner_spec : ownergroup;
+         group_spec : ownergroup;
+         perms_spec : permissions;
+      end record;
+
    --  Returns true if archive should only archive specifically designated files.
    --  Likewise, returns false if all files in the root directory should be archived.
    function whitelist_in_use (whitelist : A_Whitelist) return Boolean;
@@ -38,6 +45,16 @@ package Archive.Whitelist is
    function directory_on_whitelist
      (whitelist     : A_Whitelist;
       file_path     : String) return Boolean;
+
+
+   --  Return features to record on the manifest
+   function get_file_features
+     (whitelist     : A_Whitelist;
+      file_path     : String;
+      actual_owner  : ownergroup;
+      actual_group  : ownergroup;
+      actual_perms  : permissions) return white_features;
+
 
 private
 

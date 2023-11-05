@@ -228,6 +228,7 @@ package body Archive.Pack is
          item_path : constant String := item.full_path;
          filename  : constant String := item.simple_name;
          features  : constant UNX.File_Characteristics := UNX.get_charactistics (item_path);
+         pog       : Archive.Whitelist.white_features;
       begin
          --  Reject directories, but accept symlinks to directories
          case features.ftype is
@@ -243,6 +244,10 @@ package body Archive.Pack is
                   end if;
                end if;
          end case;
+         pog := AS.white_list.get_file_features (item_path,
+                                                 features.owner,
+                                                 features.group,
+                                                 features.perms);
 
          declare
             --  Blake3 sums for regular files and hardlinks
@@ -252,9 +257,9 @@ package body Archive.Pack is
             use type DIR.File_Size;
          begin
             AS.push_filename (filename);
-            new_block.index_owner  := AS.get_owner_index (features.owner);
-            new_block.index_group  := AS.get_group_index (features.group);
-            new_block.file_perms   := features.perms;
+            new_block.index_owner  := AS.get_owner_index (pog.owner_spec);
+            new_block.index_group  := AS.get_group_index (pog.group_spec);
+            new_block.file_perms   := pog.perms_spec;
             new_block.index_parent := dir_index;
             new_block.directory_id := 0;
             new_block.fname_length := max_fname (filename'Length);

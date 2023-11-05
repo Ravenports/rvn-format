@@ -85,9 +85,9 @@ package body Archive.Whitelist is
       regmech     : constant REX.Pattern_Matcher := REX.Compile ("^@[(].*,.*,.*[)] ");
       captured    : constant REX.Pattern_Matcher := REX.Compile ("^@[(](.*),(.*),(.*)[)] (.*)");
       keymech     : constant REX.Pattern_Matcher := REX.compile ("^@([^(]\w*) (.*)");
-      key_jar     : REX.Match_Array (0 .. 1);
-      match_jar   : REX.Match_Array (0 .. 0);
-      capture_jar : REX.Match_Array (0 .. 4);
+      key_jar     : REX.Match_Array (0 .. 2);
+      match_jar   : REX.Match_Array (0 .. 1);
+      capture_jar : REX.Match_Array (0 .. 5);
 
       real_top_directory : constant String := Unix.real_path (stage_directory);
 
@@ -161,10 +161,10 @@ package body Archive.Whitelist is
 
          declare
             insert_succeeded : Boolean;
-            grp_owner : constant String := line (capture_jar (0).First .. capture_jar (0).Last);
-            grp_group : constant String := line (capture_jar (1).First .. capture_jar (1).Last);
-            grp_perms : constant String := line (capture_jar (2).First .. capture_jar (2).Last);
-            grp_path  : constant String := line (capture_jar (3).First .. capture_jar (3).Last);
+            grp_owner : constant String := line (capture_jar (1).First .. capture_jar (1).Last);
+            grp_group : constant String := line (capture_jar (2).First .. capture_jar (2).Last);
+            grp_perms : constant String := line (capture_jar (3).First .. capture_jar (3).Last);
+            grp_path  : constant String := line (capture_jar (4).First .. capture_jar (4).Last);
             true_path : constant String := get_true_path (ASF.Trim (grp_path, Ada.Strings.Both));
          begin
             if true_path = "" then
@@ -201,8 +201,8 @@ package body Archive.Whitelist is
          end if;
 
          declare
-            keyword   : constant String := line (key_jar (0).First .. key_jar (0).Last);
-            arguments : constant String := line (key_jar (1).First .. key_jar (1).Last);
+            keyword   : constant String := line (key_jar (1).First .. key_jar (1).Last);
+            arguments : constant String := line (key_jar (2).First .. key_jar (2).Last);
          begin
             TIO.Put_line ("Todo: Handle keyword " & keyword & " (" & arguments & ")");
          end;
@@ -486,8 +486,9 @@ package body Archive.Whitelist is
       fragment : permissions;
    begin
       result := 0;
-      success := False;
+      success := True;
       if S'Length < 3 or else S'Length > 4 then
+         success := False;
          return no_permissions;
       end if;
       for arrow in reverse S'Range loop
@@ -498,6 +499,7 @@ package body Archive.Whitelist is
                --  shift
                fragment := fragment * (8 ** index);
             when others =>
+               success := False;
                return no_permissions;
          end case;
          result := result + fragment;
@@ -505,5 +507,38 @@ package body Archive.Whitelist is
       end loop;
       return result;
    end convert_mode;
+
+
+   -------------------------
+   --  get_file_features  --
+   -------------------------
+   function get_file_features
+     (whitelist     : A_Whitelist;
+      file_path     : String;
+      actual_owner  : ownergroup;
+      actual_group  : ownergroup;
+      actual_perms  : permissions) return white_features
+   is
+      file_hash : Blake_3.blake3_hash;
+      result : white_features;
+   begin
+      file_hash := Blake_3.digest (file_path);
+      result.group_spec := actual_group;
+      result.owner_spec := actual_owner;
+      result.perms_spec := actual_perms;
+
+      if whitelist.files.Contains (file_hash) then
+         if whitelist.files.Element (file_hash).override_group then
+            result.group_spec := whitelist.files.Element (file_hash).group_spec;
+         end if;
+         if whitelist.files.Element (file_hash).override_owner then
+            result.owner_spec := whitelist.files.Element (file_hash).owner_spec;
+         end if;
+         if whitelist.files.Element (file_hash).override_perms then
+            result.perms_spec := whitelist.files.Element (file_hash).perms_spec;
+         end if;
+      end if;
+      return result;
+   end get_file_features;
 
 end Archive.Whitelist;
