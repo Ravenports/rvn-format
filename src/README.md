@@ -128,7 +128,6 @@ If the input line subject to escape sequence expansion contains the following se
 they will be expanded inline as follows.  For the purpose of illustration, assume the
 defined prefix is `/raven` and the whitelist line equals `bin/emacs`.
 
-- `%F` Expands to the last filename extracted (as specified), in this case *bin/emacs*.
 - `%D` Expand to the defined prefix, in this case */raven*.
 - `%B` Expand to the "dirname" of the fully qualified filename (prefix joined with the last filespec), in this case */raven/bin*.
 - `%f` Expand to the "basename" of the fully qualified name, in this case *emacs*.
