@@ -172,6 +172,7 @@ package body Archive.Pack is
          filename  : constant String := item.simple_name;
          features  : constant UNX.File_Characteristics := UNX.get_charactistics (item_path);
          new_block : File_Block;
+         pog       : Archive.Whitelist.white_features;
       begin
          --  We only want true directories.  Symbolic links to directories are ignored.
          case features.ftype is
@@ -185,15 +186,20 @@ package body Archive.Pack is
             end if;
          end if;
 
+         pog := AS.white_list.get_file_features (item_path,
+                                                 features.owner,
+                                                 features.group,
+                                                 features.perms);
+
          AS.dtrack := AS.dtrack + 1;
          AS.push_filename (filename);
          new_block.blake_sum    := null_sum;
-         new_block.index_owner  := AS.get_owner_index (features.owner);
-         new_block.index_group  := AS.get_group_index (features.group);
+         new_block.index_owner  := AS.get_owner_index (pog.owner_spec);
+         new_block.index_group  := AS.get_group_index (pog.group_spec);
          new_block.type_of_file := directory;
          new_block.multiplier   := 0;
          new_block.flat_size    := 0;
-         new_block.file_perms   := features.perms;
+         new_block.file_perms   := pog.perms_spec;
          new_block.link_length  := 0;
          new_block.index_parent := dir_index;
          new_block.directory_id := AS.dtrack;
