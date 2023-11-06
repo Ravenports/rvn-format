@@ -84,7 +84,7 @@ package body Archive.Whitelist is
       succeeded   : Boolean := True;
       regmech     : constant REX.Pattern_Matcher := REX.Compile ("^@[(].*,.*,.*[)] ");
       captured    : constant REX.Pattern_Matcher := REX.Compile ("^@[(](.*),(.*),(.*)[)] (.*)");
-      keymech     : constant REX.Pattern_Matcher := REX.compile ("^@([^(]\w*) (.*)");
+      keymech     : constant REX.Pattern_Matcher := REX.compile ("^@([^(]\S*) (.*)");
       dirmech     : constant REX.Pattern_Matcher := REX.compile ("^dir[(](.*),(.*),(.*)[)]");
       key_jar     : REX.Match_Array (0 .. 2);
       match_jar   : REX.Match_Array (0 .. 1);
@@ -134,7 +134,7 @@ package body Archive.Whitelist is
          true_path : constant String := get_true_path (line);
          insert_succeeded : Boolean;
       begin
-         if true_path = "" then
+         if Archive.Unix.real_path (true_path) = "" then
             if level >= normal then
                TIO.Put_Line ("Manifest entity [" & line & "] does not exist, ignoring");
             end if;
@@ -169,7 +169,7 @@ package body Archive.Whitelist is
             grp_path  : constant String := line (capture_jar (4).First .. capture_jar (4).Last);
             true_path : constant String := get_true_path (ASF.Trim (grp_path, Ada.Strings.Both));
          begin
-            if true_path = "" then
+            if Archive.Unix.real_path (true_path) = "" then
                if level >= normal then
                   TIO.Put_Line ("Manifest entity [" & line & "] does not exist, ignoring");
                end if;
@@ -208,19 +208,32 @@ package body Archive.Whitelist is
          begin
             if keyword = "dir" then
                --  standard directory creation/destruction
-               whitelist.insert_temporary_directory (first_word (arguments), level);
+               declare
+                  relative  : constant String := first_word (arguments);
+                  full_path : constant String := get_true_path (relative);
+               begin
+                  whitelist.insert_temporary_directory (dir_path  => relative,
+                                                        full_path => full_path,
+                                                        level     => level);
+               end;
                return;
             end if;
             --  check @dir(,,) keyword
             REX.Match (dirmech, keyword, dir_jar);
             if dir_jar (0) /= REX.No_Match then
                --  Either directory creation/destruction or POG override
-               whitelist.insert_temporary_directory
-                 (dir_path   => first_word (arguments),
-                  attr_owner => keyword (dir_jar (1).First .. dir_jar (1).Last),
-                  attr_group => keyword (dir_jar (2).First .. dir_jar (2).Last),
-                  attr_perms => keyword (dir_jar (3).First .. dir_jar (3).Last),
-                  level      => level);
+               declare
+                  relative  : constant String := first_word (arguments);
+                  full_path : constant String := get_true_path (relative);
+               begin
+                  whitelist.insert_temporary_directory
+                    (dir_path   => relative,
+                     full_path  => full_path,
+                     attr_owner => keyword (dir_jar (1).First .. dir_jar (1).Last),
+                     attr_group => keyword (dir_jar (2).First .. dir_jar (2).Last),
+                     attr_perms => keyword (dir_jar (3).First .. dir_jar (3).Last),
+                     level      => level);
+               end;
                return;
             end if;
             TIO.Put_line ("Todo: Handle keyword " & keyword & " (" & arguments & ")");
@@ -374,9 +387,10 @@ package body Archive.Whitelist is
    --  insert_temporary_directory #1  --
    -------------------------------------
    procedure insert_temporary_directory
-      (whitelist     : in out A_Whitelist;
-       dir_path      : String;
-       level         : info_level)
+     (whitelist     : in out A_Whitelist;
+      dir_path      : String;
+      full_path     : String;
+      level         : info_level)
    is
       --  This directory usually does not exist (it needs to be created/destroyed with package
       --  installation and deinstallation
@@ -386,7 +400,7 @@ package body Archive.Whitelist is
       if level >= debug then
          TIO.Put_Line ("Adding directory to temporary heap: " & dir_path);
       end if;
-      file_hash := Blake_3.digest (dir_path);
+      file_hash := Blake_3.digest (full_path);
       props.is_directory := True;
       props.path := ASU.To_Unbounded_String (dir_path);
       whitelist.temp_dirs.Insert (file_hash, props);
@@ -399,6 +413,7 @@ package body Archive.Whitelist is
    procedure insert_temporary_directory
      (whitelist     : in out A_Whitelist;
       dir_path      : String;
+      full_path     : String;
       attr_owner    : String;
       attr_group    : String;
       attr_perms    : String;
@@ -410,10 +425,10 @@ package body Archive.Whitelist is
       props     : white_properties;
    begin
       if level >= debug then
-         TIO.Put_Line ("Adding directory to temporary heap: " & dir_path & "(" &
+         TIO.Put_Line ("Adding directory to temporary heap: " & dir_path & " (" &
                       attr_owner & "," & attr_group & "," & attr_perms & ")");
       end if;
-      file_hash := Blake_3.digest (dir_path);
+      file_hash := Blake_3.digest (full_path);
       props.is_directory := True;
       props.path := ASU.To_Unbounded_String (dir_path);
 
@@ -544,8 +559,8 @@ package body Archive.Whitelist is
          procedure reset_POG (key : Blake_3.blake3_hash; Element : in out white_properties);
 
          old_props : white_properties;
-         props     : white_properties renames white_crate.Element (Position);
-         file_hash : Blake_3.blake3_hash renames white_crate.Key (Position);
+         props     : white_properties renames white_crate.Element (position);
+         file_hash : Blake_3.blake3_hash renames white_crate.Key (position);
 
          procedure reset_POG (key : Blake_3.blake3_hash; Element : in out white_properties)
          is
@@ -586,6 +601,9 @@ package body Archive.Whitelist is
                end if;
             end if;
          else
+            if level >= debug then
+               TIO.Put_Line ("just_dirs += " & ASU.To_String (props.path));
+            end if;
             whitelist.just_dirs.Insert (file_hash, props);
          end if;
       end process;

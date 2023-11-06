@@ -114,6 +114,7 @@ private
    procedure insert_temporary_directory
      (whitelist     : in out A_Whitelist;
       dir_path      : String;
+      full_path     : String;
       level         : info_level);
 
    --  second version, handles @dir(,,) format
@@ -121,6 +122,7 @@ private
    procedure insert_temporary_directory
      (whitelist     : in out A_Whitelist;
       dir_path      : String;
+      full_path     : String;
       attr_owner    : String;
       attr_group    : String;
       attr_perms    : String;
