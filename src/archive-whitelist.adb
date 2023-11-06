@@ -397,10 +397,16 @@ package body Archive.Whitelist is
       file_hash : Blake_3.blake3_hash;
       props     : white_properties;
    begin
+      file_hash := Blake_3.digest (full_path);
+      if whitelist.temp_dirs.Contains (file_hash) then
+         if level >= normal then
+            TIO.Put_Line ("Ignoring duplicate @dir " & dir_path);
+         end if;
+         return;
+      end if;
       if level >= debug then
          TIO.Put_Line ("Adding directory to temporary heap: " & dir_path);
       end if;
-      file_hash := Blake_3.digest (full_path);
       props.is_directory := True;
       props.path := ASU.To_Unbounded_String (dir_path);
       whitelist.temp_dirs.Insert (file_hash, props);
@@ -424,11 +430,17 @@ package body Archive.Whitelist is
       file_hash : Blake_3.blake3_hash;
       props     : white_properties;
    begin
+      file_hash := Blake_3.digest (full_path);
+      if whitelist.temp_dirs.Contains (file_hash) then
+         if level >= normal then
+            TIO.Put_Line ("Ignoring duplicate @dir " & dir_path);
+         end if;
+         return;
+      end if;
       if level >= debug then
          TIO.Put_Line ("Adding directory to temporary heap: " & dir_path & " (" &
                       attr_owner & "," & attr_group & "," & attr_perms & ")");
       end if;
-      file_hash := Blake_3.digest (full_path);
       props.is_directory := True;
       props.path := ASU.To_Unbounded_String (dir_path);
 
@@ -582,12 +594,11 @@ package body Archive.Whitelist is
                                   " matches a listed file, ignoring");
                end if;
             else
-               if props.override_group = old_props.override_group and then
-                 props.override_owner = old_props.override_owner and then
-                 props.override_perms = old_props.override_perms and then
-                 props.owner_spec = old_props.owner_spec and then
-                 props.group_spec = old_props.group_spec and then
-                 props.perms_spec = old_props.perms_spec
+               --  old_props ALWAYS have overrides set to false
+               --  We only need to check override settings on new props
+               if not props.override_group and then
+                 not props.override_owner and then
+                 not props.override_perms
                then
                   if level >= normal then
                      TIO.Put_Line ("whitelist notice: @dir " & ASU.To_String (props.path) &
@@ -595,6 +606,10 @@ package body Archive.Whitelist is
                   end if;
                else
                   --  The POG attributes don't match, so reset the files version of them.
+                  if level >= debug then
+                     TIO.Put_Line ("Adjust perms/owner/group of auto-created directory " &
+                                     ASU.To_String (props.path));
+                  end if;
                   whitelist.files.Update_Element
                     (Position => whitelist.files.Find (file_hash),
                      Process  => reset_POG'Access);
