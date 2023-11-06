@@ -85,9 +85,11 @@ package body Archive.Whitelist is
       regmech     : constant REX.Pattern_Matcher := REX.Compile ("^@[(].*,.*,.*[)] ");
       captured    : constant REX.Pattern_Matcher := REX.Compile ("^@[(](.*),(.*),(.*)[)] (.*)");
       keymech     : constant REX.Pattern_Matcher := REX.compile ("^@([^(]\w*) (.*)");
+      dirmech     : constant REX.Pattern_Matcher := REX.compile ("^dir[(](.*),(.*),(.*)[)]");
       key_jar     : REX.Match_Array (0 .. 2);
       match_jar   : REX.Match_Array (0 .. 1);
       capture_jar : REX.Match_Array (0 .. 5);
+      dir_jar     : REX.Match_Array (0 .. 4);
 
       real_top_directory : constant String := Unix.real_path (stage_directory);
 
@@ -204,6 +206,23 @@ package body Archive.Whitelist is
             keyword   : constant String := line (key_jar (1).First .. key_jar (1).Last);
             arguments : constant String := line (key_jar (2).First .. key_jar (2).Last);
          begin
+            if keyword = "dir" then
+               --  standard directory creation/destruction
+               whitelist.insert_temporary_directory (first_word (arguments), level);
+               return;
+            end if;
+            --  check @dir(,,) keyword
+            REX.Match (dirmech, keyword, dir_jar);
+            if dir_jar (0) /= REX.No_Match then
+               --  Either directory creation/destruction or POG override
+               whitelist.insert_temporary_directory
+                 (dir_path   => first_word (arguments),
+                  attr_owner => keyword (dir_jar (1).First .. dir_jar (1).Last),
+                  attr_group => keyword (dir_jar (2).First .. dir_jar (2).Last),
+                  attr_perms => keyword (dir_jar (3).First .. dir_jar (3).Last),
+                  level      => level);
+               return;
+            end if;
             TIO.Put_line ("Todo: Handle keyword " & keyword & " (" & arguments & ")");
          end;
       end invoke_keyword_callback;
@@ -262,6 +281,8 @@ package body Archive.Whitelist is
          end;
       end loop;
       TIO.Close (file_handle);
+
+      whitelist.process_temporary_directories (level);
       whitelist.list_used := True;
       return succeeded;
 
@@ -349,6 +370,84 @@ package body Archive.Whitelist is
    end insert_directory_into_whitelist;
 
 
+   -------------------------------------
+   --  insert_temporary_directory #1  --
+   -------------------------------------
+   procedure insert_temporary_directory
+      (whitelist     : in out A_Whitelist;
+       dir_path      : String;
+       level         : info_level)
+   is
+      --  This directory usually does not exist (it needs to be created/destroyed with package
+      --  installation and deinstallation
+      file_hash : Blake_3.blake3_hash;
+      props     : white_properties;
+   begin
+      if level >= debug then
+         TIO.Put_Line ("Adding directory to temporary heap: " & dir_path);
+      end if;
+      file_hash := Blake_3.digest (dir_path);
+      props.is_directory := True;
+      props.path := ASU.To_Unbounded_String (dir_path);
+      whitelist.temp_dirs.Insert (file_hash, props);
+   end insert_temporary_directory;
+
+
+   -------------------------------------
+   --  insert_temporary_directory #2  --
+   -------------------------------------
+   procedure insert_temporary_directory
+     (whitelist     : in out A_Whitelist;
+      dir_path      : String;
+      attr_owner    : String;
+      attr_group    : String;
+      attr_perms    : String;
+      level         : info_level)
+   is
+      --  This directory usually does not exist (it needs to be created/destroyed with package
+      --  installation and deinstallation
+      file_hash : Blake_3.blake3_hash;
+      props     : white_properties;
+   begin
+      if level >= debug then
+         TIO.Put_Line ("Adding directory to temporary heap: " & dir_path & "(" &
+                      attr_owner & "," & attr_group & "," & attr_perms & ")");
+      end if;
+      file_hash := Blake_3.digest (dir_path);
+      props.is_directory := True;
+      props.path := ASU.To_Unbounded_String (dir_path);
+
+      if attr_owner /= "" then
+         props.override_owner := True;
+         props.owner_spec := Archive.Unix.str2owngrp (attr_owner);
+      end if;
+
+      if attr_group /= "" then
+         props.override_group := True;
+         props.group_spec := Archive.Unix.str2owngrp (attr_group);
+      end if;
+
+      if attr_perms /= "" then
+         declare
+            op_success  : Boolean;
+            octal_perms : permissions;
+         begin
+            octal_perms := convert_mode (attr_perms, op_success);
+            if op_success then
+               props.override_perms := True;
+               props.perms_spec := octal_perms;
+            else
+               if level >= verbose then
+                  TIO.Put_Line ("failed to convert " & attr_perms &
+                               " to an octal value, so mode change request ignored.");
+               end if;
+            end if;
+         end;
+      end if;
+      whitelist.temp_dirs.Insert (file_hash, props);
+   end insert_temporary_directory;
+
+
    ------------------------------------------
    --  ingest_manifest_with_mode_override  --
    ------------------------------------------
@@ -432,6 +531,70 @@ package body Archive.Whitelist is
    end ingest_manifest_with_mode_override;
 
 
+   -------------------------------------
+   --  process_temporary_directories  --
+   -------------------------------------
+   procedure process_temporary_directories
+     (whitelist : in out A_Whitelist;
+      level     : info_level)
+   is
+      procedure process (position : white_crate.Cursor);
+      procedure process (position : white_crate.Cursor)
+      is
+         procedure reset_POG (key : Blake_3.blake3_hash; Element : in out white_properties);
+
+         old_props : white_properties;
+         props     : white_properties renames white_crate.Element (Position);
+         file_hash : Blake_3.blake3_hash renames white_crate.Key (Position);
+
+         procedure reset_POG (key : Blake_3.blake3_hash; Element : in out white_properties)
+         is
+            pragma Unreferenced (key);
+         begin
+            Element.override_group := props.override_group;
+            Element.override_owner := props.override_owner;
+            Element.override_perms := props.override_perms;
+            Element.owner_spec     := props.owner_spec;
+            Element.group_spec     := props.group_spec;
+            Element.perms_spec     := props.perms_spec;
+         end reset_POG;
+      begin
+         if whitelist.files.Contains (file_hash) then
+            old_props := whitelist.files.Element (file_hash);
+            if not old_props.is_directory then
+               if level >= normal then
+                  TIO.Put_Line ("whitelist error: @dir " & ASU.To_String (props.path) &
+                                  " matches a listed file, ignoring");
+               end if;
+            else
+               if props.override_group = old_props.override_group and then
+                 props.override_owner = old_props.override_owner and then
+                 props.override_perms = old_props.override_perms and then
+                 props.owner_spec = old_props.owner_spec and then
+                 props.group_spec = old_props.group_spec and then
+                 props.perms_spec = old_props.perms_spec
+               then
+                  if level >= normal then
+                     TIO.Put_Line ("whitelist notice: @dir " & ASU.To_String (props.path) &
+                                     " is unnecessary; the directory is already being created.");
+                  end if;
+               else
+                  --  The POG attributes don't match, so reset the files version of them.
+                  whitelist.files.Update_Element
+                    (Position => whitelist.files.Find (file_hash),
+                     Process  => reset_POG'Access);
+               end if;
+            end if;
+         else
+            whitelist.just_dirs.Insert (file_hash, props);
+         end if;
+      end process;
+   begin
+      whitelist.temp_dirs.Iterate(process'Access);
+      whitelist.temp_dirs.Clear;
+   end process_temporary_directories;
+
+
    -------------------
    --  digest_hash  --
    -------------------
@@ -472,6 +635,22 @@ package body Archive.Whitelist is
          front_marker := front_marker - 1;
       end loop;
    end head;
+
+
+   ------------------
+   --  first_word  --
+   ------------------
+   function first_word (S : String) return String
+   is
+      cleaner : constant String := ASF.Trim (S, Ada.Strings.Both);
+      space   : Natural;
+   begin
+      space := ASF.Index (Source => cleaner, Pattern => " ");
+      if space = 0 then
+         return cleaner;
+      end if;
+      return cleaner (cleaner'First .. space - 1);
+   end first_word;
 
 
    --------------------

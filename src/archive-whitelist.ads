@@ -3,6 +3,7 @@
 
 private with Blake_3;
 private with Ada.Containers.Hashed_Maps;
+private with Ada.Strings.Unbounded;
 
 package Archive.Whitelist is
 
@@ -59,6 +60,7 @@ package Archive.Whitelist is
 private
 
    package CON renames Ada.Containers;
+   package ASU renames Ada.Strings.Unbounded;
 
    function digest_hash (key : Blake_3.blake3_hash) return CON.Hash_Type;
    function digest_equivalent (key1, key2 : Blake_3.blake3_hash) return Boolean;
@@ -72,6 +74,7 @@ private
          owner_spec     : ownergroup;
          group_spec     : ownergroup;
          perms_spec     : permissions;
+         path           : ASU.Unbounded_String;
       end record;
 
    package white_crate is new CON.Hashed_Maps
@@ -85,6 +88,8 @@ private
          list_used : Boolean := False;
          level     : info_level;
          files     : white_crate.Map;
+         temp_dirs : white_crate.Map;
+         just_dirs : white_crate.Map;
       end record;
 
    --  If the full path is not already in the whitelist, it will be inserted.
@@ -104,6 +109,23 @@ private
       real_top_path : String;
       level         : info_level);
 
+   --  This procedure stores directories from @dir keyword
+   --  After whitelist ingestion they are all checked they they aren't already defined
+   procedure insert_temporary_directory
+     (whitelist     : in out A_Whitelist;
+      dir_path      : String;
+      level         : info_level);
+
+   --  second version, handles @dir(,,) format
+   --  If directory already exists, the attributes will be overwritten.
+   procedure insert_temporary_directory
+     (whitelist     : in out A_Whitelist;
+      dir_path      : String;
+      attr_owner    : String;
+      attr_group    : String;
+      attr_perms    : String;
+      level         : info_level);
+
    --  Similar to insert_file_into_whitelist() but it also records owner/group/mode changes
    function ingest_manifest_with_mode_override
      (whitelist     : in out A_Whitelist;
@@ -114,11 +136,25 @@ private
       new_perms     : String;
       level         : info_level) return Boolean;
 
+   --  Iterate through the temporary directories.
+   --  If one is already defined, check the POG attributes.
+   --  If the POG attributes match, issue a notice that keyword is unnecessary and ignored.
+   --  If the POG attributes don't match, update them to match (no notice)
+   --  If the directory wasn't already defined, move it to the just_dirs container.
+   --  When done, clear the temp directories container
+   procedure process_temporary_directories
+     (whitelist : in out A_Whitelist;
+      level     : info_level);
+
    --  Head (keep all but last delimiter and field)
    function head (S : String; delimiter : String) return String;
 
    --  Takes a single like "4555" and returns the equivalent as permissions type.
    --  Must be 3 or 4 characters long, consisting of only '0' .. '7' characters
    function convert_mode (S : String; success : out Boolean) return permissions;
+
+   --  Trims both sides first.  If there's no space, return the result.
+   --  If it does contain a space, return the first word.
+   function first_word (S : String) return String;
 
 end Archive.Whitelist;
