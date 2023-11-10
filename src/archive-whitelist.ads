@@ -3,6 +3,7 @@
 
 private with Blake_3;
 private with Ada.Containers.Hashed_Maps;
+private with Ada.Containers.Vectors;
 private with Ada.Strings.Unbounded;
 
 package Archive.Whitelist is
@@ -65,6 +66,16 @@ private
    function digest_hash (key : Blake_3.blake3_hash) return CON.Hash_Type;
    function digest_equivalent (key1, key2 : Blake_3.blake3_hash) return Boolean;
 
+   type package_phase is
+     (pre_install,
+      pre_install_lua,
+      pre_deinstall,
+      pre_deinstall_lua,
+      post_install,
+      post_install_lua,
+      post_deinstall,
+      post_deinstall_lua);
+
    type white_properties is
       record
          is_directory   : Boolean;
@@ -76,6 +87,17 @@ private
          perms_spec     : permissions;
          path           : ASU.Unbounded_String;
       end record;
+
+   type phase_script is
+      record
+         script : ASU.Unbounded_String;
+      end record;
+
+   package phase_crate is new CON.Vectors
+     (Index_Type => Natural,
+      Element_Type => phase_script);
+
+   type maintenance is array (package_phase'Range) of phase_crate.Vector;
 
    package white_crate is new CON.Hashed_Maps
      (Key_Type        => Blake_3.blake3_hash,
@@ -90,6 +112,7 @@ private
          files     : white_crate.Map;
          temp_dirs : white_crate.Map;
          just_dirs : white_crate.Map;
+         scripts   : maintenance;
       end record;
 
    --  If the full path is not already in the whitelist, it will be inserted.

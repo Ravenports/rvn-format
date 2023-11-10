@@ -6,6 +6,7 @@ with Ada.Strings.Hash;
 with Ada.Strings.Fixed;
 with Ada.Text_IO;
 with Archive.Unix;
+with Archive.Whitelist.Keywords;
 with GNAT.Regpat;
 
 package body Archive.Whitelist is
@@ -13,6 +14,7 @@ package body Archive.Whitelist is
    package TIO renames Ada.Text_IO;
    package ASF renames Ada.Strings.Fixed;
    package REX renames GNAT.Regpat;
+   package KWD renames Archive.Whitelist.Keywords;
 
    -----------------------
    --  whiteist_in_use  --
@@ -205,38 +207,43 @@ package body Archive.Whitelist is
          declare
             keyword   : constant String := line (key_jar (1).First .. key_jar (1).Last);
             arguments : constant String := line (key_jar (2).First .. key_jar (2).Last);
+            relative  : constant String := first_word (arguments);
+            full_path : constant String := get_true_path (relative);
          begin
             if keyword = "dir" then
                --  standard directory creation/destruction
-               declare
-                  relative  : constant String := first_word (arguments);
-                  full_path : constant String := get_true_path (relative);
-               begin
-                  whitelist.insert_temporary_directory (dir_path  => relative,
-                                                        full_path => full_path,
-                                                        level     => level);
-               end;
+               whitelist.insert_temporary_directory (dir_path  => relative,
+                                                     full_path => full_path,
+                                                     level     => level);
                return;
             end if;
+
             --  check @dir(,,) keyword
             REX.Match (dirmech, keyword, dir_jar);
             if dir_jar (0) /= REX.No_Match then
                --  Either directory creation/destruction or POG override
-               declare
-                  relative  : constant String := first_word (arguments);
-                  full_path : constant String := get_true_path (relative);
-               begin
-                  whitelist.insert_temporary_directory
-                    (dir_path   => relative,
-                     full_path  => full_path,
-                     attr_owner => keyword (dir_jar (1).First .. dir_jar (1).Last),
-                     attr_group => keyword (dir_jar (2).First .. dir_jar (2).Last),
-                     attr_perms => keyword (dir_jar (3).First .. dir_jar (3).Last),
-                     level      => level);
-               end;
+               whitelist.insert_temporary_directory
+                 (dir_path   => relative,
+                  full_path  => full_path,
+                  attr_owner => keyword (dir_jar (1).First .. dir_jar (1).Last),
+                  attr_group => keyword (dir_jar (2).First .. dir_jar (2).Last),
+                  attr_perms => keyword (dir_jar (3).First .. dir_jar (3).Last),
+                  level      => level);
                return;
             end if;
-            TIO.Put_line ("Todo: Handle keyword " & keyword & " (" & arguments & ")");
+
+            --  External keyword
+            if not KWD.process_external_keyword
+              (whitelist     => whitelist,
+               keyword       => keyword,
+               arguments     => arguments,
+               keyword_dir   => "/tmp/Keywords",
+               real_top_path => real_top_directory,
+               full_path     => full_path,
+               level         => level)
+            then
+               succeeded := False;
+            end if;
          end;
       end invoke_keyword_callback;
 

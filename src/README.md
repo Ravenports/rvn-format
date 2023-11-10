@@ -197,6 +197,17 @@ Shell script to be run during the post-deinstall phase.  It will be
 merged with any existing post-deinstall scripts.  The escape sequences will be
 expanded as described earlier.  See the post-install section for an example.
 
+### Lua versions
+
+It has not been decided yet if rvn/Ravenports will support Lua scripts yet.
+However, to protect for the case that it will, also support the Lua versions
+of the phase scripts:
+
+    - pre-install-lua
+    - post-install-lua
+    - pre-deinstall-lua
+    - post-deinstall-lua
+
 # Variables present in environment during package phases
 
 This is out of scope for rvn format, but to put scripts in context, the following
