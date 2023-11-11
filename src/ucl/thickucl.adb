@@ -597,4 +597,165 @@ package body ThickUCL is
       end case;
    end close_object;
 
+
+   ---------------------
+   --  get_data_type  --
+   ---------------------
+   function get_data_type
+     (tree : UclTree;
+      key  : String) return Leaf_type
+   is
+      keystring : constant ASU.Unbounded_String := ASU.To_Unbounded_String (key);
+   begin
+      if key_missing (key) then
+         return data_not_present;
+      end if;
+
+      if not tree.tree_stump.Contains (keystring) then
+         return data_not_present;
+      end if;
+
+      case tree.tree_stump.Element (keystring).data_type is
+         when ucl_object  => return data_object;
+         when ucl_array   => return data_array;
+         when ucl_integer => return data_integer;
+         when ucl_float   => return data_float;
+         when ucl_string  => return data_string;
+         when ucl_boolean => return data_boolean;
+         when ucl_time    => return data_time;
+      end case;
+
+   end get_data_type;
+
+
+   --------------------------
+   --  get_base_value #1   --
+   --------------------------
+   function get_base_value
+     (tree : UclTree;
+      key  : String) return Ucl.ucl_integer
+   is
+      field_type : constant Leaf_type := tree.get_data_type (key);
+   begin
+      case field_type is
+         when data_not_present =>
+            raise ucl_key_not_found with key;
+         when data_integer =>
+            declare
+               keystring : constant ASU.Unbounded_String := ASU.To_Unbounded_String (key);
+               index     : Natural;
+            begin
+               index := tree.tree_stump.Element (keystring).vector_index;
+               return tree.store_integers.Element (index);
+            end;
+         when others =>
+            raise ucl_type_mismatch with field_type'Img & " found instead of Integer";
+      end case;
+   end get_base_value;
+
+
+   --------------------------
+   --  get_base_value #2   --
+   --------------------------
+   function get_base_value
+     (tree : UclTree;
+      key  : String) return Float
+   is
+      field_type : constant Leaf_type := tree.get_data_type (key);
+   begin
+      case field_type is
+         when data_not_present =>
+            raise ucl_key_not_found with key;
+         when data_float =>
+            declare
+               keystring : constant ASU.Unbounded_String := ASU.To_Unbounded_String (key);
+               index     : Natural;
+            begin
+               index := tree.tree_stump.Element (keystring).vector_index;
+               return tree.store_floats.Element (index);
+            end;
+         when others =>
+            raise ucl_type_mismatch with field_type'Img & " found instead of Float";
+      end case;
+   end get_base_value;
+
+
+   --------------------------
+   --  get_base_value #3   --
+   --------------------------
+   function get_base_value
+     (tree : UclTree;
+      key  : String) return Boolean
+   is
+      field_type : constant Leaf_type := tree.get_data_type (key);
+   begin
+      case field_type is
+         when data_not_present =>
+            raise ucl_key_not_found with key;
+         when data_boolean =>
+            declare
+               keystring : constant ASU.Unbounded_String := ASU.To_Unbounded_String (key);
+               index     : Natural;
+            begin
+               index := tree.tree_stump.Element (keystring).vector_index;
+               return tree.store_booleans.Element (index);
+            end;
+         when others =>
+            raise ucl_type_mismatch with field_type'Img & " found instead of Boolean";
+      end case;
+   end get_base_value;
+
+
+   --------------------------
+   --  get_base_value #4   --
+   --------------------------
+   function get_base_value
+     (tree : UclTree;
+      key  : String) return CAL.Time
+   is
+      field_type : constant Leaf_type := tree.get_data_type (key);
+   begin
+      case field_type is
+         when data_not_present =>
+            raise ucl_key_not_found with key;
+         when data_time =>
+            declare
+               keystring : constant ASU.Unbounded_String := ASU.To_Unbounded_String (key);
+               index     : Natural;
+            begin
+               index := tree.tree_stump.Element (keystring).vector_index;
+               return tree.store_times.Element (index);
+            end;
+         when others =>
+            raise ucl_type_mismatch with field_type'Img & " found instead of Time";
+      end case;
+   end get_base_value;
+
+
+   --------------------------
+   --  get_base_value #5   --
+   --------------------------
+   function get_base_value
+     (tree : UclTree;
+      key  : String) return String
+   is
+      field_type : constant Leaf_type := tree.get_data_type (key);
+   begin
+      case field_type is
+         when data_not_present =>
+            raise ucl_key_not_found with key;
+         when data_string =>
+            declare
+               keystring : constant ASU.Unbounded_String := ASU.To_Unbounded_String (key);
+               index     : Natural;
+            begin
+               index := tree.tree_stump.Element (keystring).vector_index;
+               return ASU.To_String (tree.store_strings.Element (index).payload);
+            end;
+         when others =>
+            raise ucl_type_mismatch with field_type'Img & " found instead of String";
+      end case;
+   end get_base_value;
+
+
 end ThickUCL;

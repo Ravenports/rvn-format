@@ -14,6 +14,16 @@ package ThickUCL is
 
    type UclTree is tagged private;
 
+   type Leaf_type is
+     (data_not_present,
+      data_object,
+      data_array,
+      data_integer,
+      data_float,
+      data_string,
+      data_boolean,
+      data_time);
+
 
    -----------------------------------------------------------
    --  Methods to build top level UCL Object (serial only)  --
@@ -63,6 +73,38 @@ package ThickUCL is
    --  Methods to query top level UCL object  --
    ---------------------------------------------
 
+   ucl_type_mismatch : exception;
+   ucl_key_not_found : exception;
+
+   --  Stump-level fields
+   function get_data_type
+     (tree : UclTree;
+      key  : String) return Leaf_type;
+
+   --  Get stump-level integer values from key (possible exception)
+   function get_base_value
+     (tree : UclTree;
+      key  : String) return Ucl.ucl_integer;
+
+   --  Get stump-level float values from key (possible exception)
+   function get_base_value
+     (tree : UclTree;
+      key  : String) return Float;
+
+   --  Get stump-level boolean values from key (possible exception)
+   function get_base_value
+     (tree : UclTree;
+      key  : String) return Boolean;
+
+   --  Get stump-level time values from key (possible exception)
+   function get_base_value
+     (tree : UclTree;
+      key  : String) return CAL.Time;
+
+   --  Get stump-level string values from key (possible exception)
+   function get_base_value
+     (tree : UclTree;
+      key  : String) return String;
 
 
 
