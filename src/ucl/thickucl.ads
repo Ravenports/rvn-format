@@ -24,6 +24,8 @@ package ThickUCL is
       data_boolean,
       data_time);
 
+   subtype array_index  is Natural range Natural'First .. 499_999;
+   subtype object_index is Natural range Natural'First .. 499_999;
 
    -----------------------------------------------------------
    --  Methods to build top level UCL Object (serial only)  --
@@ -107,47 +109,56 @@ package ThickUCL is
      (tree : UclTree;
       key  : String) return String;
 
-   --  Get number of elements in stump level array (possible exceptions)
+   --  Get index to a stump-level array (possible exceptions)
+   function get_index_second_level_array
+     (tree  : UclTree;
+      key   : String) return array_index;
+
+   --  Get number of elements in the array (possible exceptions)
    function get_number_of_array_elements
      (tree : UclTree;
-      key  : String) return Natural;
+      vndx : array_index) return Natural;
 
    --  Get data-type of stump-level array element #index (zero-indexed) (possible exceptions)
    function get_array_element_type
      (tree  : UclTree;
-      key   : String;
+      vndx  : array_index;
       index : Natural) return Leaf_type;
 
    --  Get stump-level array element #index integer value (zero-indexed) (possible exceptions)
    function get_array_element_value
      (tree  : UclTree;
-      key   : String;
+      vndx  : array_index;
       index : Natural) return Ucl.ucl_integer;
 
    --  Get stump-level array element #index float value (zero-indexed) (possible exceptions)
    function get_array_element_value
      (tree  : UclTree;
-      key   : String;
+      vndx  : array_index;
       index : Natural) return Float;
 
    --  Get stump-level array element #index boolean value (zero-indexed) (possible exceptions)
    function get_array_element_value
      (tree  : UclTree;
-      key   : String;
+      vndx  : array_index;
       index : Natural) return Boolean;
 
    --  Get stump-level array element #index time value (zero-indexed) (possible exceptions)
    function get_array_element_value
      (tree  : UclTree;
-      key   : String;
+      vndx  : array_index;
       index : Natural) return CAL.Time;
 
    --  Get stump-level array element #index string value (zero-indexed) (possible exceptions)
    function get_array_element_value
      (tree  : UclTree;
-      key   : String;
+      vndx  : array_index;
       index : Natural) return String;
 
+   --  Get index to a stump-level ucl object (possible exceptions)
+   function get_index_second_level_ucl_object
+     (tree  : UclTree;
+      key   : String) return object_index;
 
 
 
