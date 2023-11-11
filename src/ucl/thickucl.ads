@@ -119,46 +119,106 @@ package ThickUCL is
      (tree : UclTree;
       vndx : array_index) return Natural;
 
-   --  Get data-type of stump-level array element #index (zero-indexed) (possible exceptions)
+   --  Get data-type of array element #index (zero-indexed) (possible exceptions)
    function get_array_element_type
      (tree  : UclTree;
       vndx  : array_index;
       index : Natural) return Leaf_type;
 
-   --  Get stump-level array element #index integer value (zero-indexed) (possible exceptions)
+   --  Get array element #index integer value (zero-indexed) (possible exceptions)
    function get_array_element_value
      (tree  : UclTree;
       vndx  : array_index;
       index : Natural) return Ucl.ucl_integer;
 
-   --  Get stump-level array element #index float value (zero-indexed) (possible exceptions)
+   --  Get array element #index float value (zero-indexed) (possible exceptions)
    function get_array_element_value
      (tree  : UclTree;
       vndx  : array_index;
       index : Natural) return Float;
 
-   --  Get stump-level array element #index boolean value (zero-indexed) (possible exceptions)
+   --  Get array element #index boolean value (zero-indexed) (possible exceptions)
    function get_array_element_value
      (tree  : UclTree;
       vndx  : array_index;
       index : Natural) return Boolean;
 
-   --  Get stump-level array element #index time value (zero-indexed) (possible exceptions)
+   --  Get array element #index time value (zero-indexed) (possible exceptions)
    function get_array_element_value
      (tree  : UclTree;
       vndx  : array_index;
       index : Natural) return CAL.Time;
 
-   --  Get stump-level array element #index string value (zero-indexed) (possible exceptions)
+   --  Get array element #index string value (zero-indexed) (possible exceptions)
    function get_array_element_value
      (tree  : UclTree;
       vndx  : array_index;
       index : Natural) return String;
 
+   --  Get array element #index deeper array value (zero-indexed) (possible exceptions)
+   function get_array_element_array
+     (tree  : UclTree;
+      vndx  : array_index;
+      index : Natural) return array_index;
+
+   --  Get array element #index object index (zero-indexed) (possible exceptions)
+   function get_array_element_object
+     (tree  : UclTree;
+      vndx  : array_index;
+      index : Natural) return object_index;
+
    --  Get index to a stump-level ucl object (possible exceptions)
    function get_index_second_level_ucl_object
      (tree  : UclTree;
       key   : String) return object_index;
+
+   --  data type from deeper object
+   function get_object_data_type
+     (tree : UclTree;
+      vndx : object_index;
+      key  : String) return Leaf_type;
+
+   --  Get integer values from key (possible exception)
+   function get_object_value
+     (tree : UclTree;
+      vndx : object_index;
+      key  : String) return Ucl.ucl_integer;
+
+   --  Get float values from key (possible exception)
+   function get_object_value
+     (tree : UclTree;
+      vndx : object_index;
+      key  : String) return Float;
+
+   --  Get boolean values from key (possible exception)
+   function get_object_value
+     (tree : UclTree;
+      vndx : object_index;
+      key  : String) return Boolean;
+
+   --  Get time values from key (possible exception)
+   function get_object_value
+     (tree : UclTree;
+      vndx : object_index;
+      key  : String) return CAL.Time;
+
+   --  Get string values from key (possible exception)
+   function get_object_value
+     (tree : UclTree;
+      vndx : object_index;
+      key  : String) return String;
+
+   --  Get index of array from key (possible exception)
+   function get_object_array
+     (tree : UclTree;
+      vndx : object_index;
+      key  : String) return array_index;
+
+   --  Get index of ucl object from key (possible exception)
+   function get_object_object
+     (tree : UclTree;
+      vndx : object_index;
+      key  : String) return object_index;
 
 
 
