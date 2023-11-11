@@ -73,8 +73,9 @@ package ThickUCL is
    --  Methods to query top level UCL object  --
    ---------------------------------------------
 
-   ucl_type_mismatch : exception;
-   ucl_key_not_found : exception;
+   ucl_type_mismatch  : exception;
+   ucl_key_not_found  : exception;
+   index_out_of_range : exception;
 
    --  Stump-level fields
    function get_data_type
@@ -105,6 +106,47 @@ package ThickUCL is
    function get_base_value
      (tree : UclTree;
       key  : String) return String;
+
+   --  Get number of elements in stump level array (possible exceptions)
+   function get_number_of_array_elements
+     (tree : UclTree;
+      key  : String) return Natural;
+
+   --  Get data-type of stump-level array element #index (zero-indexed) (possible exceptions)
+   function get_array_element_type
+     (tree  : UclTree;
+      key   : String;
+      index : Natural) return Leaf_type;
+
+   --  Get stump-level array element #index integer value (zero-indexed) (possible exceptions)
+   function get_array_element_value
+     (tree  : UclTree;
+      key   : String;
+      index : Natural) return Ucl.ucl_integer;
+
+   --  Get stump-level array element #index float value (zero-indexed) (possible exceptions)
+   function get_array_element_value
+     (tree  : UclTree;
+      key   : String;
+      index : Natural) return Float;
+
+   --  Get stump-level array element #index boolean value (zero-indexed) (possible exceptions)
+   function get_array_element_value
+     (tree  : UclTree;
+      key   : String;
+      index : Natural) return Boolean;
+
+   --  Get stump-level array element #index time value (zero-indexed) (possible exceptions)
+   function get_array_element_value
+     (tree  : UclTree;
+      key   : String;
+      index : Natural) return CAL.Time;
+
+   --  Get stump-level array element #index string value (zero-indexed) (possible exceptions)
+   function get_array_element_value
+     (tree  : UclTree;
+      key   : String;
+      index : Natural) return String;
 
 
 

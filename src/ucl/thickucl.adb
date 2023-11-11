@@ -758,4 +758,245 @@ package body ThickUCL is
    end get_base_value;
 
 
+   -------------------------------------
+   --  get_number_of_array_elements   --
+   -------------------------------------
+   function get_number_of_array_elements
+     (tree : UclTree;
+      key  : String) return Natural
+   is
+      field_type : constant Leaf_type := tree.get_data_type (key);
+   begin
+      case field_type is
+         when data_not_present =>
+            raise ucl_key_not_found with key;
+         when data_array =>
+            declare
+               keystring : constant ASU.Unbounded_String := ASU.To_Unbounded_String (key);
+               index     : Natural;
+            begin
+               index := tree.tree_stump.Element (keystring).vector_index;
+               return Natural (tree.store_arrays.Element (index).Length);
+            end;
+         when others =>
+            raise ucl_type_mismatch with field_type'Img & " found instead of an array";
+      end case;
+   end get_number_of_array_elements;
+
+
+   -------------------------------
+   --  get_array_element_type   --
+   -------------------------------
+   function get_array_element_type
+     (tree  : UclTree;
+      key   : String;
+      index : Natural) return Leaf_type
+   is
+      field_type : constant Leaf_type := tree.get_data_type (key);
+   begin
+      case field_type is
+         when data_not_present =>
+            raise ucl_key_not_found with key;
+         when data_array =>
+            declare
+               keystring : constant ASU.Unbounded_String := ASU.To_Unbounded_String (key);
+               vec_index : Natural;
+               vec_len   : Natural;
+            begin
+               vec_index := tree.tree_stump.Element (keystring).vector_index;
+               vec_len   := Natural (tree.store_arrays.Element (vec_index).Length);
+               if index > vec_len then
+                  raise index_out_of_range with "given" & index'Img & " but max is" & vec_len'Img;
+               end if;
+               case tree.store_arrays.Element (vec_index).Element (index).data_type is
+                  when ucl_object  => return data_object;
+                  when ucl_array   => return data_array;
+                  when ucl_integer => return data_integer;
+                  when ucl_float   => return data_float;
+                  when ucl_string  => return data_string;
+                  when ucl_boolean => return data_boolean;
+                  when ucl_time    => return data_time;
+               end case;
+            end;
+         when others =>
+            raise ucl_type_mismatch with field_type'Img & " found instead of an array";
+      end case;
+   end get_array_element_type;
+
+
+   ----------------------------------
+   --  get_array_element_value #1  --
+   ----------------------------------
+   function get_array_element_value
+     (tree  : UclTree;
+      key   : String;
+      index : Natural) return Ucl.ucl_integer
+   is
+      field_type : constant Leaf_type := tree.get_data_type (key);
+   begin
+      case field_type is
+         when data_not_present =>
+            raise ucl_key_not_found with key;
+         when data_array =>
+            declare
+               keystring : constant ASU.Unbounded_String := ASU.To_Unbounded_String (key);
+               eltype    : constant Leaf_type := tree.get_array_element_type (key, index);
+               vnx       : Natural;
+               dnx       : Natural;
+            begin
+               case eltype is
+                  when data_integer =>
+                     vnx := tree.tree_stump.Element (keystring).vector_index;
+                     dnx := tree.store_arrays.Element (vnx).Element (index).vector_index;
+                     return tree.store_integers.Element (dnx);
+                  when others =>
+                     raise ucl_type_mismatch with eltype'Img & " found instead of an integer";
+               end case;
+            end;
+         when others =>
+            raise ucl_type_mismatch with field_type'Img & " found instead of an array";
+      end case;
+   end get_array_element_value;
+
+
+   ----------------------------------
+   --  get_array_element_value #2  --
+   ----------------------------------
+   function get_array_element_value
+     (tree  : UclTree;
+      key   : String;
+      index : Natural) return Float
+   is
+      field_type : constant Leaf_type := tree.get_data_type (key);
+   begin
+      case field_type is
+         when data_not_present =>
+            raise ucl_key_not_found with key;
+         when data_array =>
+            declare
+               keystring : constant ASU.Unbounded_String := ASU.To_Unbounded_String (key);
+               eltype    : constant Leaf_type := tree.get_array_element_type (key, index);
+               vnx       : Natural;
+               dnx       : Natural;
+            begin
+               case eltype is
+                  when data_float =>
+                     vnx := tree.tree_stump.Element (keystring).vector_index;
+                     dnx := tree.store_arrays.Element (vnx).Element (index).vector_index;
+                     return tree.store_floats.Element (dnx);
+                  when others =>
+                     raise ucl_type_mismatch with eltype'Img & " found instead of a float";
+               end case;
+            end;
+         when others =>
+            raise ucl_type_mismatch with field_type'Img & " found instead of an array";
+      end case;
+   end get_array_element_value;
+
+
+   ----------------------------------
+   --  get_array_element_value #3  --
+   ----------------------------------
+   function get_array_element_value
+     (tree  : UclTree;
+      key   : String;
+      index : Natural) return Boolean
+   is
+      field_type : constant Leaf_type := tree.get_data_type (key);
+   begin
+      case field_type is
+         when data_not_present =>
+            raise ucl_key_not_found with key;
+         when data_array =>
+            declare
+               keystring : constant ASU.Unbounded_String := ASU.To_Unbounded_String (key);
+               eltype    : constant Leaf_type := tree.get_array_element_type (key, index);
+               vnx       : Natural;
+               dnx       : Natural;
+            begin
+               case eltype is
+                  when data_boolean =>
+                     vnx := tree.tree_stump.Element (keystring).vector_index;
+                     dnx := tree.store_arrays.Element (vnx).Element (index).vector_index;
+                     return tree.store_booleans.Element (dnx);
+                  when others =>
+                     raise ucl_type_mismatch with eltype'Img & " found instead of a boolean";
+               end case;
+            end;
+         when others =>
+            raise ucl_type_mismatch with field_type'Img & " found instead of an array";
+      end case;
+   end get_array_element_value;
+
+
+   ----------------------------------
+   --  get_array_element_value #4  --
+   ----------------------------------
+   function get_array_element_value
+     (tree  : UclTree;
+      key   : String;
+      index : Natural) return CAL.Time
+   is
+      field_type : constant Leaf_type := tree.get_data_type (key);
+   begin
+      case field_type is
+         when data_not_present =>
+            raise ucl_key_not_found with key;
+         when data_array =>
+            declare
+               keystring : constant ASU.Unbounded_String := ASU.To_Unbounded_String (key);
+               eltype    : constant Leaf_type := tree.get_array_element_type (key, index);
+               vnx       : Natural;
+               dnx       : Natural;
+            begin
+               case eltype is
+                  when data_time =>
+                     vnx := tree.tree_stump.Element (keystring).vector_index;
+                     dnx := tree.store_arrays.Element (vnx).Element (index).vector_index;
+                     return tree.store_times.Element (dnx);
+                  when others =>
+                     raise ucl_type_mismatch with eltype'Img & " found instead of time";
+               end case;
+            end;
+         when others =>
+            raise ucl_type_mismatch with field_type'Img & " found instead of an array";
+      end case;
+   end get_array_element_value;
+
+
+   ----------------------------------
+   --  get_array_element_value #5  --
+   ----------------------------------
+   function get_array_element_value
+     (tree  : UclTree;
+      key   : String;
+      index : Natural) return String
+   is
+      field_type : constant Leaf_type := tree.get_data_type (key);
+   begin
+      case field_type is
+         when data_not_present =>
+            raise ucl_key_not_found with key;
+         when data_array =>
+            declare
+               keystring : constant ASU.Unbounded_String := ASU.To_Unbounded_String (key);
+               eltype    : constant Leaf_type := tree.get_array_element_type (key, index);
+               vnx       : Natural;
+               dnx       : Natural;
+            begin
+               case eltype is
+                  when data_string =>
+                     vnx := tree.tree_stump.Element (keystring).vector_index;
+                     dnx := tree.store_arrays.Element (vnx).Element (index).vector_index;
+                     return ASU.To_String (tree.store_strings.Element (dnx).payload);
+                  when others =>
+                     raise ucl_type_mismatch with eltype'Img & " found instead of time";
+               end case;
+            end;
+         when others =>
+            raise ucl_type_mismatch with field_type'Img & " found instead of an array";
+      end case;
+   end get_array_element_value;
+
+
 end ThickUCL;
