@@ -418,7 +418,6 @@ package body ThickUCL is
       procedure append_into_array (Element : in out jar_array.Vector);
       procedure append_into_uclobj (Element : in out jar_ucl_objects.Map);
 
-      struct_index : Natural;
       global_index : Natural;
       dref : DataReference;
       name_us : constant ASU.Unbounded_String := ASU.To_Unbounded_String (name);
@@ -463,8 +462,7 @@ package body ThickUCL is
                TIO.Put_Line (WARN_EXTRA_KEY & " (" & name & ")");
             end if;
             wrap_payload;
-            struct_index := tree.last_reference_index;
-            tree.store_arrays.Update_Element (Index => struct_index,
+            tree.store_arrays.Update_Element (Index => tree.last_reference_index,
                                               Process => append_into_array'Access);
          when ucl_object =>
             if key_missing (name) then
@@ -472,7 +470,7 @@ package body ThickUCL is
                return;
             end if;
             wrap_payload;
-            tree.store_objects.Update_Element (Index => struct_index,
+            tree.store_objects.Update_Element (Index => tree.last_reference_index,
                                                Process => append_into_uclobj'Access);
          when others => null;
       end case;
@@ -590,7 +588,6 @@ package body ThickUCL is
       procedure append_into_array (Element : in out jar_array.Vector);
       procedure append_into_uclobj (Element : in out jar_ucl_objects.Map);
 
-      struct_index : Natural;
       global_index : Natural;
       dref : DataReference;
       name_us : constant ASU.Unbounded_String := ASU.To_Unbounded_String (name);
@@ -635,8 +632,7 @@ package body ThickUCL is
                TIO.Put_Line (WARN_EXTRA_KEY & " (" & name & ")");
             end if;
             wrap_payload;
-            struct_index := tree.last_reference_index;
-            tree.store_arrays.Update_Element (Index => struct_index,
+            tree.store_arrays.Update_Element (Index => tree.last_reference_index,
                                               Process => append_into_array'Access);
          when ucl_object =>
             if key_missing (name) then
@@ -644,7 +640,7 @@ package body ThickUCL is
                return;
             end if;
             wrap_payload;
-            tree.store_objects.Update_Element (Index => struct_index,
+            tree.store_objects.Update_Element (Index => tree.last_reference_index,
                                                Process => append_into_uclobj'Access);
          when others => null;
       end case;
