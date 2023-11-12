@@ -4,7 +4,6 @@ with Interfaces.C; use Interfaces.C;
 with Interfaces.C.Strings;
 with Interfaces.C_Streams;
 with System;
-with Interfaces.C.Extensions;
 
 package libucl is
 
@@ -389,7 +388,9 @@ package libucl is
   --  * @param res resulting target
   --  * @return true if `input` is a name of type stored in `res`
 
-   function ucl_object_string_to_type (input : Interfaces.C.Strings.chars_ptr; res : access ucl_type_t) return Extensions.bool;  -- ucl.h:331
+   function ucl_object_string_to_type
+     (input : Interfaces.C.Strings.chars_ptr;
+      res : access ucl_type_t) return unsigned_char;  -- ucl.h:331
    pragma Import (C, ucl_object_string_to_type, "ucl_object_string_to_type");
 
   --  * Convert any string to an ucl object making the specified transformations
@@ -437,7 +438,7 @@ package libucl is
   --  * @param bv bool value
   --  * @return new object
 
-   function ucl_object_frombool (bv : Extensions.bool) return access ucl_object_t;  -- ucl.h:378
+   function ucl_object_frombool (bv : unsigned_char) return access ucl_object_t;  -- ucl.h:378
    pragma Import (C, ucl_object_frombool, "ucl_object_frombool");
 
   --  * Insert a object 'elt' to the hash 'top' and associate it with key 'key'
@@ -453,7 +454,8 @@ package libucl is
       elt : access ucl_object_t;
       key : Interfaces.C.Strings.chars_ptr;
       keylen : size_t;
-      copy_key : Extensions.bool) return Extensions.bool;  -- ucl.h:389
+      copy_key : unsigned_char) return unsigned_char;  -- ucl.h:389
+
    pragma Import (C, ucl_object_insert_key, "ucl_object_insert_key");
 
   --  * Replace a object 'elt' to the hash 'top' and associate it with key 'key', old object will be unrefed,
@@ -470,7 +472,7 @@ package libucl is
       elt : access ucl_object_t;
       key : Interfaces.C.Strings.chars_ptr;
       keylen : size_t;
-      copy_key : Extensions.bool) return Extensions.bool;  -- ucl.h:402
+      copy_key : unsigned_char) return unsigned_char;  -- ucl.h:402
    pragma Import (C, ucl_object_replace_key, "ucl_object_replace_key");
 
   --  * Merge the keys from one object to another object. Overwrite on conflict
@@ -482,7 +484,7 @@ package libucl is
    function ucl_object_merge
      (top : access ucl_object_t;
       elt : access ucl_object_t;
-      copy : Extensions.bool) return Extensions.bool;  -- ucl.h:412
+      copy : unsigned_char) return unsigned_char;  -- ucl.h:412
    pragma Import (C, ucl_object_merge, "ucl_object_merge");
 
   --  * Delete a object associated with key 'key', old object will be unrefered,
@@ -493,14 +495,16 @@ package libucl is
    function ucl_object_delete_keyl
      (top : access ucl_object_t;
       key : Interfaces.C.Strings.chars_ptr;
-      keylen : size_t) return Extensions.bool;  -- ucl.h:420
+      keylen : size_t) return unsigned_char;  -- ucl.h:420
    pragma Import (C, ucl_object_delete_keyl, "ucl_object_delete_keyl");
 
   --  * Delete a object associated with key 'key', old object will be unrefered,
   --  * @param top object
   --  * @param key key associated to the object to remove
 
-   function ucl_object_delete_key (top : access ucl_object_t; key : Interfaces.C.Strings.chars_ptr) return Extensions.bool;  -- ucl.h:428
+   function ucl_object_delete_key
+     (top : access ucl_object_t;
+      key : Interfaces.C.Strings.chars_ptr) return unsigned_char;  -- ucl.h:428
    pragma Import (C, ucl_object_delete_key, "ucl_object_delete_key");
 
   --  * Removes `key` from `top` object, returning the object that was removed. This
@@ -541,7 +545,7 @@ package libucl is
       elt : access ucl_object_t;
       key : Interfaces.C.Strings.chars_ptr;
       keylen : size_t;
-      copy_key : Extensions.bool) return Extensions.bool;  -- ucl.h:465
+      copy_key : unsigned_char) return unsigned_char;  -- ucl.h:465
    pragma Import (C, ucl_object_insert_key_merged, "ucl_object_insert_key_merged");
 
   --  * Reserve space in ucl array or object for `elt` elements
@@ -549,7 +553,9 @@ package libucl is
   --  * @param reserved size to reserve in an object
   --  * @return 0 on success, -1 on failure (i.e. ENOMEM)
 
-   function ucl_object_reserve (obj : access ucl_object_t; reserved : size_t) return Extensions.bool;  -- ucl.h:474
+   function ucl_object_reserve
+     (obj : access ucl_object_t;
+      reserved : size_t) return unsigned_char;  -- ucl.h:474
    pragma Import (C, ucl_object_reserve, "ucl_object_reserve");
 
   --  * Append an element to the end of array object
@@ -557,7 +563,9 @@ package libucl is
   --  * @param elt element to append (must NOT be NULL)
   --  * @return true if value has been inserted
 
-   function ucl_array_append (top : access ucl_object_t; elt : access ucl_object_t) return Extensions.bool;  -- ucl.h:482
+   function ucl_array_append
+     (top : access ucl_object_t;
+      elt : access ucl_object_t) return unsigned_char;  -- ucl.h:482
    pragma Import (C, ucl_array_append, "ucl_array_append");
 
   --  * Append an element to the start of array object
@@ -565,7 +573,9 @@ package libucl is
   --  * @param elt element to append (must NOT be NULL)
   --  * @return true if value has been inserted
 
-   function ucl_array_prepend (top : access ucl_object_t; elt : access ucl_object_t) return Extensions.bool;  -- ucl.h:491
+   function ucl_array_prepend
+     (top : access ucl_object_t;
+      elt : access ucl_object_t) return unsigned_char;  -- ucl.h:491
    pragma Import (C, ucl_array_prepend, "ucl_array_prepend");
 
   --  * Merge all elements of second array into the first array
@@ -577,7 +587,7 @@ package libucl is
    function ucl_array_merge
      (top : access ucl_object_t;
       elt : access ucl_object_t;
-      copy : Extensions.bool) return Extensions.bool;  -- ucl.h:501
+      copy : unsigned_char) return unsigned_char;  -- ucl.h:501
    pragma Import (C, ucl_array_merge, "ucl_array_merge");
 
   --  * Removes an element `elt` from the array `top`, returning the object that was
@@ -587,21 +597,25 @@ package libucl is
   --  * @param elt element to remove
   --  * @return removed element or NULL if `top` is NULL or not an array
 
-   function ucl_array_delete (top : access ucl_object_t; elt : access ucl_object_t) return access ucl_object_t;  -- ucl.h:512
+   function ucl_array_delete
+     (top : access ucl_object_t;
+      elt : access ucl_object_t) return access ucl_object_t;  -- ucl.h:512
    pragma Import (C, ucl_array_delete, "ucl_array_delete");
 
   --  * Returns the first element of the array `top`
   --  * @param top array ucl object
   --  * @return element or NULL if `top` is NULL or not an array
 
-   function ucl_array_head (top : access constant ucl_object_t) return access constant ucl_object_t;  -- ucl.h:520
+   function ucl_array_head
+     (top : access constant ucl_object_t) return access constant ucl_object_t;  -- ucl.h:520
    pragma Import (C, ucl_array_head, "ucl_array_head");
 
   --  * Returns the last element of the array `top`
   --  * @param top array ucl object
   --  * @return element or NULL if `top` is NULL or not an array
 
-   function ucl_array_tail (top : access constant ucl_object_t) return access constant ucl_object_t;  -- ucl.h:527
+   function ucl_array_tail
+     (top : access constant ucl_object_t) return access constant ucl_object_t;  -- ucl.h:527
    pragma Import (C, ucl_array_tail, "ucl_array_tail");
 
   --  * Removes the last element from the array `top`, returning the object that was
@@ -610,7 +624,8 @@ package libucl is
   --  * @param top array ucl object
   --  * @return removed element or NULL if `top` is NULL or not an array
 
-   function ucl_array_pop_last (top : access ucl_object_t) return access ucl_object_t;  -- ucl.h:536
+   function ucl_array_pop_last
+     (top : access ucl_object_t) return access ucl_object_t;  -- ucl.h:536
    pragma Import (C, ucl_array_pop_last, "ucl_array_pop_last");
 
   --  * Removes the first element from the array `top`, returning the object that was
@@ -619,7 +634,8 @@ package libucl is
   --  * @param top array ucl object
   --  * @return removed element or NULL if `top` is NULL or not an array
 
-   function ucl_array_pop_first (top : access ucl_object_t) return access ucl_object_t;  -- ucl.h:545
+   function ucl_array_pop_first
+     (top : access ucl_object_t) return access ucl_object_t;  -- ucl.h:545
    pragma Import (C, ucl_array_pop_first, "ucl_array_pop_first");
 
   --  * Return size of the array `top`
@@ -634,7 +650,9 @@ package libucl is
   --  * @param index array index to return
   --  * @return object at the specified index or NULL if index is not found
 
-   function ucl_array_find_index (top : access constant ucl_object_t; index : unsigned) return access constant ucl_object_t;  -- ucl.h:560
+   function ucl_array_find_index
+     (top : access constant ucl_object_t;
+      index : unsigned) return access constant ucl_object_t;  -- ucl.h:560
    pragma Import (C, ucl_array_find_index, "ucl_array_find_index");
 
   --  * Return the index of `elt` in the array `top`
@@ -642,7 +660,8 @@ package libucl is
   --  * @param elt element to find index of (must NOT be NULL)
   --  * @return index of `elt` in the array `top or (unsigned int)-1 if `elt` is not found
 
-   function ucl_array_index_of (top : access ucl_object_t; elt : access ucl_object_t) return unsigned;  -- ucl.h:569
+   function ucl_array_index_of
+     (top : access ucl_object_t; elt : access ucl_object_t) return unsigned;  -- ucl.h:569
    pragma Import (C, ucl_array_index_of, "ucl_array_index_of");
 
   --  * Replace an element in an array with a different element, returning the object
@@ -664,7 +683,9 @@ package libucl is
   --  * @param elt new element
   --  * @return the new implicit array
 
-   function ucl_elt_append (head : access ucl_object_t; elt : access ucl_object_t) return access ucl_object_t;  -- ucl.h:591
+   function ucl_elt_append
+     (head : access ucl_object_t;
+      elt : access ucl_object_t) return access ucl_object_t;  -- ucl.h:591
    pragma Import (C, ucl_elt_append, "ucl_elt_append");
 
   --  * Converts an object to double value
@@ -672,7 +693,9 @@ package libucl is
   --  * @param target target double variable
   --  * @return true if conversion was successful
 
-   function ucl_object_todouble_safe (obj : access constant ucl_object_t; target : access double) return Extensions.bool;  -- ucl.h:600
+   function ucl_object_todouble_safe
+     (obj : access constant ucl_object_t;
+      target : access double) return unsigned_char;  -- ucl.h:600
    pragma Import (C, ucl_object_todouble_safe, "ucl_object_todouble_safe");
 
   --  * Unsafe version of \ref ucl_obj_todouble_safe
@@ -687,7 +710,9 @@ package libucl is
   --  * @param target target integer variable
   --  * @return true if conversion was successful
 
-   function ucl_object_toint_safe (obj : access constant ucl_object_t; target : access int64_t) return Extensions.bool;  -- ucl.h:615
+   function ucl_object_toint_safe
+     (obj : access constant ucl_object_t;
+      target : access int64_t) return unsigned_char;  -- ucl.h:615
    pragma Import (C, ucl_object_toint_safe, "ucl_object_toint_safe");
 
   --  * Unsafe version of \ref ucl_obj_toint_safe
@@ -702,14 +727,17 @@ package libucl is
   --  * @param target target boolean variable
   --  * @return true if conversion was successful
 
-   function ucl_object_toboolean_safe (obj : access constant ucl_object_t; target : access Extensions.bool) return Extensions.bool;  -- ucl.h:630
+   function ucl_object_toboolean_safe
+     (obj : access constant ucl_object_t;
+      target : access unsigned_char) return unsigned_char;  -- ucl.h:630
    pragma Import (C, ucl_object_toboolean_safe, "ucl_object_toboolean_safe");
 
   --  * Unsafe version of \ref ucl_obj_toboolean_safe
   --  * @param obj CL object
   --  * @return boolean value
 
-   function ucl_object_toboolean (obj : access constant ucl_object_t) return Extensions.bool;  -- ucl.h:637
+   function ucl_object_toboolean
+     (obj : access constant ucl_object_t) return unsigned_char;  -- ucl.h:637
    pragma Import (C, ucl_object_toboolean, "ucl_object_toboolean");
 
   --  * Converts an object to string value
@@ -717,21 +745,25 @@ package libucl is
   --  * @param target target string variable, no need to free value
   --  * @return true if conversion was successful
 
-   function ucl_object_tostring_safe (obj : access constant ucl_object_t; target : System.Address) return Extensions.bool;  -- ucl.h:645
+   function ucl_object_tostring_safe
+     (obj : access constant ucl_object_t;
+      target : System.Address) return unsigned_char;  -- ucl.h:645
    pragma Import (C, ucl_object_tostring_safe, "ucl_object_tostring_safe");
 
   --  * Unsafe version of \ref ucl_obj_tostring_safe
   --  * @param obj CL object
   --  * @return string value
 
-   function ucl_object_tostring (obj : access constant ucl_object_t) return Interfaces.C.Strings.chars_ptr;  -- ucl.h:652
+   function ucl_object_tostring
+     (obj : access constant ucl_object_t) return Interfaces.C.Strings.chars_ptr;  -- ucl.h:652
    pragma Import (C, ucl_object_tostring, "ucl_object_tostring");
 
   --  * Convert any object to a string in JSON notation if needed
   --  * @param obj CL object
   --  * @return string value
 
-   function ucl_object_tostring_forced (obj : access constant ucl_object_t) return Interfaces.C.Strings.chars_ptr;  -- ucl.h:659
+   function ucl_object_tostring_forced
+     (obj : access constant ucl_object_t) return Interfaces.C.Strings.chars_ptr;  -- ucl.h:659
    pragma Import (C, ucl_object_tostring_forced, "ucl_object_tostring_forced");
 
   --  * Return string as char * and len, string may be not zero terminated, more efficient that \ref ucl_obj_tostring as it
@@ -744,14 +776,16 @@ package libucl is
    function ucl_object_tolstring_safe
      (obj : access constant ucl_object_t;
       target : System.Address;
-      tlen : access size_t) return Extensions.bool;  -- ucl.h:669
+      tlen : access size_t) return unsigned_char;  -- ucl.h:669
    pragma Import (C, ucl_object_tolstring_safe, "ucl_object_tolstring_safe");
 
   --  * Unsafe version of \ref ucl_obj_tolstring_safe
   --  * @param obj CL object
   --  * @return string value
 
-   function ucl_object_tolstring (obj : access constant ucl_object_t; tlen : access size_t) return Interfaces.C.Strings.chars_ptr;  -- ucl.h:677
+   function ucl_object_tolstring
+     (obj : access constant ucl_object_t; tlen : access size_t)
+      return Interfaces.C.Strings.chars_ptr;  -- ucl.h:677
    pragma Import (C, ucl_object_tolstring, "ucl_object_tolstring");
 
   --  * Return object identified by a key in the specified object
@@ -902,11 +936,12 @@ package libucl is
   --  * @param ep pointer record exception (such as ENOMEM), could be NULL
   --  * @return the next object or NULL
 
-   function ucl_object_iterate
+   function ucl_object_iterate_with_error
      (obj : access constant ucl_object_t;
       iter : access ucl_object_iter_t;
-      expand_values : Extensions.bool) return access constant ucl_object_t;  -- ucl.h:832
-   pragma Import (C, ucl_object_iterate, "ucl_object_iterate");
+      expand_values : unsigned_char;
+      ep : access Interfaces.C.int) return access constant ucl_object_t;  -- ucl.h:832
+   pragma Import (C, ucl_object_iterate_with_error, "ucl_object_iterate_with_error");
 
   --  * Create new safe iterator for the specified object
   --  * @param obj object to iterate
@@ -921,14 +956,16 @@ package libucl is
   --  * @param iter opaque iterator
   --  * @return true if exception has occured, false otherwise
 
-   function ucl_object_iter_chk_excpn (it : System.Address) return Extensions.bool;  -- ucl.h:852
+   function ucl_object_iter_chk_excpn (it : System.Address) return unsigned_char;  -- ucl.h:852
    pragma Import (C, ucl_object_iter_chk_excpn, "ucl_object_iter_chk_excpn");
 
   --  * Reset initialized iterator to a new object
   --  * @param obj new object to iterate
   --  * @return modified iterator object
 
-   function ucl_object_iterate_reset (it : ucl_object_iter_t; obj : access constant ucl_object_t) return ucl_object_iter_t;  -- ucl.h:859
+   function ucl_object_iterate_reset
+     (it : ucl_object_iter_t;
+      obj : access constant ucl_object_t) return ucl_object_iter_t;  -- ucl.h:859
    pragma Import (C, ucl_object_iterate_reset, "ucl_object_iterate_reset");
 
   --  * Get the next object from the `obj`. This function iterates over arrays, objects
@@ -937,7 +974,9 @@ package libucl is
   --  * @param expand_values expand explicit arrays and objects
   --  * @return the next object in sequence
 
-   function ucl_object_iterate_safe (iter : ucl_object_iter_t; expand_values : Extensions.bool) return access constant ucl_object_t;  -- ucl.h:869
+   function ucl_object_iterate_safe
+     (iter : ucl_object_iter_t;
+      expand_values : unsigned_char) return access constant ucl_object_t;  -- ucl.h:869
    pragma Import (C, ucl_object_iterate_safe, "ucl_object_iterate_safe");
 
   --  * Iteration type enumerator
@@ -982,7 +1021,7 @@ package libucl is
         (arg1 : access unsigned_char;
          arg2 : size_t;
          arg3 : access constant ucl_object_t;
-         arg4 : System.Address) return Extensions.bool;
+         arg4 : System.Address) return unsigned_char;
    pragma Convention (C, ucl_macro_handler);  -- ucl.h:915
 
   --  * Context dependent macro handler for a parser
@@ -999,7 +1038,7 @@ package libucl is
          arg2 : size_t;
          arg3 : access constant ucl_object_t;
          arg4 : access constant ucl_object_t;
-         arg5 : System.Address) return Extensions.bool;
+         arg5 : System.Address) return unsigned_char;
    pragma Convention (C, ucl_context_macro_handler);  -- ucl.h:929
 
   --  Opaque parser
@@ -1018,7 +1057,8 @@ package libucl is
   --  * @param prio default priority (0 .. 16)
   --  * @return true if parser's default priority was set
 
-   function ucl_parser_set_default_priority (parser : System.Address; prio : unsigned) return Extensions.bool;  -- ucl.h:951
+   function ucl_parser_set_default_priority
+     (parser : System.Address; prio : unsigned) return unsigned_char;  -- ucl.h:951
    pragma Import (C, ucl_parser_set_default_priority, "ucl_parser_set_default_priority");
 
   --  * Gets the default priority for the parser applied to chunks that do not
@@ -1040,7 +1080,7 @@ package libucl is
      (parser : System.Address;
       macro : Interfaces.C.Strings.chars_ptr;
       handler : ucl_macro_handler;
-      ud : System.Address) return Extensions.bool;  -- ucl.h:969
+      ud : System.Address) return unsigned_char;  -- ucl.h:969
    pragma Import (C, ucl_parser_register_macro, "ucl_parser_register_macro");
 
   --  * Register new context dependent handler for a macro
@@ -1054,7 +1094,7 @@ package libucl is
      (parser : System.Address;
       macro : Interfaces.C.Strings.chars_ptr;
       handler : ucl_context_macro_handler;
-      ud : System.Address) return Extensions.bool;  -- ucl.h:981
+      ud : System.Address) return unsigned_char;  -- ucl.h:981
    pragma Import (C, ucl_parser_register_context_macro, "ucl_parser_register_context_macro");
 
   --  * Handler to detect unregistered variables
@@ -1071,8 +1111,8 @@ package libucl is
          arg2 : size_t;
          arg3 : System.Address;
          arg4 : access size_t;
-         arg5 : access Extensions.bool;
-         arg6 : System.Address) return Extensions.bool;
+         arg5 : access unsigned_char;
+         arg6 : System.Address) return unsigned_char;
    pragma Convention (C, ucl_variable_handler);  -- ucl.h:996
 
   --  * Register new parser variable
@@ -1106,7 +1146,7 @@ package libucl is
    function ucl_parser_add_chunk
      (parser : System.Address;
       data : access unsigned_char;
-      len : size_t) return Extensions.bool;  -- ucl.h:1024
+      len : size_t) return unsigned_char;  -- ucl.h:1024
    pragma Import (C, ucl_parser_add_chunk, "ucl_parser_add_chunk");
 
   --  * Load new chunk to a parser with the specified priority
@@ -1121,7 +1161,7 @@ package libucl is
      (parser : System.Address;
       data : access unsigned_char;
       len : size_t;
-      priority : unsigned) return Extensions.bool;  -- ucl.h:1036
+      priority : unsigned) return unsigned_char;  -- ucl.h:1036
    pragma Import (C, ucl_parser_add_chunk_priority, "ucl_parser_add_chunk_priority");
 
   --  * Insert new chunk to a parser (must have previously processed data with an existing top object)
@@ -1133,7 +1173,7 @@ package libucl is
    function ucl_parser_insert_chunk
      (parser : System.Address;
       data : access unsigned_char;
-      len : size_t) return Extensions.bool;  -- ucl.h:1046
+      len : size_t) return unsigned_char;  -- ucl.h:1046
    pragma Import (C, ucl_parser_insert_chunk, "ucl_parser_insert_chunk");
 
   --  * Full version of ucl_add_chunk with priority and duplicate strategy
@@ -1152,7 +1192,7 @@ package libucl is
       len : size_t;
       priority : unsigned;
       strat : ucl_duplicate_strategy;
-      parse_type : ucl_parse_type) return Extensions.bool;  -- ucl.h:1060
+      parse_type : ucl_parse_type) return unsigned_char;  -- ucl.h:1060
    pragma Import (C, ucl_parser_add_chunk_full, "ucl_parser_add_chunk_full");
 
   --  * Load ucl object from a string
@@ -1164,7 +1204,7 @@ package libucl is
    function ucl_parser_add_string
      (parser : System.Address;
       data : Interfaces.C.Strings.chars_ptr;
-      len : size_t) return Extensions.bool;  -- ucl.h:1071
+      len : size_t) return unsigned_char;  -- ucl.h:1071
    pragma Import (C, ucl_parser_add_string, "ucl_parser_add_string");
 
   --  * Load ucl object from a string
@@ -1179,7 +1219,7 @@ package libucl is
      (parser : System.Address;
       data : Interfaces.C.Strings.chars_ptr;
       len : size_t;
-      priority : unsigned) return Extensions.bool;  -- ucl.h:1083
+      priority : unsigned) return unsigned_char;  -- ucl.h:1083
    pragma Import (C, ucl_parser_add_string_priority, "ucl_parser_add_string_priority");
 
   --  * Load and add data from a file
@@ -1188,7 +1228,9 @@ package libucl is
   --  * @param err if *err is NULL it is set to parser error
   --  * @return true if chunk has been added and false in case of error
 
-   function ucl_parser_add_file (parser : System.Address; filename : Interfaces.C.Strings.chars_ptr) return Extensions.bool;  -- ucl.h:1093
+   function ucl_parser_add_file
+     (parser : System.Address;
+      filename : Interfaces.C.Strings.chars_ptr) return unsigned_char;  -- ucl.h:1093
    pragma Import (C, ucl_parser_add_file, "ucl_parser_add_file");
 
   --  * Load and add data from a file
@@ -1202,7 +1244,7 @@ package libucl is
    function ucl_parser_add_file_priority
      (parser : System.Address;
       filename : Interfaces.C.Strings.chars_ptr;
-      priority : unsigned) return Extensions.bool;  -- ucl.h:1105
+      priority : unsigned) return unsigned_char;  -- ucl.h:1105
    pragma Import (C, ucl_parser_add_file_priority, "ucl_parser_add_file_priority");
 
   --  * Load and add data from a file
@@ -1219,7 +1261,7 @@ package libucl is
       filename : Interfaces.C.Strings.chars_ptr;
       priority : unsigned;
       strat : ucl_duplicate_strategy;
-      parse_type : ucl_parse_type) return Extensions.bool;  -- ucl.h:1118
+      parse_type : ucl_parse_type) return unsigned_char;  -- ucl.h:1118
    pragma Import (C, ucl_parser_add_file_full, "ucl_parser_add_file_full");
 
   --  * Load and add data from a file descriptor
@@ -1228,7 +1270,8 @@ package libucl is
   --  * @param err if *err is NULL it is set to parser error
   --  * @return true if chunk has been added and false in case of error
 
-   function ucl_parser_add_fd (parser : System.Address; fd : int) return Extensions.bool;  -- ucl.h:1129
+   function ucl_parser_add_fd
+     (parser : System.Address; fd : int) return unsigned_char;  -- ucl.h:1129
    pragma Import (C, ucl_parser_add_fd, "ucl_parser_add_fd");
 
   --  * Load and add data from a file descriptor
@@ -1242,7 +1285,7 @@ package libucl is
    function ucl_parser_add_fd_priority
      (parser : System.Address;
       fd : int;
-      priority : unsigned) return Extensions.bool;  -- ucl.h:1141
+      priority : unsigned) return unsigned_char;  -- ucl.h:1141
    pragma Import (C, ucl_parser_add_fd_priority, "ucl_parser_add_fd_priority");
 
   --  * Load and add data from a file descriptor
@@ -1260,7 +1303,7 @@ package libucl is
       fd : int;
       priority : unsigned;
       strat : ucl_duplicate_strategy;
-      parse_type : ucl_parse_type) return Extensions.bool;  -- ucl.h:1155
+      parse_type : ucl_parse_type) return unsigned_char;  -- ucl.h:1155
    pragma Import (C, ucl_parser_add_fd_full, "ucl_parser_add_fd_full");
 
   --  * Provide a UCL_ARRAY of paths to search for include files. The object is
@@ -1269,7 +1312,8 @@ package libucl is
   --  * @param paths UCL_ARRAY of paths to search
   --  * @return true if the path search array was replaced in the parser
 
-   function ucl_set_include_path (parser : System.Address; paths : access ucl_object_t) return Extensions.bool;  -- ucl.h:1166
+   function ucl_set_include_path
+     (parser : System.Address; paths : access ucl_object_t) return unsigned_char;  -- ucl.h:1166
    pragma Import (C, ucl_set_include_path, "ucl_set_include_path");
 
   --  * Get a top object for a parser (refcount is increased)
@@ -1277,7 +1321,8 @@ package libucl is
   --  * @param err if *err is NULL it is set to parser error
   --  * @return top parser object or NULL
 
-   function ucl_parser_get_object (parser : System.Address) return access ucl_object_t;  -- ucl.h:1175
+   function ucl_parser_get_object
+     (parser : System.Address) return access ucl_object_t;  -- ucl.h:1175
    pragma Import (C, ucl_parser_get_object, "ucl_parser_get_object");
 
   --  * Get the current stack object as stack accessor function for use in macro
@@ -1286,7 +1331,8 @@ package libucl is
   --  * @param depth depth of stack to retrieve (top is 0)
   --  * @return current stack object or NULL
 
-   function ucl_parser_get_current_stack_object (parser : System.Address; depth : unsigned) return access ucl_object_t;  -- ucl.h:1184
+   function ucl_parser_get_current_stack_object
+     (parser : System.Address; depth : unsigned) return access ucl_object_t;  -- ucl.h:1184
    pragma Import (C, ucl_parser_get_current_stack_object, "ucl_parser_get_current_stack_object");
 
   --  * Peek at the character at the current chunk position
@@ -1300,7 +1346,7 @@ package libucl is
   --  * @param parser parser structure
   --  * @return success boolean
 
-   function ucl_parser_chunk_skip (parser : System.Address) return Extensions.bool;  -- ucl.h:1198
+   function ucl_parser_chunk_skip (parser : System.Address) return unsigned_char;  -- ucl.h:1198
    pragma Import (C, ucl_parser_chunk_skip, "ucl_parser_chunk_skip");
 
   --  * Get the error string if parsing has been failed
@@ -1348,7 +1394,8 @@ package libucl is
   --  * @param parser parser structure
   --  * @return ucl comments pointer or NULL
 
-   function ucl_parser_get_comments (parser : System.Address) return access constant ucl_object_t;  -- ucl.h:1246
+   function ucl_parser_get_comments
+     (parser : System.Address) return access constant ucl_object_t;  -- ucl.h:1246
    pragma Import (C, ucl_parser_get_comments, "ucl_parser_get_comments");
 
   --  * Utility function to find a comment object for the specified object in the input
@@ -1356,7 +1403,9 @@ package libucl is
   --  * @param srch search object
   --  * @return string comment enclosed in ucl_object_t
 
-   function ucl_comments_find (comments : access constant ucl_object_t; srch : access constant ucl_object_t) return access constant ucl_object_t;  -- ucl.h:1254
+   function ucl_comments_find
+     (comments : access constant ucl_object_t;
+      srch : access constant ucl_object_t) return access constant ucl_object_t;  -- ucl.h:1254
    pragma Import (C, ucl_comments_find, "ucl_comments_find");
 
 
@@ -1369,7 +1418,7 @@ package libucl is
    function ucl_comments_move
      (comments : access ucl_object_t;
       from : access constant ucl_object_t;
-      to : access constant ucl_object_t) return Extensions.bool;  -- ucl.h:1264
+      to : access constant ucl_object_t) return unsigned_char;  -- ucl.h:1264
    pragma Import (C, ucl_comments_move, "ucl_comments_move");
 
   --  * Adds a new comment for an object
@@ -1393,7 +1442,7 @@ package libucl is
    function ucl_parser_pubkey_add
      (parser : System.Address;
       key : access unsigned_char;
-      len : size_t) return Extensions.bool;  -- ucl.h:1284
+      len : size_t) return unsigned_char;  -- ucl.h:1284
    pragma Import (C, ucl_parser_pubkey_add, "ucl_parser_pubkey_add");
 
   --  * Set FILENAME and CURDIR variables in parser
@@ -1405,7 +1454,7 @@ package libucl is
    function ucl_parser_set_filevars
      (parser : System.Address;
       filename : Interfaces.C.Strings.chars_ptr;
-      need_expand : Extensions.bool) return Extensions.bool;  -- ucl.h:1294
+      need_expand : unsigned_char) return unsigned_char;  -- ucl.h:1294
    pragma Import (C, ucl_parser_set_filevars, "ucl_parser_set_filevars");
 
   --  * Returns current file for the parser
@@ -1423,7 +1472,7 @@ package libucl is
          arg3 : size_t;
          arg4 : System.Address;
          arg5 : access size_t;
-         arg6 : System.Address) return Extensions.bool;
+         arg6 : System.Address) return unsigned_char;
    pragma Convention (C, ucl_parser_special_handler_t);  -- ucl.h:1307
 
   --  * Special handler flags
@@ -1516,17 +1565,17 @@ package libucl is
       ucl_emitter_write_elt : access procedure
            (arg1 : System.Address;
             arg2 : access constant ucl_object_t;
-            arg3 : Extensions.bool;
-            arg4 : Extensions.bool);  -- ucl.h:1398
+            arg3 : unsigned_char;
+            arg4 : unsigned_char);  -- ucl.h:1398
       ucl_emitter_start_object : access procedure
            (arg1 : System.Address;
             arg2 : access constant ucl_object_t;
-            arg3 : Extensions.bool);  -- ucl.h:1401
+            arg3 : unsigned_char);  -- ucl.h:1401
       ucl_emitter_end_object : access procedure (arg1 : System.Address; arg2 : access constant ucl_object_t);  -- ucl.h:1404
       ucl_emitter_start_array : access procedure
            (arg1 : System.Address;
             arg2 : access constant ucl_object_t;
-            arg3 : Extensions.bool);  -- ucl.h:1407
+            arg3 : unsigned_char);  -- ucl.h:1407
       ucl_emitter_end_array : access procedure (arg1 : System.Address; arg2 : access constant ucl_object_t);  -- ucl.h:1409
    end record;
    pragma Convention (C_Pass_By_Copy, ucl_emitter_operations);  -- ucl.h:1395
@@ -1591,7 +1640,7 @@ package libucl is
      (obj : access constant ucl_object_t;
       emit_type : ucl_emitter;
       emitter : access ucl_emitter_functions;
-      comments : access constant ucl_object_t) return Extensions.bool;  -- ucl.h:1462
+      comments : access constant ucl_object_t) return unsigned_char;  -- ucl.h:1462
    pragma Import (C, ucl_object_emit_full, "ucl_object_emit_full");
 
   --  * Start streamlined UCL object emitter
@@ -1713,7 +1762,7 @@ package libucl is
    function ucl_object_validate
      (schema : access constant ucl_object_t;
       obj : access constant ucl_object_t;
-      err : access ucl_schema_error) return Extensions.bool;  -- ucl.h:1577
+      err : access ucl_schema_error) return unsigned_char;  -- ucl.h:1577
    pragma Import (C, ucl_object_validate, "ucl_object_validate");
 
   --  * Validate object `obj` using schema object `schema` and root schema at `root`.
@@ -1728,7 +1777,7 @@ package libucl is
      (schema : access constant ucl_object_t;
       obj : access constant ucl_object_t;
       root : access constant ucl_object_t;
-      err : access ucl_schema_error) return Extensions.bool;  -- ucl.h:1589
+      err : access ucl_schema_error) return unsigned_char;  -- ucl.h:1589
    pragma Import (C, ucl_object_validate_root, "ucl_object_validate_root");
 
 
@@ -1747,7 +1796,7 @@ package libucl is
       obj : access constant ucl_object_t;
       root : access constant ucl_object_t;
       ext_refs : access ucl_object_t;
-      err : access ucl_schema_error) return Extensions.bool;  -- ucl.h:1605
+      err : access ucl_schema_error) return unsigned_char;  -- ucl.h:1605
    pragma Import (C, ucl_object_validate_root_ext, "ucl_object_validate_root_ext");
 
   --  * XXX: Poorly named API functions, need to replace them with the appropriate

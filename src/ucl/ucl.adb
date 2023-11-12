@@ -2,13 +2,26 @@
 --  Reference: ../../License.txt
 
 with Interfaces.C.Strings;
-with Interfaces.C.Extensions;
 
 package body Ucl is
 
    package IC  renames Interfaces.C;
    package ICS renames Interfaces.C.Strings;
-   package ICX renames Interfaces.C.Extensions;
+
+
+   --------------------------------------------------------------------
+   --  convert_c_boolean
+   --------------------------------------------------------------------
+   function convert_c_boolean (original : IC.unsigned_char) return Boolean
+   is
+      c_true : constant IC.unsigned_char := IC.unsigned_char (1);
+   begin
+      case original is
+         when c_true => return True;
+         when others => return False;
+      end case;
+   end convert_c_boolean;
+
 
    --------------------------------------------------------------------
    --  ucl_object_find_key
@@ -96,16 +109,13 @@ package body Ucl is
                                    key : String;
                                    copy_key : Boolean) return Boolean
    is
-      use type ICX.bool;
-
       ckey   : ICS.chars_ptr;
-      ccopy  : ICX.bool := ICX.bool'Val (0);
-      result : ICX.bool;
-
+      ccopy  : IC.unsigned_char := IC.unsigned_char (0);
+      result : IC.unsigned_char;
    begin
       ckey := ICS.New_String (key);
       if copy_key then
-         ccopy := ICX.bool'Val (1);
+         ccopy := IC.unsigned_char (1);
       end if;
       result := libucl.ucl_object_insert_key (top      => top,
                                               elt      => elt,
@@ -114,7 +124,7 @@ package body Ucl is
                                               copy_key => ccopy);
       --  Do not free, libucl doesn't copy
       --  ICS.Free (ckey);
-      return (result = ICX.bool'Val (1));
+      return convert_c_boolean (result);
    end ucl_object_insert_key;
 
 
@@ -124,12 +134,10 @@ package body Ucl is
    function ucl_array_push (top : access libucl.ucl_object_t;
                             elt : access libucl.ucl_object_t) return Boolean
    is
-      use type ICX.bool;
-
-      result : ICX.bool;
+      result : IC.unsigned_char;
    begin
       result := libucl.ucl_array_append (top, elt);
-      return (result = ICX.bool'Val (1));
+      return convert_c_boolean (result);
    end ucl_array_push;
 
 
@@ -196,14 +204,15 @@ package body Ucl is
                                 expand_values : Boolean)
                                 return access constant libucl.ucl_object_t
    is
-      exv : ICX.bool := ICX.bool'Val (0);
+      exv : IC.unsigned_char := IC.unsigned_char (0);
    begin
       if expand_values then
-         exv := ICX.bool'Val (1);
+         exv := IC.unsigned_char (1);
       end if;
-      return libucl.ucl_object_iterate (obj           => obj,
-                                        iter          => iter,
-                                        expand_values => exv);
+      return libucl.ucl_object_iterate_with_error (obj           => obj,
+                                                   iter          => iter,
+                                                   expand_values => exv,
+                                                   ep            => null);
    end ucl_object_iterate;
 
 
@@ -381,15 +390,12 @@ package body Ucl is
                                     key : String;
                                     copy_key : Boolean) return Boolean
    is
-      use type ICX.bool;
-
       ckey   : constant ICS.chars_ptr := ICS.New_String (key);
-      ccopy  : ICX.bool := ICX.bool'Val (0);
-      result : ICX.bool;
-
+      ccopy  : IC.unsigned_char := IC.unsigned_char (0);
+      result : IC.unsigned_char;
    begin
       if copy_key then
-         ccopy := ICX.bool'Val (1);
+         ccopy := IC.unsigned_char (1);
       end if;
 
       result := libucl.ucl_object_replace_key (top      => top,
@@ -399,7 +405,7 @@ package body Ucl is
                                                copy_key => ccopy);
       --  Do not free, libucl doesn't copy
       --  ICS.Free (ckey);
-      return (result = ICX.bool'Val (1));
+      return convert_c_boolean (result);
    end ucl_object_replace_key;
 
 
@@ -464,12 +470,10 @@ package body Ucl is
    --------------------------------------------------------------------
    function ucl_object_toboolean (obj : access constant libucl.ucl_object_t) return Boolean
    is
-      use type ICX.bool;
-
-      result : ICX.bool;
+      result : IC.unsigned_char;
    begin
       result := libucl.ucl_object_toboolean (obj);
-      return (result = ICX.bool'Val (1));
+      return convert_c_boolean (result);
    end ucl_object_toboolean;
 
 
@@ -549,23 +553,22 @@ package body Ucl is
      (schema          : access constant libucl.ucl_object_t;
       obj_to_validate : access constant libucl.ucl_object_t) return String
    is
-      use type ICX.bool;
-
-      res  : ICX.bool;
+      res  : IC.unsigned_char;
       serr : aliased libucl.ucl_schema_error;
-      msg  : ICS.chars_ptr;
+
    begin
       res := libucl.ucl_object_validate (schema, obj_to_validate, serr'Access);
-      if res = ICX.bool'Val (0) then
-         msg := ICS.New_Char_Array (serr.msg);
-         declare
-            error_message : constant String := ICS.Value (msg);
-         begin
-            ICS.Free (msg);
-            return error_message;
-         end;
+      if convert_c_boolean (res) then
+         return valid_structure;
       end if;
-      return valid_structure;
+
+      declare
+         msg : ICS.chars_ptr := ICS.New_Char_Array (serr.msg);
+         error_message : constant String := ICS.Value (msg);
+      begin
+         ICS.Free (msg);
+         return error_message;
+      end;
    end ucl_object_valid_per_schema;
 
 
@@ -574,16 +577,14 @@ package body Ucl is
    --------------------------------------------------------------------
    function ucl_parser_add_chunk (parser : T_parser; data : String) return Boolean
    is
-      use type ICX.bool;
-
-      res : ICX.bool;
+      res : IC.unsigned_char;
       c_data : array (data'Range) of aliased IC.unsigned_char;
    begin
       for x in data'Range loop
          c_data (x) := IC.unsigned_char (Character'Pos (data (x)));
       end loop;
       res := libucl.ucl_parser_add_chunk (parser, c_data (c_data'First)'Access, data'Length);
-      return (res = ICX.bool'Val (1));
+      return convert_c_boolean (res);
    end ucl_parser_add_chunk;
 
 
@@ -594,13 +595,11 @@ package body Ucl is
      (parser : T_parser;
       filename : String) return Boolean
    is
-      use type ICX.bool;
-
       cfilename : constant ICS.chars_ptr := ICS.New_String (filename);
-      res : ICX.bool;
+      res : IC.unsigned_char;
    begin
       res := libucl.ucl_parser_add_file (parser, cfilename);
-      return (res = ICX.bool'Val (1));
+      return convert_c_boolean (res);
    end ucl_parser_add_file;
 
 end Ucl;
