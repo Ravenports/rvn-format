@@ -780,6 +780,19 @@ package body ThickUCL is
    end get_data_type;
 
 
+   ------------------
+   --  key_exists  --
+   ------------------
+   function key_exists
+     (tree : UclTree;
+      key  : String) return Boolean
+   is
+      keystring : constant ASU.Unbounded_String := ASU.To_Unbounded_String (key);
+   begin
+      return tree.tree_stump.Contains (keystring);
+   end key_exists;
+
+
    --------------------------
    --  get_base_value #1   --
    --------------------------
@@ -1377,6 +1390,55 @@ package body ThickUCL is
             raise ucl_type_mismatch with field_type'Img & " found instead of an object";
       end case;
    end get_object_object;
+
+
+   ----------------------------
+   --  get_base_object_keys  --
+   ----------------------------
+   procedure get_base_object_keys
+     (tree : UclTree;
+      object_keys : in out jar_string.Vector)
+   is
+      procedure collect_key (Position : jar_ucl_objects.Cursor);
+
+      tray : DataString;
+
+      procedure collect_key (Position : jar_ucl_objects.Cursor)
+      is
+         stump_key : ASU.Unbounded_String renames jar_ucl_objects.Key (Position);
+      begin
+         tray.payload := stump_key;
+         object_keys.Append (tray);
+      end collect_key;
+   begin
+      object_keys.Clear;
+      tree.tree_stump.Iterate (collect_key'Access);
+   end get_base_object_keys;
+
+
+   ------------------------------
+   --  get_object_object_keys  --
+   ------------------------------
+   procedure get_object_object_keys
+     (tree : UclTree;
+      vndx : object_index;
+      object_keys : in out jar_string.Vector)
+   is
+      procedure collect_key (Position : jar_ucl_objects.Cursor);
+
+      tray : DataString;
+
+      procedure collect_key (Position : jar_ucl_objects.Cursor)
+      is
+         stump_key : ASU.Unbounded_String renames jar_ucl_objects.Key (Position);
+      begin
+         tray.payload := stump_key;
+         object_keys.Append (tray);
+      end collect_key;
+   begin
+      object_keys.Clear;
+      tree.store_objects.Element (vndx).Iterate (collect_key'Access);
+   end get_object_object_keys;
 
 
 end ThickUCL;

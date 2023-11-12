@@ -2,15 +2,17 @@
 --  Reference: ../../License.txt
 
 with Ada.Real_Time;
+with Ada.Strings.Unbounded;
+with Ada.Containers.Vectors;
 with ucl;
 
-private with Ada.Strings.Unbounded;
-private with Ada.Containers.Vectors;
 private with Ada.Containers.Hashed_Maps;
 
 package ThickUCL is
 
    package RT renames Ada.Real_Time;
+   package ASU renames Ada.Strings.Unbounded;
+   package CON renames Ada.Containers;
 
    type UclTree is tagged private;
 
@@ -26,6 +28,16 @@ package ThickUCL is
 
    subtype array_index  is Natural range Natural'First .. 499_999;
    subtype object_index is Natural range Natural'First .. 499_999;
+
+   type DataString is
+      record
+         payload : ASU.Unbounded_String;
+      end record;
+
+   package jar_string is new CON.Vectors
+     (Index_Type   => Natural,
+      Element_Type => DataString);
+
 
    -----------------------------------------------------------
    --  Methods to build top level UCL Object (serial only)  --
@@ -96,6 +108,11 @@ package ThickUCL is
    function get_data_type
      (tree : UclTree;
       key  : String) return Leaf_type;
+
+   --  Check if key defined at the stump level
+   function key_exists
+     (tree : UclTree;
+      key  : String) return Boolean;
 
    --  Get stump-level integer values from key (possible exception)
    function get_base_value
@@ -233,12 +250,19 @@ package ThickUCL is
       vndx : object_index;
       key  : String) return object_index;
 
+   --  Returns a container full of keys from a stump-level object
+   procedure get_base_object_keys
+     (tree : UclTree;
+      object_keys : in out jar_string.Vector);
+
+   --  Returns a container full of keys from nested object
+   procedure get_object_object_keys
+     (tree : UclTree;
+      vndx : object_index;
+      object_keys : in out jar_string.Vector);
 
 
 private
-
-   package ASU renames Ada.Strings.Unbounded;
-   package CON renames Ada.Containers;
 
    use type Ucl.ucl_integer;
    use type RT.Time_Span;
@@ -267,15 +291,6 @@ private
    package jar_time is new CON.Vectors
      (Index_Type   => Natural,
       Element_Type => RT.Time_Span);
-
-   type DataString is
-      record
-         payload : ASU.Unbounded_String;
-      end record;
-
-   package jar_string is new CON.Vectors
-     (Index_Type   => Natural,
-      Element_Type => DataString);
 
    type DataReference is tagged
       record
