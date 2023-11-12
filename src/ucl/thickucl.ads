@@ -75,6 +75,11 @@ package ThickUCL is
      (tree : in out UclTree;
       name : String);
 
+   procedure reopen_object
+     (tree : in out UclTree;
+      name : String;
+      element_index : array_index := array_index'First);
+
    procedure close_object
      (tree : in out UclTree);
 
@@ -328,6 +333,7 @@ private
 
    ERR_NEEDS_KEY  : constant String := "Error: key required but is missing.  Item skipped.";
    WARN_EXTRA_KEY : constant String := "Warning: key was found but not expected, ignoring.";
+   ERR_ELE_INDEX  : constant String := "Error: Array element index is out of range.";
 
    --  Returns the vector index of the indicated array element
    function get_array_element_vector_index

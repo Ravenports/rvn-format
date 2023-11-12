@@ -487,9 +487,8 @@ package body ThickUCL is
       name : String;
       element_index : array_index := array_index'First)
    is
-      ERR_ARRAY_NDE : constant String := "Error: attempted to reopen array that does not exist.";
+      ERR_ARRAY_DNE : constant String := "Error: attempted to reopen array that does not exist.";
       ERR_NOT_ARRAY : constant String := "Reopen array error: key does not reference an array.";
-      ERR_ELE_INDEX : constant String := "Error: Array element index is out of range.";
       leaf : Leaf_type;
       dref : DataReference;
       LRI  : Natural;
@@ -504,7 +503,7 @@ package body ThickUCL is
          leaf := tree.get_data_type (name);
          case leaf is
             when data_not_present =>
-               TIO.Put_Line (ERR_ARRAY_NDE & " (" & name & ")");
+               TIO.Put_Line (ERR_ARRAY_DNE & " (" & name & ")");
             when data_array =>
                dref.vector_index := tree.get_index_of_base_array (name);
                tree.open_structure.append (dref);
@@ -543,7 +542,7 @@ package body ThickUCL is
             leaf := tree.get_object_data_type (LRI, name);
             case leaf is
                when data_not_present =>
-                  TIO.Put_Line (ERR_ARRAY_NDE & " (" & name & ")");
+                  TIO.Put_Line (ERR_ARRAY_DNE & " (" & name & ")");
                when data_array =>
                   dref.vector_index := tree.get_object_vector_index (LRI, name);
                   tree.open_structure.append (dref);
@@ -649,6 +648,82 @@ package body ThickUCL is
          when others => null;
       end case;
    end start_object;
+
+
+   ---------------------
+   --  reopen_object  --
+   ---------------------
+   procedure reopen_object
+     (tree : in out UclTree;
+      name : String;
+      element_index : array_index := array_index'First)
+   is
+      ERR_OBJECT_DNE : constant String := "Error: attempted to reopen object that does not exist.";
+      ERR_NOT_OBJECT : constant String := "Reopen object error: key does not reference an object.";
+      leaf : Leaf_type;
+      dref : DataReference;
+      LRI  : Natural;
+   begin
+      dref.data_type := ucl_object;
+      if tree.open_structure.Is_Empty then
+         if key_missing (name) then
+            TIO.Put_Line (ERR_NEEDS_KEY & ": reopen object");
+            return;
+         end if;
+
+         leaf := tree.get_data_type (name);
+         case leaf is
+            when data_not_present =>
+               TIO.Put_Line (ERR_OBJECT_DNE & " (" & name & ")");
+            when data_object =>
+               dref.vector_index := tree.get_index_of_base_ucl_object (name);
+               tree.open_structure.append (dref);
+            when others =>
+               TIO.Put_Line (ERR_NOT_OBJECT & " (" & name & ")");
+         end case;
+         return;
+      end if;
+
+      LRI := tree.last_reference_index;
+      case tree.last_open_structure is
+         when ucl_array =>
+            if not key_missing (name) then
+               TIO.Put_Line (WARN_EXTRA_KEY & " (" & name & ")");
+            end if;
+            begin
+               leaf := tree.get_array_element_type (LRI, element_index);
+            exception
+               when index_out_of_range =>
+                  TIO.Put_Line (ERR_ELE_INDEX & "(" & element_index'Img & ")");
+                  return;
+            end;
+            case leaf is
+               when data_object =>
+                  dref.vector_index := tree.get_array_element_vector_index (LRI, element_index);
+                  tree.open_structure.append (dref);
+               when others =>
+                  TIO.Put_Line (ERR_NOT_OBJECT & " (index" & element_index'Img & ")");
+            end case;
+
+         when ucl_object =>
+            if key_missing (name) then
+               TIO.Put_Line (ERR_NEEDS_KEY & ":" & ucl_integer'Img);
+               return;
+            end if;
+            leaf := tree.get_object_data_type (LRI, name);
+            case leaf is
+               when data_not_present =>
+                  TIO.Put_Line (ERR_OBJECT_DNE & " (" & name & ")");
+               when data_object =>
+                  dref.vector_index := tree.get_object_vector_index (LRI, name);
+                  tree.open_structure.append (dref);
+               when others =>
+                  TIO.Put_Line (ERR_NOT_OBJECT & " (index" & element_index'Img & ")");
+            end case;
+
+         when others => null;
+      end case;
+   end reopen_object;
 
 
    --------------------
