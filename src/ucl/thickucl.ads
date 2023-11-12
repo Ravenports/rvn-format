@@ -1,7 +1,7 @@
 --  This file is covered by the Internet Software Consortium (ISC) License
 --  Reference: ../../License.txt
 
-with Ada.Calendar;
+with Ada.Real_Time;
 with ucl;
 
 private with Ada.Strings.Unbounded;
@@ -10,7 +10,7 @@ private with Ada.Containers.Hashed_Maps;
 
 package ThickUCL is
 
-   package CAL renames Ada.Calendar;
+   package RT renames Ada.Real_Time;
 
    type UclTree is tagged private;
 
@@ -49,7 +49,7 @@ package ThickUCL is
    procedure insert
      (tree : in out UclTree;
       name : String;
-      value : CAL.Time);
+      value : RT.Time_Span);
 
    procedure insert
      (tree : in out UclTree;
@@ -102,7 +102,7 @@ package ThickUCL is
    --  Get stump-level time values from key (possible exception)
    function get_base_value
      (tree : UclTree;
-      key  : String) return CAL.Time;
+      key  : String) return RT.Time_Span;
 
    --  Get stump-level string values from key (possible exception)
    function get_base_value
@@ -147,7 +147,7 @@ package ThickUCL is
    function get_array_element_value
      (tree  : UclTree;
       vndx  : array_index;
-      index : Natural) return CAL.Time;
+      index : Natural) return RT.Time_Span;
 
    --  Get array element #index string value (zero-indexed) (possible exceptions)
    function get_array_element_value
@@ -200,7 +200,7 @@ package ThickUCL is
    function get_object_value
      (tree : UclTree;
       vndx : object_index;
-      key  : String) return CAL.Time;
+      key  : String) return RT.Time_Span;
 
    --  Get string values from key (possible exception)
    function get_object_value
@@ -228,7 +228,7 @@ private
    package CON renames Ada.Containers;
 
    use type Ucl.ucl_integer;
-   use type CAL.Time;
+   use type RT.Time_Span;
 
    type DataType is
      (ucl_object,
@@ -253,7 +253,7 @@ private
 
    package jar_time is new CON.Vectors
      (Index_Type   => Natural,
-      Element_Type => CAL.Time);
+      Element_Type => RT.Time_Span);
 
    type DataString is
       record

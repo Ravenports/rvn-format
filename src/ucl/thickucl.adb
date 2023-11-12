@@ -276,7 +276,7 @@ package body ThickUCL is
    procedure insert
      (tree : in out UclTree;
       name : String;
-      value : CAL.Time)
+      value : RT.Time_Span)
    is
       procedure wrap_payload;
       procedure append_into_array (Element : in out jar_array.Vector);
@@ -711,7 +711,7 @@ package body ThickUCL is
    --------------------------
    function get_base_value
      (tree : UclTree;
-      key  : String) return CAL.Time
+      key  : String) return RT.Time_Span
    is
       field_type : constant Leaf_type := tree.get_data_type (key);
    begin
@@ -868,7 +868,7 @@ package body ThickUCL is
    function get_array_element_value
      (tree  : UclTree;
       vndx  : array_index;
-      index : Natural) return CAL.Time
+      index : Natural) return RT.Time_Span
    is
       eltype : constant Leaf_type := tree.get_array_element_type (vndx, index);
       dnx    : Natural;
@@ -1108,7 +1108,7 @@ package body ThickUCL is
    function get_object_value
      (tree : UclTree;
       vndx : object_index;
-      key  : String) return CAL.Time
+      key  : String) return RT.Time_Span
    is
       field_type : constant Leaf_type := tree.get_object_data_type (vndx, key);
    begin

@@ -3,12 +3,18 @@
 
 with libucl;
 with System;
+with Ada.Real_Time;
 
 package Ucl is
+
+   package RT renames Ada.Real_Time;
 
    subtype T_parser is System.Address;
    type ucl_integer is range -(2**63) .. +(2**63 - 1);
    valid_structure : constant String := "VALID";
+
+   type intermediate_ucl_type is (med_object, med_array, med_int, med_float, med_string,
+                                  med_boolean, med_time, med_userdata, med_null);
 
    function ucl_object_find_key
      (obj : access constant libucl.ucl_object_t;
@@ -102,6 +108,18 @@ package Ucl is
    function type_is_array
      (obj : access constant libucl.ucl_object_t) return Boolean;
 
+   --  Return true if UCL_FLOAT
+   function type_is_floating_point
+     (obj : access constant libucl.ucl_object_t) return Boolean;
+
+   --  Return true if UCL_TIME
+   function type_is_time_span
+     (obj : access constant libucl.ucl_object_t) return Boolean;
+
+   --  Return C-type to describe object
+   function intermediate_type
+     (obj : access constant libucl.ucl_object_t) return intermediate_ucl_type;
+
    function ucl_object_replace_key
      (top : access libucl.ucl_object_t;
       elt : access libucl.ucl_object_t;
@@ -119,6 +137,12 @@ package Ucl is
 
    function ucl_object_toboolean
      (obj : access constant libucl.ucl_object_t) return Boolean;
+
+   function ucl_object_tofloat
+     (obj : access constant libucl.ucl_object_t) return Float;
+
+   function ucl_object_totime
+     (obj : access constant libucl.ucl_object_t) return RT.Time_Span;
 
    function ucl_dump
      (obj : access constant libucl.ucl_object_t) return String;

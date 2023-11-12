@@ -329,6 +329,49 @@ package body Ucl is
    end type_is_array;
 
 
+   --------------------------------------------------------------------
+   --  type_is_floating_point
+   --------------------------------------------------------------------
+   function type_is_floating_point (obj : access constant libucl.ucl_object_t) return Boolean
+   is
+      use type libucl.ucl_type;
+   begin
+      return libucl.ucl_object_type (obj) = libucl.UCL_FLOAT;
+   end type_is_floating_point;
+
+
+   --------------------------------------------------------------------
+   --  type_is_time_span
+   --------------------------------------------------------------------
+   function type_is_time_span
+     (obj : access constant libucl.ucl_object_t) return Boolean
+   is
+      use type libucl.ucl_type;
+   begin
+      return libucl.ucl_object_type (obj) = libucl.UCL_TIME;
+   end type_is_time_span;
+
+
+   --------------------------------------------------------------------
+   --  low_level_type
+   --------------------------------------------------------------------
+   function intermediate_type
+     (obj : access constant libucl.ucl_object_t) return intermediate_ucl_type
+   is
+   begin
+      case libucl.ucl_object_type (obj) is
+         when libucl.UCL_OBJECT   => return med_object;
+         when libucl.UCL_ARRAY    => return med_array;
+         when libucl.UCL_INT      => return med_int;
+         when libucl.UCL_FLOAT    => return med_float;
+         when libucl.UCL_STRING   => return med_string;
+         when libucl.UCL_BOOLEAN  => return med_boolean;
+         when libucl.UCL_TIME     => return med_time;
+         when libucl.UCL_USERDATA => return med_userdata;
+         when libucl.UCL_NULL     => return med_null;
+      end case;
+   end intermediate_type;
+
 
    --------------------------------------------------------------------
    --  ucl_object_replace_key
@@ -408,6 +451,15 @@ package body Ucl is
 
 
    --------------------------------------------------------------------
+   --  ucl_object_tofloat
+   --------------------------------------------------------------------
+   function ucl_object_tofloat (obj : access constant libucl.ucl_object_t) return Float is
+   begin
+      return Float (libucl.ucl_object_todouble (obj));
+   end ucl_object_tofloat;
+
+
+   --------------------------------------------------------------------
    --  ucl_object_toboolean
    --------------------------------------------------------------------
    function ucl_object_toboolean (obj : access constant libucl.ucl_object_t) return Boolean
@@ -419,6 +471,27 @@ package body Ucl is
       result := libucl.ucl_object_toboolean (obj);
       return (result = ICX.bool'Val (1));
    end ucl_object_toboolean;
+
+
+   --------------------------------------------------------------------
+   --  ucl_object_totime
+   --------------------------------------------------------------------
+   function ucl_object_totime
+     (obj : access constant libucl.ucl_object_t) return RT.Time_Span
+   is
+      use type IC.double;
+
+      native_res : IC.double;
+      part_secs  : Integer;
+      part_nsec  : Integer;
+      result     : RT.Time_Span;
+   begin
+      native_res := libucl.ucl_object_todouble (obj);
+      part_secs := Integer (native_res);
+      part_nsec := Integer (ucl_integer (native_res * 1_000_000_000.0) mod 1_000_000_000);
+      result := RT."+" (RT.Seconds (part_secs),  RT.Nanoseconds (part_nsec));
+      return result;
+   end ucl_object_totime;
 
 
    --------------------------------------------------------------------
