@@ -261,6 +261,19 @@ package ThickUCL is
       vndx : object_index;
       object_keys : in out jar_string.Vector);
 
+   --  Returns the vector index of the indicated array element
+   function get_array_element_vector_index
+     (tree  : UclTree;
+      vndx  : array_index;
+      index : Natural) return Natural;
+
+   --  Get the vector index of the entire object
+   function get_object_vector_index
+     (tree : UclTree;
+      vndx : object_index;
+      key  : String) return Natural;
+
+
 
 private
 
@@ -350,16 +363,5 @@ private
    WARN_EXTRA_KEY : constant String := "Warning: key was found but not expected, ignoring.";
    ERR_ELE_INDEX  : constant String := "Error: Array element index is out of range.";
 
-   --  Returns the vector index of the indicated array element
-   function get_array_element_vector_index
-     (tree  : UclTree;
-      vndx  : array_index;
-      index : Natural) return Natural;
-
-   --  Get the vector index of the entire object
-   function get_object_vector_index
-     (tree : UclTree;
-      vndx : object_index;
-      key  : String) return Natural;
 
 end ThickUCL;
