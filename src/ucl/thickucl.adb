@@ -479,6 +479,83 @@ package body ThickUCL is
    end start_array;
 
 
+   --------------------
+   --  reopen_array  --
+   --------------------
+   procedure reopen_array
+     (tree : in out UclTree;
+      name : String;
+      element_index : array_index := array_index'First)
+   is
+      ERR_ARRAY_NDE : constant String := "Error: attempted to reopen array that does not exist.";
+      ERR_NOT_ARRAY : constant String := "Reopen array error: key does not reference an array.";
+      ERR_ELE_INDEX : constant String := "Error: Array element index is out of range.";
+      leaf : Leaf_type;
+      dref : DataReference;
+      LRI  : Natural;
+   begin
+      dref.data_type := ucl_array;
+      if tree.open_structure.Is_Empty then
+         if key_missing (name) then
+            TIO.Put_Line (ERR_NEEDS_KEY & ": reopen array");
+            return;
+         end if;
+
+         leaf := tree.get_data_type (name);
+         case leaf is
+            when data_not_present =>
+               TIO.Put_Line (ERR_ARRAY_NDE & " (" & name & ")");
+            when data_array =>
+               dref.vector_index := tree.get_index_of_base_array (name);
+               tree.open_structure.append (dref);
+            when others =>
+               TIO.Put_Line (ERR_NOT_ARRAY & " (" & name & ")");
+         end case;
+         return;
+      end if;
+
+      LRI := tree.last_reference_index;
+      case tree.last_open_structure is
+         when ucl_array =>
+            if not key_missing (name) then
+               TIO.Put_Line (WARN_EXTRA_KEY & " (" & name & ")");
+            end if;
+            begin
+               leaf := tree.get_array_element_type (LRI, element_index);
+            exception
+               when index_out_of_range =>
+                  TIO.Put_Line (ERR_ELE_INDEX & "(" & element_index'Img & ")");
+                  return;
+            end;
+            case leaf is
+               when data_array =>
+                  dref.vector_index := tree.get_array_element_vector_index (LRI, element_index);
+                  tree.open_structure.append (dref);
+               when others =>
+                  TIO.Put_Line (ERR_NOT_ARRAY & " (index" & element_index'Img & ")");
+            end case;
+
+         when ucl_object =>
+            if key_missing (name) then
+               TIO.Put_Line (ERR_NEEDS_KEY & ":" & ucl_integer'Img);
+               return;
+            end if;
+            leaf := tree.get_object_data_type (LRI, name);
+            case leaf is
+               when data_not_present =>
+                  TIO.Put_Line (ERR_ARRAY_NDE & " (" & name & ")");
+               when data_array =>
+                  dref.vector_index := tree.get_object_vector_index (LRI, name);
+                  tree.open_structure.append (dref);
+               when others =>
+                  TIO.Put_Line (ERR_NOT_ARRAY & " (index" & element_index'Img & ")");
+            end case;
+
+         when others => null;
+      end case;
+   end reopen_array;
+
+
    -------------------
    --  close_array  --
    -------------------
@@ -904,10 +981,10 @@ package body ThickUCL is
    end get_array_element_value;
 
 
-   -----------------------------------------
-   --  get_index_second_level_ucl_object  --
-   -----------------------------------------
-   function get_index_second_level_ucl_object
+   ------------------------------------
+   --  get_index_of_base_ucl_object  --
+   ------------------------------------
+   function get_index_of_base_ucl_object
      (tree  : UclTree;
       key   : String) return object_index
    is
@@ -925,13 +1002,13 @@ package body ThickUCL is
          when others =>
             raise ucl_type_mismatch with field_type'Img & " found instead of a ucl object";
       end case;
-   end get_index_second_level_ucl_object;
+   end get_index_of_base_ucl_object;
 
 
-   ------------------------------------
-   --  get_index_second_level_array  --
-   ------------------------------------
-   function get_index_second_level_array
+   -------------------------------
+   --  get_index_of_base_array  --
+   -------------------------------
+   function get_index_of_base_array
      (tree  : UclTree;
       key   : String) return array_index
    is
@@ -949,7 +1026,20 @@ package body ThickUCL is
          when others =>
             raise ucl_type_mismatch with field_type'Img & " found instead of an array";
       end case;
-   end get_index_second_level_array;
+   end get_index_of_base_array;
+
+
+   --------------------------------------
+   --  get_array_element_vector_index  --
+   --------------------------------------
+   function get_array_element_vector_index
+     (tree  : UclTree;
+      vndx  : array_index;
+      index : Natural) return Natural is
+   begin
+      --  this could thrown an exception with bade vndx and index values
+      return tree.store_arrays.Element (vndx).Element (index).vector_index;
+   end get_array_element_vector_index;
 
 
    -------------------------------
@@ -964,7 +1054,7 @@ package body ThickUCL is
    begin
       case eltype is
          when data_array =>
-            return array_index (tree.store_arrays.Element (vndx).Element (index).vector_index);
+            return tree.get_array_element_vector_index (vndx, index);
          when others =>
             raise ucl_type_mismatch with eltype'Img & " found instead of an array";
       end case;
@@ -983,7 +1073,7 @@ package body ThickUCL is
    begin
       case eltype is
          when data_object =>
-            return object_index (tree.store_arrays.Element (vndx).Element (index).vector_index);
+            return tree.get_array_element_vector_index (vndx, index);
          when others =>
             raise ucl_type_mismatch with eltype'Img & " found instead of an object index";
       end case;
@@ -1004,7 +1094,7 @@ package body ThickUCL is
          return data_not_present;
       end if;
 
-      if tree.store_objects.Element (vndx).Contains (keystring) then
+      if not tree.store_objects.Element (vndx).Contains (keystring) then
          return data_not_present;
       end if;
 
@@ -1019,6 +1109,23 @@ package body ThickUCL is
       end case;
 
    end get_object_data_type;
+
+
+   -------------------------------
+   --  get_object_vector_index  --
+   -------------------------------
+   function get_object_vector_index
+     (tree : UclTree;
+      vndx : object_index;
+      key  : String) return Natural
+   is
+      keystring : constant ASU.Unbounded_String := ASU.To_Unbounded_String (key);
+   begin
+      if not tree.store_objects.Element (vndx).Contains (keystring) then
+         raise ucl_key_not_found with key;
+      end if;
+      return tree.store_objects.Element (vndx).Element (keystring).vector_index;
+   end get_object_vector_index;
 
 
    ------------------------
@@ -1169,11 +1276,7 @@ package body ThickUCL is
          when data_not_present =>
             raise ucl_key_not_found with key;
          when data_array =>
-            declare
-               keystring : constant ASU.Unbounded_String := ASU.To_Unbounded_String (key);
-            begin
-               return tree.store_objects (vndx).Element (keystring).vector_index;
-            end;
+            return tree.get_object_vector_index (vndx, key);
          when others =>
             raise ucl_type_mismatch with field_type'Img & " found instead of an array";
       end case;
@@ -1194,11 +1297,7 @@ package body ThickUCL is
          when data_not_present =>
             raise ucl_key_not_found with key;
          when data_object =>
-            declare
-               keystring : constant ASU.Unbounded_String := ASU.To_Unbounded_String (key);
-            begin
-               return tree.store_objects (vndx).Element (keystring).vector_index;
-            end;
+            return tree.get_object_vector_index (vndx, key);
          when others =>
             raise ucl_type_mismatch with field_type'Img & " found instead of an object";
       end case;

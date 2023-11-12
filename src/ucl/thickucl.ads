@@ -30,6 +30,9 @@ package ThickUCL is
    -----------------------------------------------------------
    --  Methods to build top level UCL Object (serial only)  --
    -----------------------------------------------------------
+   --  Exceptions possible on insert procedures if name     --
+   --  (key) already been used.                             --
+   -----------------------------------------------------------
 
    procedure insert
      (tree : in out UclTree;
@@ -59,6 +62,11 @@ package ThickUCL is
    procedure start_array
      (tree : in out UclTree;
       name : String);
+
+   procedure reopen_array
+     (tree : in out UclTree;
+      name : String;
+      element_index : array_index := array_index'First);
 
    procedure close_array
      (tree : in out UclTree);
@@ -110,7 +118,7 @@ package ThickUCL is
       key  : String) return String;
 
    --  Get index to a stump-level array (possible exceptions)
-   function get_index_second_level_array
+   function get_index_of_base_array
      (tree  : UclTree;
       key   : String) return array_index;
 
@@ -168,7 +176,7 @@ package ThickUCL is
       index : Natural) return object_index;
 
    --  Get index to a stump-level ucl object (possible exceptions)
-   function get_index_second_level_ucl_object
+   function get_index_of_base_ucl_object
      (tree  : UclTree;
       key   : String) return object_index;
 
@@ -320,5 +328,17 @@ private
 
    ERR_NEEDS_KEY  : constant String := "Error: key required but is missing.  Item skipped.";
    WARN_EXTRA_KEY : constant String := "Warning: key was found but not expected, ignoring.";
+
+   --  Returns the vector index of the indicated array element
+   function get_array_element_vector_index
+     (tree  : UclTree;
+      vndx  : array_index;
+      index : Natural) return Natural;
+
+   --  Get the vector index of the entire object
+   function get_object_vector_index
+     (tree : UclTree;
+      vndx : object_index;
+      key  : String) return Natural;
 
 end ThickUCL;
