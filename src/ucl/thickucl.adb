@@ -793,6 +793,100 @@ package body ThickUCL is
    end key_exists;
 
 
+   ----------------------------
+   --  generic_field_exists  --
+   ----------------------------
+   function generic_field_exists
+     (tree  : UclTree;
+      key   : String;
+      ftype : DataType) return Boolean
+   is
+      keystring : constant ASU.Unbounded_String := ASU.To_Unbounded_String (key);
+   begin
+      if not tree.tree_stump.Contains (keystring) then
+         return False;
+      end if;
+      return tree.tree_stump.Element (keystring).data_type = ftype;
+   end generic_field_exists;
+
+
+   ----------------------------
+   --  string_field_exists   --
+   ----------------------------
+   function string_field_exists
+     (tree : UclTree;
+      key  : String) return Boolean is
+   begin
+      return tree.generic_field_exists (key, ucl_string);
+   end string_field_exists;
+
+
+   -----------------------------
+   --  integer_field_exists   --
+   -----------------------------
+   function integer_field_exists
+     (tree : UclTree;
+      key  : String) return Boolean is
+   begin
+      return tree.generic_field_exists (key, ucl_integer);
+   end integer_field_exists;
+
+
+   ---------------------------
+   --  float_field_exists   --
+   ---------------------------
+   function float_field_exists
+     (tree : UclTree;
+      key  : String) return Boolean is
+   begin
+      return tree.generic_field_exists (key, ucl_float);
+   end float_field_exists;
+
+
+   -----------------------------
+   --  boolean_field_exists   --
+   -----------------------------
+   function boolean_field_exists
+     (tree : UclTree;
+      key  : String) return Boolean is
+   begin
+      return tree.generic_field_exists (key, ucl_boolean);
+   end boolean_field_exists;
+
+
+   --------------------------
+   --  time_field_exists   --
+   --------------------------
+   function time_field_exists
+     (tree : UclTree;
+      key  : String) return Boolean is
+   begin
+      return tree.generic_field_exists (key, ucl_time);
+   end time_field_exists;
+
+
+   ---------------------------
+   --  array_field_exists   --
+   ---------------------------
+   function array_field_exists
+     (tree : UclTree;
+      key  : String) return Boolean is
+   begin
+      return tree.generic_field_exists (key, ucl_array);
+   end array_field_exists;
+
+
+   --------------------------------
+   --  ucl_object_field_exists   --
+   --------------------------------
+   function ucl_object_field_exists
+     (tree : UclTree;
+      key  : String) return Boolean is
+   begin
+      return tree.generic_field_exists (key, ucl_object);
+   end ucl_object_field_exists;
+
+
    --------------------------
    --  get_base_value #1   --
    --------------------------

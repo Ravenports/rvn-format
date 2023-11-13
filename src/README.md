@@ -81,7 +81,7 @@ possible keys are owner, group, and mode. The values are, respectively, a user n
 name, and a file mode. For example:
 
 ```
-attributes: { owner: "games", group: "games", mode: 0555 }
+attributes: { owner: "games", group: "games", mode: "0555" }
 ```
 
 If the **dir** or **file** action is set, and attributes is not an empty array, the target of

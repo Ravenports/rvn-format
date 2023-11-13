@@ -114,6 +114,41 @@ package ThickUCL is
      (tree : UclTree;
       key  : String) return Boolean;
 
+   --  Returns true if stump-level key exists and holds a string
+   function string_field_exists
+     (tree : UclTree;
+      key  : String) return Boolean;
+
+   --  Returns true if stump-level key exists and holds an integer
+   function integer_field_exists
+     (tree : UclTree;
+      key  : String) return Boolean;
+
+   --  Returns true if stump-level key exists and holds a floating point number
+   function float_field_exists
+     (tree : UclTree;
+      key  : String) return Boolean;
+
+   --  Returns true if stump-level key exists and holds a boolean value
+   function boolean_field_exists
+     (tree : UclTree;
+      key  : String) return Boolean;
+
+   --  Returns true if stump-level key exists and holds a time value
+   function time_field_exists
+     (tree : UclTree;
+      key  : String) return Boolean;
+
+   --  Returns true if stump-level key exists and holds an array
+   function array_field_exists
+     (tree : UclTree;
+      key  : String) return Boolean;
+
+   --  Returns true if stump-level key exists and holds a ucl object
+   function ucl_object_field_exists
+     (tree : UclTree;
+      key  : String) return Boolean;
+
    --  Get stump-level integer values from key (possible exception)
    function get_base_value
      (tree : UclTree;
@@ -357,6 +392,12 @@ private
 
    --  Helper to get index where the last open structure is stored
    function last_reference_index (tree : UclTree) return Natural;
+
+   --  Helper - generic field exists code to avoid duplication
+   function generic_field_exists
+     (tree  : UclTree;
+      key   : String;
+      ftype : DataType) return Boolean;
 
 
    ERR_NEEDS_KEY  : constant String := "Error: key required but is missing.  Item skipped.";

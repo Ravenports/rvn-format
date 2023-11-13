@@ -238,8 +238,9 @@ package body Archive.Whitelist is
                keyword       => keyword,
                arguments     => arguments,
                keyword_dir   => "/tmp/Keywords",
-               real_top_path => real_top_directory,
                full_path     => full_path,
+               real_top_path => real_top_directory,
+               prefix_dir    => prefix_directory,
                level         => level)
             then
                succeeded := False;
@@ -675,6 +676,28 @@ package body Archive.Whitelist is
          front_marker := front_marker - 1;
       end loop;
    end head;
+
+
+   ------------
+   --  tail  --
+   ------------
+   function tail (S : String; delimiter : String) return String
+   is
+      dl_size      : constant Natural := delimiter'Length;
+      back_marker  : constant Natural := S'First;
+      front_marker : Natural := S'Last - dl_size + 1;
+   begin
+      loop
+         if front_marker < back_marker then
+            --  delimiter never found
+            return S;
+         end if;
+         if S (front_marker .. front_marker + dl_size - 1) = delimiter then
+            return S (front_marker + dl_size .. S'Last);
+         end if;
+         front_marker := front_marker - 1;
+      end loop;
+   end tail;
 
 
    ------------------

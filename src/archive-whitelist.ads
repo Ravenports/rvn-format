@@ -97,6 +97,15 @@ private
      (Index_Type => Natural,
       Element_Type => phase_script);
 
+   type keyword_argument is
+      record
+         argument : ASU.Unbounded_String;
+      end record;
+
+   package arg_crate is new CON.Vectors
+     (Index_Type => Natural,
+      Element_Type => keyword_argument);
+
    type maintenance is array (package_phase'Range) of phase_crate.Vector;
 
    package white_crate is new CON.Hashed_Maps
@@ -173,6 +182,9 @@ private
 
    --  Head (keep all but last delimiter and field)
    function head (S : String; delimiter : String) return String;
+
+   --  Tail (keep only last field)
+   function tail (S : String; delimiter : String) return String;
 
    --  Takes a single like "4555" and returns the equivalent as permissions type.
    --  Must be 3 or 4 characters long, consisting of only '0' .. '7' characters
