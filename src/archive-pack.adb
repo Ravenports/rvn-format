@@ -854,6 +854,7 @@ package body Archive.Pack is
       KEY_PREFIX   : constant String := "prefix";
       KEY_DIRS     : constant String := "directories";
       KEY_SCRIPTS  : constant String := "scripts";
+      KEY_DESCR    : constant String := "desc";
    begin
       AS.meta_size := 0;
       AS.flat_meta := 0;
@@ -884,7 +885,7 @@ package body Archive.Pack is
                     ZST.File_Contents (metadata_path, Natural (dossier_size), good);
                begin
                   if good then
-                     tree.insert ("desc", desc);
+                     tree.insert (KEY_DESCR, desc);
                   else
                      AS.print (normal, "Failed to read " & metadata_path &
                                  " file; description will be left out");
@@ -913,17 +914,17 @@ package body Archive.Pack is
       else
          tree.start_array (KEY_DIRS);
          for z in 0 .. AS.white_list.empty_directory_count - 1 loop
-            tree.start_array ("");
+            tree.start_object ("");
             declare
                attr : constant WhiteList.white_features :=
                  AS.white_list.get_empty_directory_attributes (z);
             begin
-               tree.insert ("", AS.white_list.get_empty_directory_path (z));
-               tree.insert ("", trim_trailing_zeros (attr.owner_spec));
-               tree.insert ("", trim_trailing_zeros (attr.group_spec));
-               tree.insert ("", Ucl.ucl_integer (attr.perms_spec));
+               tree.insert ("path", AS.white_list.get_empty_directory_path (z));
+               tree.insert ("owner", trim_trailing_zeros (attr.owner_spec));
+               tree.insert ("group", trim_trailing_zeros (attr.group_spec));
+               tree.insert ("perms", Ucl.ucl_integer (attr.perms_spec));
             end;
-            tree.close_array;
+            tree.close_object;
          end loop;
          tree.close_array;
       end if;
