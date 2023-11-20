@@ -9,7 +9,9 @@ with Ada.Direct_IO;
 with Ada.Strings.Fixed;
 with Archive.Unix;
 with Archive.Dirent.Scan;
+with ThickUCL.Files;
 with Blake_3;
+with Ucl;
 
 package body Archive.Pack is
 
@@ -20,6 +22,7 @@ package body Archive.Pack is
    package ASF renames Ada.Strings.Fixed;
    package UNX renames Archive.Unix;
    package SCN renames Archive.Dirent.Scan;
+   package TUC renames ThickUCL.Files;
    package ZST renames Zstandard;
 
    ------------------------------------------------------------------------------------------
@@ -69,10 +72,10 @@ package body Archive.Pack is
       metadata.write_filename_block;                 --  block FE
       metadata.finalize_index_file;
 
-      metadata.write_blank_header (output_file);     --  block 1
-      metadata.write_metadata_block (metadata_file); --  block 2
-      metadata.write_file_index_block (output_file); --  block 3
-      metadata.write_archive_block (output_file);    --  block 4
+      metadata.write_blank_header (output_file);              --  block 1
+      metadata.write_metadata_block (metadata_file, prefix);  --  block 2
+      metadata.write_file_index_block (output_file);          --  block 3
+      metadata.write_archive_block (output_file);             --  block 4
       metadata.overwrite_header (output_file);
 
       metadata.remove_index_file (output_file);
@@ -837,35 +840,138 @@ package body Archive.Pack is
    ------------------------------------------------------------------------------------------
    --  write_metadata_block
    ------------------------------------------------------------------------------------------
-   procedure write_metadata_block (AS : in out Arc_Structure; metadata_path : String) is
+   procedure write_metadata_block
+     (AS            : in out Arc_Structure;
+      metadata_path : String;
+      prefix        : String)
+   is
+      use type ZST.File_Size;
+
+      attempt_read : Boolean := False;
+      dossier_size : ZST.File_Size;
+      tree         : ThickUCL.UclTree;
+      KEY_FLATSIZE : constant String := "flatsize";
+      KEY_PREFIX   : constant String := "prefix";
+      KEY_DIRS     : constant String := "directories";
+      KEY_SCRIPTS  : constant String := "scripts";
    begin
       AS.meta_size := 0;
       AS.flat_meta := 0;
       if metadata_path = "" then
          AS.print (debug, "No metadata file has been provided.");
-         return;
+      else
+         if DIR.Exists (metadata_path) then
+            dossier_size := ZST.File_Size (DIR.Size (metadata_path));
+            if dossier_size > ZST.File_Size (KB512)  then
+               AS.print (normal, "The metadata file size exceeds the 512 KB limit.");
+               AS.print (normal, "The archive will be built without this file.");
+            else
+               attempt_read := True;
+            end if;
+         else
+            AS.print (normal, "The metadata file for the given path does not exist.");
+         end if;
       end if;
 
-      if not DIR.Exists (metadata_path) then
-         AS.print (normal, "The metadata file for the given path does not exist.");
-         AS.print (normal, "The archive will be built without additional metadata.");
-         return;
+      if attempt_read then
+         begin
+            TUC.parse_ucl_file (tree, metadata_path);
+         exception
+            when TUC.ucl_file_unparseable =>
+               declare
+                  good : Boolean;
+                  desc : constant String :=
+                    ZST.File_Contents (metadata_path, Natural (dossier_size), good);
+               begin
+                  if good then
+                     tree.insert ("desc", desc);
+                  else
+                     AS.print (normal, "Failed to read " & metadata_path &
+                                 " file; description will be left out");
+                  end if;
+               end;
+         end;
       end if;
+
+      --  augment with flatsize
+      if tree.key_exists (KEY_FLATSIZE) then
+         AS.print (normal, "Metadata unexpectedly contains flatsize field; not overwriting.");
+      else
+         tree.insert (KEY_FLATSIZE, Ucl.ucl_integer (AS.flat_arc));
+      end if;
+
+      --  augment with prefix
+      if tree.key_exists (KEY_PREFIX) then
+         AS.print (normal, "Metadata unexpected contains prefix field; not overwriting.");
+      else
+         tree.insert (KEY_PREFIX, prefix);
+      end if;
+
+      --  augment directories
+      if tree.key_exists (KEY_DIRS) then
+         AS.print (normal, "Metadata unexpected contains directories field; not overwriting.");
+      else
+         tree.start_array (KEY_DIRS);
+         for z in 0 .. AS.white_list.empty_directory_count - 1 loop
+            tree.start_array ("");
+            declare
+               attr : constant WhiteList.white_features :=
+                 AS.white_list.get_empty_directory_attributes (z);
+            begin
+               tree.insert ("", AS.white_list.get_empty_directory_path (z));
+               tree.insert ("", trim_trailing_zeros (attr.owner_spec));
+               tree.insert ("", trim_trailing_zeros (attr.group_spec));
+               tree.insert ("", Ucl.ucl_integer (attr.perms_spec));
+            end;
+            tree.close_array;
+         end loop;
+         tree.close_array;
+      end if;
+
+      --  Add phase scripts (append if they already exist)
+      declare
+         keyjar : ThickUCL.jar_string.Vector;
+         keep_going : Boolean := True;
+      begin
+         if tree.key_exists (KEY_SCRIPTS) then
+            AS.print (debug, "metadata already defined scripts object, possibly augmenting");
+            if tree.ucl_object_field_exists (KEY_SCRIPTS) then
+               tree.reopen_object (KEY_SCRIPTS);
+               tree.get_object_object_keys
+                 (vndx        => tree.get_index_of_base_ucl_object (KEY_SCRIPTS),
+                  object_keys => keyjar);
+            else
+               AS.print (normal, "metadata defines scripts field, but it's not of type object.");
+               AS.print (normal, "This is an input error. Any whitelist scripts will be ignored.");
+               keep_going := False;
+            end if;
+         else
+            tree.start_object (KEY_SCRIPTS);
+         end if;
+
+         if keep_going then
+            for phase in Whitelist.package_phase'Range loop
+               if AS.white_list.script_count (phase) > 0 then
+                  AS.print (debug, "apply" & phase'Img & " phase scripts.");
+                  if ThickUCL.key_found (keyjar, Whitelist.convert_phase (phase)) then
+                     tree.reopen_array (Whitelist.convert_phase (phase));
+                  else
+                     tree.start_array (Whitelist.convert_phase (phase));
+                  end if;
+                  for z in 0 .. AS.white_list.script_count (phase) - 1 loop
+                     tree.insert ("", AS.white_list.get_script (phase, z));
+                  end loop;
+                  tree.close_array;
+               end if;
+            end loop;
+            tree.close_object;
+         end if;
+      end;
 
       declare
-         use type ZST.File_Size;
-
-         dossier_size : ZST.File_Size;
          out_succ : Boolean;
          out_size : ZST.File_Size;
       begin
-         dossier_size := ZST.File_Size (DIR.Size (metadata_path));
-
-         if dossier_size > ZST.File_Size (KB512)  then
-            AS.print (normal, "The metadata file size exceeds the 512 KB limit.");
-            AS.print (normal, "The archive will be built without this file.");
-            return;
-         end if;
 
          ZST.incorporate_regular_file
            (filename    => metadata_path,

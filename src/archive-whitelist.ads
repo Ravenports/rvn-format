@@ -17,6 +17,16 @@ package Archive.Whitelist is
          perms_spec : permissions;
       end record;
 
+   type package_phase is
+     (pre_install,
+      pre_install_lua,
+      pre_deinstall,
+      pre_deinstall_lua,
+      post_install,
+      post_install_lua,
+      post_deinstall,
+      post_deinstall_lua);
+
    --  Returns true if archive should only archive specifically designated files.
    --  Likewise, returns false if all files in the root directory should be archived.
    function whitelist_in_use (whitelist : A_Whitelist) return Boolean;
@@ -58,6 +68,37 @@ package Archive.Whitelist is
       actual_perms  : permissions) return white_features;
 
 
+   --  Return number of directories that must be created/destroyed during package operations
+   function empty_directory_count
+     (whitelist     : A_Whitelist) return Natural;
+
+
+   --  Return directory referenced by index
+   function get_empty_directory_path
+     (whitelist     : A_Whitelist;
+      index         : Natural) return String;
+
+
+   --  Return directory attributes referenced by index
+   function get_empty_directory_attributes
+     (whitelist     : A_Whitelist;
+      index         : Natural) return white_features;
+
+   --  Returns the number of scripts defined for this package package
+   function script_count
+     (whitelist     : A_Whitelist;
+      phase         : package_phase) return Natural;
+
+   --  Returns the script mapped to the given phase and index
+   function get_script
+     (whitelist     : A_Whitelist;
+      phase         : package_phase;
+      index         : Natural) return String;
+
+   --  Returns the metadata key mapped to the package phase
+   function convert_phase (phase : package_phase) return String;
+
+
 private
 
    package CON renames Ada.Containers;
@@ -65,16 +106,6 @@ private
 
    function digest_hash (key : Blake_3.blake3_hash) return CON.Hash_Type;
    function digest_equivalent (key1, key2 : Blake_3.blake3_hash) return Boolean;
-
-   type package_phase is
-     (pre_install,
-      pre_install_lua,
-      pre_deinstall,
-      pre_deinstall_lua,
-      post_install,
-      post_install_lua,
-      post_deinstall,
-      post_deinstall_lua);
 
    type white_properties is
       record
@@ -121,6 +152,7 @@ private
          files     : white_crate.Map;
          temp_dirs : white_crate.Map;
          just_dirs : white_crate.Map;
+         dirs_keys : arg_crate.Vector;
          scripts   : maintenance;
       end record;
 

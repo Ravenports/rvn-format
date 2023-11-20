@@ -308,6 +308,8 @@ package ThickUCL is
       vndx : object_index;
       key  : String) return Natural;
 
+   --  Returns true if the jar_string container contains the given key string
+   function key_found (key_container : jar_string.Vector; key : String) return Boolean;
 
 
 private

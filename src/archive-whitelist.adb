@@ -579,6 +579,7 @@ package body Archive.Whitelist is
          procedure reset_POG (key : Blake_3.blake3_hash; Element : in out white_properties);
 
          old_props : white_properties;
+         dir_path  : keyword_argument;
          props     : white_properties renames white_crate.Element (position);
          file_hash : Blake_3.blake3_hash renames white_crate.Key (position);
 
@@ -627,7 +628,9 @@ package body Archive.Whitelist is
             if level >= debug then
                TIO.Put_Line ("just_dirs += " & ASU.To_String (props.path));
             end if;
+            dir_path.argument := props.path;
             whitelist.just_dirs.Insert (file_hash, props);
+            whitelist.dirs_keys.Append (dir_path);
          end if;
       end process;
    begin
@@ -782,5 +785,107 @@ package body Archive.Whitelist is
       end if;
       return result;
    end get_file_features;
+
+
+   -----------------------------
+   --  empty_directory_count  --
+   -----------------------------
+   function empty_directory_count
+     (whitelist     : A_Whitelist) return Natural
+   is
+   begin
+      return Natural (whitelist.dirs_keys.Length);
+   end empty_directory_count;
+
+
+   --------------------------------
+   --  get_empty_directory_path  --
+   --------------------------------
+   function get_empty_directory_path
+     (whitelist     : A_Whitelist;
+      index         : Natural) return String is
+   begin
+      if index < whitelist.empty_directory_count then
+         return ASU.To_String (whitelist.dirs_keys.Element (index).argument);
+      end if;
+      return "";
+   end get_empty_directory_path;
+
+
+   --------------------------------------
+   --  get_empty_directory_attributes  --
+   --------------------------------------
+   function get_empty_directory_attributes
+     (whitelist     : A_Whitelist;
+      index         : Natural) return white_features
+   is
+      attributes : white_features;
+   begin
+      attributes.owner_spec := Unix.str2owngrp ("");
+      attributes.group_spec := Unix.str2owngrp ("");
+      attributes.perms_spec := 0;
+
+      if index < whitelist.empty_directory_count then
+         declare
+            file_hash : constant Blake_3.blake3_hash :=
+              Blake_3.digest (ASU.To_String (whitelist.dirs_keys.Element (index).argument));
+         begin
+            if whitelist.just_dirs.Element (file_hash).override_owner then
+               attributes.owner_spec := whitelist.just_dirs.Element (file_hash).owner_spec;
+            end if;
+            if whitelist.just_dirs.Element (file_hash).override_group then
+               attributes.group_spec := whitelist.just_dirs.Element (file_hash).group_spec;
+            end if;
+            if whitelist.just_dirs.Element (file_hash).override_perms then
+               attributes.perms_spec := whitelist.just_dirs.Element (file_hash).perms_spec;
+            end if;
+         end;
+      end if;
+      return attributes;
+   end get_empty_directory_attributes;
+
+
+   ---------------------
+   --  convert_phase  --
+   ---------------------
+   function convert_phase (phase : package_phase) return String is
+   begin
+      case phase is
+         when pre_install        => return "pre-install";
+         when pre_install_lua    => return "pre-install-lua";
+         when pre_deinstall      => return "pre-deinstall";
+         when pre_deinstall_lua  => return "pre-deinstall-lua";
+         when post_install       => return "post-install";
+         when post_install_lua   => return "post-install-lua";
+         when post_deinstall     => return "post-deinstall";
+         when post_deinstall_lua => return "post-deinstall-lua";
+      end case;
+   end convert_phase;
+
+
+   -------------------
+   --  script_count  --
+   --------------------
+   function script_count
+     (whitelist     : A_Whitelist;
+      phase         : package_phase) return Natural
+   is
+   begin
+      return Natural (whitelist.scripts (phase).Length);
+   end script_count;
+
+
+   ------------------
+   --  get_script  --
+   ------------------
+   function get_script
+     (whitelist     : A_Whitelist;
+      phase         : package_phase;
+      index         : Natural) return String
+   is
+   begin
+      return ASU.To_String (whitelist.scripts (phase).Element (index).script);
+   end get_script;
+
 
 end Archive.Whitelist;

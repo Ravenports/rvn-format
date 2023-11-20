@@ -1535,4 +1535,24 @@ package body ThickUCL is
    end get_object_object_keys;
 
 
+   -----------------
+   --  key_found  --
+   -----------------
+   function key_found (key_container : jar_string.Vector; key : String) return Boolean
+   is
+      procedure scan (cursor : jar_string.Cursor);
+
+      found : Boolean := False;
+
+      procedure scan (cursor : jar_string.Cursor) is
+      begin
+         if ASU.To_String (jar_string.Element (cursor).payload) = key then
+            found := True;
+         end if;
+      end scan;
+   begin
+      key_container.Iterate (scan'Access);
+      return found;
+   end key_found;
+
 end ThickUCL;
