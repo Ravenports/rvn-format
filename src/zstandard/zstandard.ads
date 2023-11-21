@@ -74,6 +74,21 @@ package Zstandard is
       successful  : out Boolean);
 
 
+   --------------------------
+   --  incorporate_string  --
+   --------------------------
+
+   --  This procedure will compress the given data string in one pass so the caller needs to
+   --  ensure the string is not overly long.  The compressed data is written the open temporary
+   --  file indicated by the target_saxs argument.
+   procedure incorporate_string
+     (data        : String;
+      quality     : Compression_Level := Default_Compression;
+      target_saxs : SIO.Stream_Access;
+      output_size : out File_Size;
+      successful  : out Boolean);
+
+
    ----------------------------
    --  compress_into_memory  --
    ----------------------------

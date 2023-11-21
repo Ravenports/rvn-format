@@ -162,7 +162,6 @@ package body Zstandard is
    ----------------------------
    --  compress_into_memory  --
    ----------------------------
-
    function compress_into_memory
      (filename   : String;
       quality    : Compression_Level := Default_Compression;
@@ -207,7 +206,6 @@ package body Zstandard is
    --------------------------------
    --   append_target_file  --
    --------------------------------
-
    procedure append_target_file
      (target_saxs : SIO.Stream_Access;
       compressed_text : String)
@@ -228,10 +226,34 @@ package body Zstandard is
    end append_target_file;
 
 
+   --------------------------
+   --  incorporate_string  --
+   --------------------------
+   procedure incorporate_string
+     (data        : String;
+      quality     : Compression_Level := Default_Compression;
+      target_saxs : SIO.Stream_Access;
+      output_size : out File_Size;
+      successful  : out Boolean)
+   is
+      compression_successful : Boolean;
+      compressed_bytes : constant String :=
+        Compress (source_data => data, successful => compression_successful, quality => quality);
+   begin
+      if not compression_successful then
+         successful := False;
+         output_size := 0;
+         return;
+      end if;
+      append_target_file (target_saxs, compressed_bytes);
+      output_size := compressed_bytes'Length;
+      successful := True;
+   end incorporate_string;
+
+
    --------------------------------
    --  Incorporate regular file  --
    --------------------------------
-
    procedure incorporate_regular_file
      (filename    : String;
       size        : File_Size;
@@ -374,18 +396,18 @@ package body Zstandard is
    end assemble_regular_archive;
 
 
-   --------------------------------
+   ------------------------------
    --  Natural_DStreamOutSize  --
-   --------------------------------
+   ------------------------------
    function Natural_DStreamOutSize return Natural is
    begin
       return Natural (ZSTD_DStreamOutSize);
    end Natural_DStreamOutSize;
 
 
-   --------------------------------
+   -----------------------------
    --  Natural_DStreamInSize  --
-   --------------------------------
+   -----------------------------
    function Natural_DStreamInSize return Natural is
    begin
       return Natural (ZSTD_DStreamInSize);
