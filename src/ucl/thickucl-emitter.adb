@@ -314,15 +314,13 @@ package body ThickUCL.Emitter is
          case raw (k) is
             when '0' .. '9' | 'A' .. 'Z' | 'a' .. 'z' | '-' | '_' =>
                single_copy (raw (k));
-            when Character'Val(0) .. Character'Val(31) =>
-               null;
-            when Character'Val(127) .. Character'Val(255) =>
+            when Character'Val(0) .. Character'Val(31) |
+                 Character'Val(127) .. Character'Val(255) =>
                null;
             when SQ =>
                escape_quote;
-            when ' ' .. '&' | '(' .. ',' | '.' | '/' | ':' .. '@' =>
-               copy_set_quote (raw (k));
-            when  '[' .. '^' | '`' | '{' .. '~' =>
+            when ' ' .. '&' | '(' .. ',' | '.' | '/' | ':' .. '@' |
+               '[' .. '^' | '`' | '{' .. '~' =>
                copy_set_quote (raw (k));
          end case;
       end loop;

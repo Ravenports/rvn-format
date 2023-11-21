@@ -10,6 +10,7 @@ with Ada.Strings.Fixed;
 with Archive.Unix;
 with Archive.Dirent.Scan;
 with ThickUCL.Files;
+with ThickUCL.Emitter;
 with Blake_3;
 with Ucl;
 
@@ -22,7 +23,7 @@ package body Archive.Pack is
    package ASF renames Ada.Strings.Fixed;
    package UNX renames Archive.Unix;
    package SCN renames Archive.Dirent.Scan;
-   package TUC renames ThickUCL.Files;
+   package TUC renames ThickUCL;
    package ZST renames Zstandard;
 
    ------------------------------------------------------------------------------------------
@@ -876,9 +877,9 @@ package body Archive.Pack is
 
       if attempt_read then
          begin
-            TUC.parse_ucl_file (tree, metadata_path);
+            TUC.Files.parse_ucl_file (tree, metadata_path);
          exception
-            when TUC.ucl_file_unparseable =>
+            when TUC.Files.ucl_file_unparseable =>
                declare
                   good : Boolean;
                   desc : constant String :=
@@ -972,27 +973,34 @@ package body Archive.Pack is
       declare
          out_succ : Boolean;
          out_size : ZST.File_Size;
+         in_size  : Natural;
       begin
-
-         ZST.incorporate_regular_file
-           (filename    => metadata_path,
-            size        => dossier_size,
-            quality     => rvn_compression_level,
-            target_saxs => AS.rvn_stmaxs,
-            target_file => AS.rvn_handle,
-            output_size => out_size,
-            successful  => out_succ);
+         declare
+            ucl_data : constant String := TUC.Emitter.emit_ucl (tree);
+         begin
+            in_size := ucl_data'Length;
+            ZST.incorporate_string
+              (data        => ucl_data,
+               quality     => rvn_compression_level,
+               target_saxs => AS.rvn_stmaxs,
+               output_size => out_size,
+               successful  => out_succ);
+         end;
 
          if out_succ then
-            AS.print (debug, "Compressed metadata from" & dossier_size'Img & " to" & out_size'Img);
+            AS.print (debug, "Compressed metadata from" & in_size'Img & " to" & out_size'Img);
             AS.meta_size := zstd_size (out_size);
-            AS.flat_meta := mdata_size (dossier_size);
+            AS.flat_meta := mdata_size (in_size);
          else
             AS.print (normal, "Failed to compress " & metadata_path);
          end if;
       exception
+            when TUC.ucl_type_mismatch |
+              TUC.ucl_key_not_found |
+              TUC.index_out_of_range =>
+            AS.print (normal, "As error occurred with the UCL emitter for the metadata.");
          when others =>
-            AS.print (normal, "An error occurred while inserting the additional metadata.");
+            AS.print (normal, "An error occurred while inserting the metadata.");
       end;
    end write_metadata_block;
 
