@@ -74,6 +74,21 @@ package Zstandard is
       successful  : out Boolean);
 
 
+   --------------------------
+   --  incorporate_string  --
+   --------------------------
+
+   --  This procedure will compress the given data string in one pass so the caller needs to
+   --  ensure the string is not overly long.  The compressed data is written the open temporary
+   --  file indicated by the target_saxs argument.
+   procedure incorporate_string
+     (data        : String;
+      quality     : Compression_Level := Default_Compression;
+      target_saxs : SIO.Stream_Access;
+      output_size : out File_Size;
+      successful  : out Boolean);
+
+
    ----------------------------
    --  compress_into_memory  --
    ----------------------------
@@ -98,11 +113,22 @@ package Zstandard is
       target_saxs : SIO.Stream_Access);
 
 
+   ------------------------
+   --  helper functions  --
+   ------------------------
+
    --  converts ZSTD_DStreamOutSize to Natural
    function Natural_DStreamOutSize return Natural;
 
    --  converts ZSTD_DStreamInSize to Natural (128Kb)
    function Natural_DStreamInSize return Natural;
+
+   --  Helper function to dump contents of a file into a string
+   --  Potentially useful when desirable to have a compressed copy of the file in memory
+   --  It is useful so expose it publically
+   function File_Contents (filename : String;
+                           filesize : Natural;
+                           nominal  : out Boolean) return String;
 
 private
 
@@ -358,12 +384,6 @@ private
    Warn_decompress_fail : constant String := "ERROR: Failed to decompress data after reading " &
                                                     "source file";
    Warn_way_too_big     : constant String := "ERROR: Hit size limit imposed by this architecture";
-
-   --  Helper function to dump contents of a file into a string
-   --  Potentially useful when desirable to have a compressed copy of the file in memory
-   function File_Contents (filename : String;
-                           filesize : Natural;
-                           nominal  : out Boolean) return String;
 
    --  Helper function to dump compressed memory into the open target file
    procedure append_target_file

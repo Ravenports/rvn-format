@@ -80,6 +80,9 @@ package Archive.Unix is
    --  Returns file modification time formated to yyyy-mm-dd HH:MM
    function format_file_time (modtime : filetime) return String;
 
+   --  Useful function to format owners and groups
+   function str2owngrp (name : String) return ownergroup;
+
 private
 
    function success (rc : IC.int) return Boolean;
@@ -246,8 +249,6 @@ private
    function type_of_file (sb : struct_stat_Access) return file_type;
 
    function inode_number (sb : struct_stat_Access) return inode_type;
-
-   function str2owngrp (name : String) return ownergroup;
 
    function int2str (A : Integer) return String;
 

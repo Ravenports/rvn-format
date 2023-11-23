@@ -9,7 +9,10 @@ with Ada.Direct_IO;
 with Ada.Strings.Fixed;
 with Archive.Unix;
 with Archive.Dirent.Scan;
+with ThickUCL.Files;
+with ThickUCL.Emitter;
 with Blake_3;
+with Ucl;
 
 package body Archive.Pack is
 
@@ -20,6 +23,7 @@ package body Archive.Pack is
    package ASF renames Ada.Strings.Fixed;
    package UNX renames Archive.Unix;
    package SCN renames Archive.Dirent.Scan;
+   package TUC renames ThickUCL;
    package ZST renames Zstandard;
 
    ------------------------------------------------------------------------------------------
@@ -29,7 +33,10 @@ package body Archive.Pack is
      (top_level_directory : String;
       metadata_file       : String;
       manifest_file       : String;
+      prefix              : String;
+      keyword_dir         : String;
       output_file         : String;
+      fixed_timestamp     : filetime;
       verbosity           : info_level) return Boolean
    is
       metadata : Arc_Structure;
@@ -42,16 +49,19 @@ package body Archive.Pack is
       end if;
 
       if manifest_file /= "" then
-         if not metadata.white_list.ingest_file_manifest (manifest_file => manifest_file,
-                                                          top_directory => top_level_directory,
-                                                          level         => verbosity)
+         if not metadata.white_list.ingest_file_manifest
+           (manifest_file      => manifest_file,
+            stage_directory    => top_level_directory,
+            prefix_directory   => prefix,
+            keywords_directory => keyword_dir,
+            level              => verbosity)
          then
             return False;
          end if;
       end if;
 
       metadata.initialize_archive_file (output_file);
-      metadata.scan_directory (top_level_directory, 0);
+      metadata.scan_directory (top_level_directory, 0, fixed_timestamp);
       metadata.finalize_archive_file;
 
       if metadata.serror then
@@ -67,7 +77,9 @@ package body Archive.Pack is
       metadata.finalize_index_file;
 
       metadata.write_blank_header (output_file);     --  block 1
-      metadata.write_metadata_block (metadata_file); --  block 2
+      metadata.write_metadata_block (output_file,
+                                     metadata_file,
+                                     prefix);        --  block 2
       metadata.write_file_index_block (output_file); --  block 3
       metadata.write_archive_block (output_file);    --  block 4
       metadata.overwrite_header (output_file);
@@ -153,12 +165,14 @@ package body Archive.Pack is
    procedure scan_directory
      (AS        : in out Arc_Structure;
       dir_path  : String;
-      dir_index : index_type)
+      dir_index : index_type;
+      timestamp : filetime)
    is
       procedure walkdir   (position : SCN.dscan_crate.Cursor);
       procedure walkfiles (position : SCN.dscan_crate.Cursor);
 
       dirfiles  : SCN.dscan_crate.Vector;
+      override_mtime : constant Boolean := timestamp > 0;
 
       procedure walkdir (position : SCN.dscan_crate.Cursor)
       is
@@ -167,6 +181,7 @@ package body Archive.Pack is
          filename  : constant String := item.simple_name;
          features  : constant UNX.File_Characteristics := UNX.get_charactistics (item_path);
          new_block : File_Block;
+         pog       : Archive.Whitelist.white_features;
       begin
          --  We only want true directories.  Symbolic links to directories are ignored.
          case features.ftype is
@@ -180,22 +195,33 @@ package body Archive.Pack is
             end if;
          end if;
 
+         pog := AS.white_list.get_file_features (item_path,
+                                                 features.owner,
+                                                 features.group,
+                                                 features.perms);
+
          AS.dtrack := AS.dtrack + 1;
          AS.push_filename (filename);
          new_block.blake_sum    := null_sum;
-         new_block.modified_sec := features.mtime;
-         new_block.modified_ns  := features.mnsec;
-         new_block.index_owner  := AS.get_owner_index (features.owner);
-         new_block.index_group  := AS.get_group_index (features.group);
+         new_block.index_owner  := AS.get_owner_index (pog.owner_spec);
+         new_block.index_group  := AS.get_group_index (pog.group_spec);
          new_block.type_of_file := directory;
          new_block.multiplier   := 0;
          new_block.flat_size    := 0;
-         new_block.file_perms   := features.perms;
+         new_block.file_perms   := pog.perms_spec;
          new_block.link_length  := 0;
          new_block.index_parent := dir_index;
          new_block.directory_id := AS.dtrack;
          new_block.fname_length := max_fname (filename'Length);
          new_block.padding      := (others => 0);
+
+         if override_mtime then
+            new_block.modified_sec := timestamp;
+            new_block.modified_ns  := 0;
+         else
+            new_block.modified_sec := features.mtime;
+            new_block.modified_ns  := features.mnsec;
+         end if;
 
          AS.files.Append (new_block);
          AS.print (debug, item_path & " (" & AS.dtrack'Img & ")");
@@ -204,7 +230,7 @@ package body Archive.Pack is
          AS.print (debug, "perms =" & features.perms'Img & "   mod =" & features.mtime'Img);
          AS.print (verbose, "Record directory " & item_path);
 
-         AS.scan_directory (item_path, AS.dtrack);
+         AS.scan_directory (item_path, AS.dtrack, timestamp);
       exception
          when failed : others =>
             AS.print (normal, "walkdir exception => " & EX.Exception_Information (failed) &
@@ -217,6 +243,7 @@ package body Archive.Pack is
          item_path : constant String := item.full_path;
          filename  : constant String := item.simple_name;
          features  : constant UNX.File_Characteristics := UNX.get_charactistics (item_path);
+         pog       : Archive.Whitelist.white_features;
       begin
          --  Reject directories, but accept symlinks to directories
          case features.ftype is
@@ -232,6 +259,10 @@ package body Archive.Pack is
                   end if;
                end if;
          end case;
+         pog := AS.white_list.get_file_features (item_path,
+                                                 features.owner,
+                                                 features.group,
+                                                 features.perms);
 
          declare
             --  Blake3 sums for regular files and hardlinks
@@ -241,15 +272,21 @@ package body Archive.Pack is
             use type DIR.File_Size;
          begin
             AS.push_filename (filename);
-            new_block.modified_sec := features.mtime;
-            new_block.modified_ns  := features.mnsec;
-            new_block.index_owner  := AS.get_owner_index (features.owner);
-            new_block.index_group  := AS.get_group_index (features.group);
-            new_block.file_perms   := features.perms;
+            new_block.index_owner  := AS.get_owner_index (pog.owner_spec);
+            new_block.index_group  := AS.get_group_index (pog.group_spec);
+            new_block.file_perms   := pog.perms_spec;
             new_block.index_parent := dir_index;
             new_block.directory_id := 0;
             new_block.fname_length := max_fname (filename'Length);
             new_block.padding      := (others => 0);
+
+            if override_mtime then
+               new_block.modified_sec := timestamp;
+               new_block.modified_ns  := 0;
+            else
+               new_block.modified_sec := features.mtime;
+               new_block.modified_ns  := features.mnsec;
+            end if;
 
             case features.ftype is
                when directory | unsupported => null;   --  impossible
@@ -809,55 +846,186 @@ package body Archive.Pack is
    ------------------------------------------------------------------------------------------
    --  write_metadata_block
    ------------------------------------------------------------------------------------------
-   procedure write_metadata_block (AS : in out Arc_Structure; metadata_path : String) is
+   procedure write_metadata_block
+     (AS               : in out Arc_Structure;
+      output_file_path : String;
+      metadata_path    : String;
+      prefix           : String)
+   is
+      use type ZST.File_Size;
+
+      attempt_read : Boolean := False;
+      dossier_size : ZST.File_Size;
+      tree         : ThickUCL.UclTree;
+      flat_archive : constant String := output_file_path & ".archive";
+      archive_size : constant UCL.ucl_integer := UCL.ucl_integer (DIR.Size (flat_archive));
+      KEY_FLATSIZE : constant String := "flatsize";
+      KEY_PREFIX   : constant String := "prefix";
+      KEY_DIRS     : constant String := "directories";
+      KEY_SCRIPTS  : constant String := "scripts";
+      KEY_DESCR    : constant String := "desc";
    begin
       AS.meta_size := 0;
       AS.flat_meta := 0;
       if metadata_path = "" then
          AS.print (debug, "No metadata file has been provided.");
-         return;
+      else
+         if DIR.Exists (metadata_path) then
+            dossier_size := ZST.File_Size (DIR.Size (metadata_path));
+            if dossier_size > ZST.File_Size (KB512)  then
+               AS.print (normal, "The metadata file size exceeds the 512 KB limit.");
+               AS.print (normal, "The archive will be built without this file.");
+            else
+               attempt_read := True;
+            end if;
+         else
+            AS.print (normal, "The metadata file for the given path does not exist.");
+         end if;
       end if;
 
-      if not DIR.Exists (metadata_path) then
-         AS.print (normal, "The metadata file for the given path does not exist.");
-         AS.print (normal, "The archive will be built without additional metadata.");
-         return;
+      if attempt_read then
+         begin
+            TUC.Files.parse_ucl_file (tree, metadata_path);
+         exception
+            when TUC.Files.ucl_file_unparseable =>
+               declare
+                  good : Boolean;
+                  desc : constant String :=
+                    ZST.File_Contents (metadata_path, Natural (dossier_size), good);
+               begin
+                  if good then
+                     tree.insert (KEY_DESCR, desc);
+                  else
+                     AS.print (normal, "Failed to read " & metadata_path &
+                                 " file; description will be left out");
+                  end if;
+               end;
+         end;
       end if;
 
+      --  augment with flatsize
+      if tree.key_exists (KEY_FLATSIZE) then
+         AS.print (normal, "Metadata unexpectedly contains flatsize field; not overwriting.");
+      else
+         tree.insert (KEY_FLATSIZE, archive_size);
+      end if;
+
+      --  augment with prefix
+      if tree.key_exists (KEY_PREFIX) then
+         AS.print (normal, "Metadata unexpected contains prefix field; not overwriting.");
+      else
+         tree.insert (KEY_PREFIX, prefix);
+      end if;
+
+      --  augment directories
+      if tree.key_exists (KEY_DIRS) then
+         AS.print (normal, "Metadata unexpected contains directories field; not overwriting.");
+      else
+         tree.start_array (KEY_DIRS);
+         for z in 0 .. AS.white_list.empty_directory_count - 1 loop
+            tree.start_object ("");
+            declare
+               attr : constant WhiteList.white_features :=
+                 AS.white_list.get_empty_directory_attributes (z);
+               KEY_OWNER : constant String := "owner";
+               KEY_GROUP : constant String := "group";
+               KEY_PERMS : constant String := "perms";
+               KEY_PATH  : constant String := "path";
+            begin
+               tree.insert (KEY_PATH, AS.white_list.get_empty_directory_path (z));
+               if attr.owner_spec = null_owngrp then
+                  tree.insert (KEY_OWNER, False);
+               else
+                  tree.insert (KEY_OWNER, trim_trailing_zeros (attr.owner_spec));
+               end if;
+               if attr.group_spec = null_owngrp then
+                  tree.insert (KEY_GROUP, False);
+               else
+                  tree.insert (KEY_GROUP, trim_trailing_zeros (attr.group_spec));
+               end if;
+               if attr.perms_spec = 0 then
+                  tree.insert (KEY_PERMS, False);
+               else
+                  tree.insert (KEY_PERMS, Ucl.ucl_integer (attr.perms_spec));
+               end if;
+            end;
+            tree.close_object;
+         end loop;
+         tree.close_array;
+      end if;
+
+      --  Add phase scripts (append if they already exist)
       declare
-         use type ZST.File_Size;
-
-         dossier_size : ZST.File_Size;
-         out_succ : Boolean;
-         out_size : ZST.File_Size;
+         keyjar : ThickUCL.jar_string.Vector;
+         keep_going : Boolean := True;
       begin
-         dossier_size := ZST.File_Size (DIR.Size (metadata_path));
-
-         if dossier_size > ZST.File_Size (KB512)  then
-            AS.print (normal, "The metadata file size exceeds the 512 KB limit.");
-            AS.print (normal, "The archive will be built without this file.");
-            return;
+         if tree.key_exists (KEY_SCRIPTS) then
+            AS.print (debug, "metadata already defined scripts object, possibly augmenting");
+            if tree.ucl_object_field_exists (KEY_SCRIPTS) then
+               tree.reopen_object (KEY_SCRIPTS);
+               tree.get_object_object_keys
+                 (vndx        => tree.get_index_of_base_ucl_object (KEY_SCRIPTS),
+                  object_keys => keyjar);
+            else
+               AS.print (normal, "metadata defines scripts field, but it's not of type object.");
+               AS.print (normal, "This is an input error. Any whitelist scripts will be ignored.");
+               keep_going := False;
+            end if;
+         else
+            tree.start_object (KEY_SCRIPTS);
          end if;
 
-         ZST.incorporate_regular_file
-           (filename    => metadata_path,
-            size        => dossier_size,
-            quality     => rvn_compression_level,
-            target_saxs => AS.rvn_stmaxs,
-            target_file => AS.rvn_handle,
-            output_size => out_size,
-            successful  => out_succ);
+         if keep_going then
+            for phase in Whitelist.package_phase'Range loop
+               if AS.white_list.script_count (phase) > 0 then
+                  AS.print (debug, "apply" & phase'Img & " phase scripts.");
+                  if ThickUCL.key_found (keyjar, Whitelist.convert_phase (phase)) then
+                     tree.reopen_array (Whitelist.convert_phase (phase));
+                  else
+                     tree.start_array (Whitelist.convert_phase (phase));
+                  end if;
+                  for z in 0 .. AS.white_list.script_count (phase) - 1 loop
+                     tree.insert ("", AS.white_list.get_script (phase, z));
+                  end loop;
+                  tree.close_array;
+               end if;
+            end loop;
+            tree.close_object;
+         end if;
+      end;
+
+      declare
+         out_succ : Boolean;
+         out_size : ZST.File_Size;
+         in_size  : Natural;
+      begin
+         declare
+            ucl_data : constant String := TUC.Emitter.emit_ucl (tree);
+         begin
+            in_size := ucl_data'Length;
+            ZST.incorporate_string
+              (data        => ucl_data,
+               quality     => rvn_compression_level,
+               target_saxs => AS.rvn_stmaxs,
+               output_size => out_size,
+               successful  => out_succ);
+         end;
 
          if out_succ then
-            AS.print (debug, "Compressed metadata from" & dossier_size'Img & " to" & out_size'Img);
+            AS.print (debug, "Compressed metadata from" & in_size'Img & " to" & out_size'Img);
             AS.meta_size := zstd_size (out_size);
-            AS.flat_meta := mdata_size (dossier_size);
+            AS.flat_meta := mdata_size (in_size);
          else
             AS.print (normal, "Failed to compress " & metadata_path);
          end if;
       exception
+            when uclerror : TUC.ucl_type_mismatch |
+              TUC.ucl_key_not_found |
+              TUC.index_out_of_range =>
+            AS.print (normal, "As error occurred with the UCL emitter for the metadata.");
+            AS.print (normal, EX.Exception_Information (uclerror));
          when others =>
-            AS.print (normal, "An error occurred while inserting the additional metadata.");
+            AS.print (normal, "An error occurred while inserting the metadata.");
       end;
    end write_metadata_block;
 

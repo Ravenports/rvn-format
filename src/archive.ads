@@ -121,5 +121,6 @@ package Archive is
    KB256 : constant Natural := 262_144;
    KB512 : constant Natural := 524_288;
    format_version : constant one_byte := 3;
+   null_owngrp : constant ownergroup := (others => Character'Val (0));
 
 end Archive;

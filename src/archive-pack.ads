@@ -14,12 +14,16 @@ package Archive.Pack is
 
    --  Assemble contents of directory tree into a single file.
    --  Special files like character devices and block devices are excluded.
+   --  Set fixed_timestamp to 0 to disable timestamp override
 
    function integrate
      (top_level_directory : String;
       metadata_file       : String;
       manifest_file       : String;
+      prefix              : String;
+      keyword_dir         : String;
       output_file         : String;
+      fixed_timestamp     : filetime;
       verbosity           : info_level) return Boolean;
 
 private
@@ -121,10 +125,12 @@ private
    procedure print (AS : Arc_Structure; msg_level : info_level; message : String);
 
    --  Recursive scan, initiated with passing path to stage directory with "0" index
+   --  If timestamp is greater than zero, modification time of every file is set to it.
    procedure scan_directory
      (AS        : in out Arc_Structure;
       dir_path  : String;
-      dir_index : index_type);
+      dir_index : index_type;
+      timestamp : filetime);
 
    --  Keep track of the compression directory
    procedure record_directory (AS : in out Arc_Structure; top_directory : String);
@@ -167,7 +173,11 @@ private
 
    --  Compress and insert given metadata file (block 2).  If the file does not exist or if
    --  an error occurs, 0 will be set for metadata (meaning it's not provided).
-   procedure write_metadata_block (AS : in out Arc_Structure; metadata_path : String);
+   procedure write_metadata_block
+     (AS : in out Arc_Structure;
+      output_file_path : String;
+      metadata_path    : String;
+      prefix           : String);
 
    --  Write block 3 (the compressed concatentation of blocks FA .. FE)
    procedure write_file_index_block (AS : in out Arc_Structure; output_file_path : String);

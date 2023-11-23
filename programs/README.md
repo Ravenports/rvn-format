@@ -8,7 +8,7 @@ on the RVN library.
 This program constructs a rvn-formatted package.
 The command-line options it accepts:
 
-#### packrvn [-vq] -r rootdir [-o outdir] [-w whitelist] [-m metadata] filename
+#### packrvn [-vq] -r rootdir [-o outdir] [-w whitelist] [-p prefix] [-k keyword_dir] [-m metadata] filename
 
 ```
     -r rootdir, --root-dir rootdir
@@ -25,13 +25,26 @@ The command-line options it accepts:
     -w whitelist, --whitelist whitelist
 
         The whitelist argument is a path to a file that contains a list of
-        files (including empty directories) relative to the rootdir.  It
-        is considered an error to start the line with a forward slash.
+        files relative to the prefix (which is a subdirectory of the rootdir.
         The file paths are to be separated by a newline character, meaning
         there is one file path per line.  Lines containing only whitespace
         are ignored.  Paths that don't refer to existing files cause a
         notice to be emitted, but then will be ignored.  If the whitelist
         parameter is omitted, all entities in the rootdir will be packaged.
+        If the line starts with a forward slash then the prefix is ignored
+        and the path is considered relative to the root directory.
+
+    -p prefix, --prefix outdir
+
+        Set the prefix which is a subdirectory of the rootdir, e.g. /usr/local
+        or /prefix.
+
+    -k keyword_dir, --keyword-dir
+
+        The default for this parameter is "/var/ravenports/conspiracy/Mk/Keywords".
+        It indicates the path of the directory that contains the UCL-based keyword
+        definitions for the keywords used on the whitelist, (e.g. @info, @sample,
+        @shell).
 
     -m metadata, --metadata metadata
 
@@ -41,6 +54,11 @@ The command-line options it accepts:
         simply reproduces the metadata and does not process it in any way.
         This parameter is optional as there is no requirement to define
         metadata for the package.
+
+    -t, --timestamp
+
+        Override the modification time of all archived files to given unix
+        epoch.  This may be used to support reproducible packages.
 
     -v, --verbose
 
