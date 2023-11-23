@@ -941,7 +941,7 @@ package body Archive.Pack is
                   tree.insert (KEY_GROUP, trim_trailing_zeros (attr.group_spec));
                end if;
                if attr.perms_spec = 0 then
-                  tree.insert (KEY_PERMS, 0);
+                  tree.insert (KEY_PERMS, False);
                else
                   tree.insert (KEY_PERMS, Ucl.ucl_integer (attr.perms_spec));
                end if;
