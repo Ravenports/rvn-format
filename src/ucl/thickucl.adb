@@ -1158,7 +1158,7 @@ package body ThickUCL is
             dnx := tree.store_arrays.Element (vndx).Element (index).vector_index;
             return ASU.To_String (tree.store_strings.Element (dnx).payload);
          when others =>
-            raise ucl_type_mismatch with eltype'Img & " found instead of an string";
+            raise ucl_type_mismatch with eltype'Img & " found instead of a string";
       end case;
    end get_array_element_value;
 
