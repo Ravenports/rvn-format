@@ -73,10 +73,12 @@ package body Archive.Pack is
       metadata.write_filename_block;                 --  block FE
       metadata.finalize_index_file;
 
-      metadata.write_blank_header (output_file);              --  block 1
-      metadata.write_metadata_block (metadata_file, prefix);  --  block 2
-      metadata.write_file_index_block (output_file);          --  block 3
-      metadata.write_archive_block (output_file);             --  block 4
+      metadata.write_blank_header (output_file);     --  block 1
+      metadata.write_metadata_block (output_file,
+                                     metadata_file,
+                                     prefix);        --  block 2
+      metadata.write_file_index_block (output_file); --  block 3
+      metadata.write_archive_block (output_file);    --  block 4
       metadata.overwrite_header (output_file);
 
       metadata.remove_index_file (output_file);
@@ -842,15 +844,18 @@ package body Archive.Pack is
    --  write_metadata_block
    ------------------------------------------------------------------------------------------
    procedure write_metadata_block
-     (AS            : in out Arc_Structure;
-      metadata_path : String;
-      prefix        : String)
+     (AS               : in out Arc_Structure;
+      output_file_path : String;
+      metadata_path    : String;
+      prefix           : String)
    is
       use type ZST.File_Size;
 
       attempt_read : Boolean := False;
       dossier_size : ZST.File_Size;
       tree         : ThickUCL.UclTree;
+      flat_archive : constant String := output_file_path & ".archive";
+      archive_size : constant UCL.ucl_integer := UCL.ucl_integer (DIR.Size (flat_archive));
       KEY_FLATSIZE : constant String := "flatsize";
       KEY_PREFIX   : constant String := "prefix";
       KEY_DIRS     : constant String := "directories";
@@ -899,7 +904,7 @@ package body Archive.Pack is
       if tree.key_exists (KEY_FLATSIZE) then
          AS.print (normal, "Metadata unexpectedly contains flatsize field; not overwriting.");
       else
-         tree.insert (KEY_FLATSIZE, Ucl.ucl_integer (AS.flat_arc));
+         tree.insert (KEY_FLATSIZE, archive_size);
       end if;
 
       --  augment with prefix

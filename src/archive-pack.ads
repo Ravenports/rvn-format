@@ -174,8 +174,9 @@ private
    --  an error occurs, 0 will be set for metadata (meaning it's not provided).
    procedure write_metadata_block
      (AS : in out Arc_Structure;
-      metadata_path : String;
-      prefix        : String);
+      output_file_path : String;
+      metadata_path    : String;
+      prefix           : String);
 
    --  Write block 3 (the compressed concatentation of blocks FA .. FE)
    procedure write_file_index_block (AS : in out Arc_Structure; output_file_path : String);
