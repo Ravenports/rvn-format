@@ -8,7 +8,7 @@ on the RVN library.
 This program constructs a rvn-formatted package.
 The command-line options it accepts:
 
-#### packrvn [-vq] -r rootdir [-o outdir] [-w whitelist] [-p prefix] [-m metadata] filename
+#### packrvn [-vq] -r rootdir [-o outdir] [-w whitelist] [-p prefix] [-k keyword_dir] [-m metadata] filename
 
 ```
     -r rootdir, --root-dir rootdir
@@ -38,6 +38,13 @@ The command-line options it accepts:
 
         Set the prefix which is a subdirectory of the rootdir, e.g. /usr/local
         or /prefix.
+
+    -k keyword_dir, --keyword-dir
+
+        The default for this parameter is "/var/ravenports/conspiracy/Mk/Keywords".
+        It indicates the path of the directory that contains the UCL-based keyword
+        definitions for the keywords used on the whitelist, (e.g. @info, @sample,
+        @shell).
 
     -m metadata, --metadata metadata
 

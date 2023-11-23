@@ -67,11 +67,12 @@ package body Archive.Whitelist is
    --  ingest_file_manifest  --
    ----------------------------
    function ingest_file_manifest
-     (whitelist        : out A_Whitelist;
-      manifest_file    : String;
-      stage_directory  : String;
-      prefix_directory : String;
-      level            : info_level) return Boolean
+     (whitelist          : out A_Whitelist;
+      manifest_file      : String;
+      stage_directory    : String;
+      prefix_directory   : String;
+      keywords_directory : String;
+      level              : info_level) return Boolean
    is
       type linecat is (jump, external_keyword, file_path, mode_override, key_error);
 
@@ -237,7 +238,7 @@ package body Archive.Whitelist is
               (whitelist     => whitelist,
                keyword       => keyword,
                arguments     => arguments,
-               keyword_dir   => "/tmp/Keywords",
+               keyword_dir   => keywords_directory,
                full_path     => full_path,
                real_top_path => real_top_directory,
                prefix_dir    => prefix_directory,

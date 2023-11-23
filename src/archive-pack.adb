@@ -34,6 +34,7 @@ package body Archive.Pack is
       metadata_file       : String;
       manifest_file       : String;
       prefix              : String;
+      keyword_dir         : String;
       output_file         : String;
       fixed_timestamp     : filetime;
       verbosity           : info_level) return Boolean
@@ -48,10 +49,12 @@ package body Archive.Pack is
       end if;
 
       if manifest_file /= "" then
-         if not metadata.white_list.ingest_file_manifest (manifest_file    => manifest_file,
-                                                          stage_directory  => top_level_directory,
-                                                          prefix_directory => prefix,
-                                                          level            => verbosity)
+         if not metadata.white_list.ingest_file_manifest
+           (manifest_file      => manifest_file,
+            stage_directory    => top_level_directory,
+            prefix_directory   => prefix,
+            keywords_directory => keyword_dir,
+            level              => verbosity)
          then
             return False;
          end if;

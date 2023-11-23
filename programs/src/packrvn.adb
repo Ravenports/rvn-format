@@ -38,6 +38,7 @@ is
    opt_metadata  : Boolean := False;
    opt_rootdir   : Boolean := False;
    opt_outdir    : Boolean := False;
+   opt_kwdir     : Boolean := False;
    filename_set  : Boolean := False;
    arg_whitelist : text;
    arg_metadata  : text;
@@ -46,10 +47,11 @@ is
    arg_filename  : text;
    arg_prefix    : text;
    arg_timestamp : text;
+   arg_keyword   : text := ASU.To_Unbounded_String ("/var/ravenports/conspiracy/Mk/Keywords");
 
    procedure process_arguments
    is
-      type compound is (waiting, rootdir, outdir, whitelist, metadata, prefix, timestamp);
+      type compound is (waiting, rootdir, outdir, whitelist, metadata, prefix, timestamp, kwdir);
       argx : Natural := 0;
       next_parameter : compound := waiting;
 
@@ -69,6 +71,7 @@ is
                when metadata  => arg_metadata  := ASU.To_Unbounded_String (this_arg);
                when prefix    => arg_prefix    := ASU.To_Unbounded_String (this_arg);
                when timestamp => arg_timestamp := ASU.To_Unbounded_String (this_arg);
+               when kwdir     => arg_keyword   := ASU.To_Unbounded_String (this_arg);
             end case;
             next_parameter := waiting;
             if continue then
@@ -80,6 +83,9 @@ is
                      elsif this_arg = "--out-dir" then
                         opt_outdir := True;
                         next_parameter := outdir;
+                     elsif this_arg = "--keyword-dir" then
+                        opt_kwdir := True;
+                        next_parameter := kwdir;
                      elsif this_arg = "--whitelist" then
                         opt_whitelist := True;
                         next_parameter := whitelist;
@@ -105,10 +111,11 @@ is
                            case this_arg (single) is
                               when 'v' => opt_verbose := True;
                               when 'q' => opt_quiet := True;
-                              when 'r' | 'o' | 'w' | 'm' | 'p' | 't' =>
+                              when 'r' | 'o' | 'w' | 'm' | 'p' | 't' | 'k' =>
                                  case this_arg (single) is
                                     when 'r' => opt_rootdir   := True;
                                     when 'o' => opt_outdir    := True;
+                                    when 'k' => opt_kwdir     := True;
                                     when 'w' => opt_whitelist := True;
                                     when 'm' => opt_metadata  := True;
                                     when others => null;
@@ -117,6 +124,7 @@ is
                                     case this_arg (single) is
                                        when 'r' => next_parameter := rootdir;
                                        when 'o' => next_parameter := outdir;
+                                       when 'k' => next_parameter := kwdir;
                                        when 'w' => next_parameter := whitelist;
                                        when 'm' => next_parameter := metadata;
                                        when 'p' => next_parameter := prefix;
@@ -131,6 +139,7 @@ is
                                        case this_arg (single) is
                                           when 'r' => arg_rootdir   := remainder;
                                           when 'o' => arg_outdir    := remainder;
+                                          when 'k' => arg_keyword   := remainder;
                                           when 'w' => arg_whitelist := remainder;
                                           when 'm' => arg_metadata  := remainder;
                                           when 'p' => arg_prefix    := remainder;
@@ -167,7 +176,7 @@ is
    begin
       TIO.Put_Line (error_msg);
       TIO.Put_Line ("packrvn [-vq] -r rootdir [-o outdir] [-w whitelist] " &
-                      "[-p prefix] [-m metadata] [-t timestamp] filename");
+                      "[-p prefix] [-k keyword_dir] [-m metadata] [-t timestamp] filename");
    end usage;
 
    procedure error (error_msg : String) is
@@ -306,6 +315,9 @@ begin
    if not valid_directory (opt_outdir, arg_outdir, "output") then
       return;
    end if;
+   if not valid_directory (opt_kwdir, arg_keyword, "keywords") then
+      return;
+   end if;
    if not valid_file (opt_whitelist, arg_whitelist, "whitelist") then
       return;
    end if;
@@ -332,6 +344,7 @@ begin
                                      metadata_file       => ASU.To_String (arg_metadata),
                                      manifest_file       => ASU.To_String (arg_whitelist),
                                      prefix              => ASU.To_String (arg_prefix),
+                                     keyword_dir         => ASU.To_String (arg_keyword),
                                      fixed_timestamp     => provide_timestamp (arg_timestamp),
                                      output_file         => rvn_file,
                                      verbosity           => level)

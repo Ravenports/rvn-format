@@ -21,6 +21,7 @@ package Archive.Pack is
       metadata_file       : String;
       manifest_file       : String;
       prefix              : String;
+      keyword_dir         : String;
       output_file         : String;
       fixed_timestamp     : filetime;
       verbosity           : info_level) return Boolean;

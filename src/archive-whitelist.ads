@@ -40,11 +40,12 @@ package Archive.Whitelist is
    --  All directory components are individually whitelisted
    --  Returns True upon success, False if an error occurs
    function ingest_file_manifest
-     (whitelist        : out A_Whitelist;
-      manifest_file    : String;
-      stage_directory  : String;
-      prefix_directory : String;
-      level            : info_level) return Boolean;
+     (whitelist          : out A_Whitelist;
+      manifest_file      : String;
+      stage_directory    : String;
+      prefix_directory   : String;
+      keywords_directory : String;
+      level              : info_level) return Boolean;
 
 
    --  Returns true if given path has been whitelisted (and therefore needs to be archived).
