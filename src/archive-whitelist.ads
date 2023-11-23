@@ -1,7 +1,7 @@
 --  This file is covered by the Internet Software Consortium (ISC) License
 --  Reference: ../License.txt
 
-private with Blake_3;
+with Blake_3;
 private with Ada.Containers.Hashed_Maps;
 private with Ada.Containers.Vectors;
 private with Ada.Strings.Unbounded;
@@ -46,6 +46,7 @@ package Archive.Whitelist is
       prefix_directory : String;
       level            : info_level) return Boolean;
 
+
    --  Returns true if given path has been whitelisted (and therefore needs to be archived).
    --  If the path is a directory, False is returned
    function file_on_whitelist
@@ -73,7 +74,13 @@ package Archive.Whitelist is
      (whitelist     : A_Whitelist) return Natural;
 
 
-   --  Return directory referenced by index
+   --  Return directory hash referenced by index
+   function get_empty_directory_hash
+     (whitelist     : A_Whitelist;
+      index         : Natural) return Blake_3.blake3_hash;
+
+
+   --  return path to directory referenced by index
    function get_empty_directory_path
      (whitelist     : A_Whitelist;
       index         : Natural) return String;
@@ -84,16 +91,19 @@ package Archive.Whitelist is
      (whitelist     : A_Whitelist;
       index         : Natural) return white_features;
 
+
    --  Returns the number of scripts defined for this package package
    function script_count
      (whitelist     : A_Whitelist;
       phase         : package_phase) return Natural;
+
 
    --  Returns the script mapped to the given phase and index
    function get_script
      (whitelist     : A_Whitelist;
       phase         : package_phase;
       index         : Natural) return String;
+
 
    --  Returns the metadata key mapped to the package phase
    function convert_phase (phase : package_phase) return String;
@@ -137,6 +147,10 @@ private
      (Index_Type => Natural,
       Element_Type => keyword_argument);
 
+   package dir_keys_crate is new CON.Vectors
+     (Index_Type => Natural,
+      Element_Type => Blake_3.blake3_hash);
+
    type maintenance is array (package_phase'Range) of phase_crate.Vector;
 
    package white_crate is new CON.Hashed_Maps
@@ -152,7 +166,7 @@ private
          files     : white_crate.Map;
          temp_dirs : white_crate.Map;
          just_dirs : white_crate.Map;
-         dirs_keys : arg_crate.Vector;
+         dirs_keys : dir_keys_crate.Vector;
          scripts   : maintenance;
       end record;
 

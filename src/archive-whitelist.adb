@@ -579,7 +579,6 @@ package body Archive.Whitelist is
          procedure reset_POG (key : Blake_3.blake3_hash; Element : in out white_properties);
 
          old_props : white_properties;
-         dir_path  : keyword_argument;
          props     : white_properties renames white_crate.Element (position);
          file_hash : Blake_3.blake3_hash renames white_crate.Key (position);
 
@@ -628,9 +627,8 @@ package body Archive.Whitelist is
             if level >= debug then
                TIO.Put_Line ("just_dirs += " & ASU.To_String (props.path));
             end if;
-            dir_path.argument := props.path;
             whitelist.just_dirs.Insert (file_hash, props);
-            whitelist.dirs_keys.Append (dir_path);
+            whitelist.dirs_keys.Append (file_hash);
          end if;
       end process;
    begin
@@ -803,13 +801,33 @@ package body Archive.Whitelist is
    --------------------------------
    function get_empty_directory_path
      (whitelist     : A_Whitelist;
-      index         : Natural) return String is
+      index         : Natural) return String
+   is
+      key : constant Blake_3.blake3_hash := whitelist.get_empty_directory_hash (index);
    begin
-      if index < whitelist.empty_directory_count then
-         return ASU.To_String (whitelist.dirs_keys.Element (index).argument);
+      if whitelist.just_dirs.Contains (key) then
+         return ASU.To_String (whitelist.just_dirs.Element (key).path);
       end if;
       return "";
    end get_empty_directory_path;
+
+
+   --------------------------------
+   --  get_empty_directory_hash  --
+   --------------------------------
+   function get_empty_directory_hash
+     (whitelist     : A_Whitelist;
+      index         : Natural) return Blake_3.blake3_hash is
+   begin
+      if index < whitelist.empty_directory_count then
+         return whitelist.dirs_keys.Element (index);
+      end if;
+      declare
+         dummy : Blake_3.blake3_hash := (others => Character'Val (0));
+      begin
+         return dummy;
+      end;
+   end get_empty_directory_hash;
 
 
    --------------------------------------
@@ -827,17 +845,18 @@ package body Archive.Whitelist is
 
       if index < whitelist.empty_directory_count then
          declare
-            file_hash : constant Blake_3.blake3_hash :=
-              Blake_3.digest (ASU.To_String (whitelist.dirs_keys.Element (index).argument));
+            file_hash : constant Blake_3.blake3_hash := whitelist.dirs_keys.Element (index);
          begin
-            if whitelist.just_dirs.Element (file_hash).override_owner then
-               attributes.owner_spec := whitelist.just_dirs.Element (file_hash).owner_spec;
-            end if;
-            if whitelist.just_dirs.Element (file_hash).override_group then
-               attributes.group_spec := whitelist.just_dirs.Element (file_hash).group_spec;
-            end if;
-            if whitelist.just_dirs.Element (file_hash).override_perms then
-               attributes.perms_spec := whitelist.just_dirs.Element (file_hash).perms_spec;
+            if whitelist.just_dirs.Contains (file_hash) then
+               if whitelist.just_dirs.Element (file_hash).override_owner then
+                  attributes.owner_spec := whitelist.just_dirs.Element (file_hash).owner_spec;
+               end if;
+               if whitelist.just_dirs.Element (file_hash).override_group then
+                  attributes.group_spec := whitelist.just_dirs.Element (file_hash).group_spec;
+               end if;
+               if whitelist.just_dirs.Element (file_hash).override_perms then
+                  attributes.perms_spec := whitelist.just_dirs.Element (file_hash).perms_spec;
+               end if;
             end if;
          end;
       end if;
