@@ -226,8 +226,8 @@ package body Archive.Whitelist.Keywords is
       keyword.level := level;
 
       if full_path = "" then
-         if level >= verbose then
-            TIO.Put_Line (full_path & ": UCL keyword not found, ignored.");
+         if level >= normal then
+            TIO.Put_Line (filename & ": UCL keyword not found, ignored.");
          end if;
          return;
       end if;
