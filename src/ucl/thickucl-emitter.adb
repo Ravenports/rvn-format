@@ -193,8 +193,8 @@ package body ThickUCL.Emitter is
       stripped := abs_raw - Float(int_part);
       dec_part := Ucl.ucl_integer (stripped * 1_000_000_000.0);
       declare
-         sint_part : constant String := format_integer_value (int_part);
-         sdec_part : constant String := format_integer_value (dec_part);
+         sint_part : constant String := ASF.Trim (int_part'Img, Ada.Strings.Left);
+         sdec_part : constant String := ASF.Trim (dec_part'Img, Ada.Strings.Left);
       begin
          if negative then
             return '-' & sint_part & "." & trimzero (sdec_part) & LF;
