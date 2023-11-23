@@ -1000,10 +1000,11 @@ package body Archive.Pack is
             AS.print (normal, "Failed to compress " & metadata_path);
          end if;
       exception
-            when TUC.ucl_type_mismatch |
+            when uclerror : TUC.ucl_type_mismatch |
               TUC.ucl_key_not_found |
               TUC.index_out_of_range =>
             AS.print (normal, "As error occurred with the UCL emitter for the metadata.");
+            AS.print (normal, EX.Exception_Information (uclerror));
          when others =>
             AS.print (normal, "An error occurred while inserting the metadata.");
       end;
