@@ -123,9 +123,9 @@ private
          override_owner : Boolean := False;
          override_group : Boolean := False;
          override_perms : Boolean := False;
-         owner_spec     : ownergroup;
-         group_spec     : ownergroup;
-         perms_spec     : permissions;
+         owner_spec     : ownergroup := null_owngrp;
+         group_spec     : ownergroup := null_owngrp;
+         perms_spec     : permissions := 0;
          path           : ASU.Unbounded_String;
       end record;
 

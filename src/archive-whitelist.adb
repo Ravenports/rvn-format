@@ -839,8 +839,8 @@ package body Archive.Whitelist is
    is
       attributes : white_features;
    begin
-      attributes.owner_spec := Unix.str2owngrp ("");
-      attributes.group_spec := Unix.str2owngrp ("");
+      attributes.owner_spec := null_owngrp;
+      attributes.group_spec := null_owngrp;
       attributes.perms_spec := 0;
 
       if index < whitelist.empty_directory_count then

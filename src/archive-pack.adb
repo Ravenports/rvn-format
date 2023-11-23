@@ -924,11 +924,27 @@ package body Archive.Pack is
             declare
                attr : constant WhiteList.white_features :=
                  AS.white_list.get_empty_directory_attributes (z);
+               KEY_OWNER : constant String := "owner";
+               KEY_GROUP : constant String := "group";
+               KEY_PERMS : constant String := "perms";
+               KEY_PATH  : constant String := "path";
             begin
-               tree.insert ("path", AS.white_list.get_empty_directory_path (z));
-               tree.insert ("owner", trim_trailing_zeros (attr.owner_spec));
-               tree.insert ("group", trim_trailing_zeros (attr.group_spec));
-               tree.insert ("perms", Ucl.ucl_integer (attr.perms_spec));
+               tree.insert (KEY_PATH, AS.white_list.get_empty_directory_path (z));
+               if attr.owner_spec = null_owngrp then
+                  tree.insert (KEY_OWNER, False);
+               else
+                  tree.insert (KEY_OWNER, trim_trailing_zeros (attr.owner_spec));
+               end if;
+               if attr.group_spec = null_owngrp then
+                  tree.insert (KEY_GROUP, False);
+               else
+                  tree.insert (KEY_GROUP, trim_trailing_zeros (attr.group_spec));
+               end if;
+               if attr.perms_spec = 0 then
+                  tree.insert (KEY_PERMS, 0);
+               else
+                  tree.insert (KEY_PERMS, Ucl.ucl_integer (attr.perms_spec));
+               end if;
             end;
             tree.close_object;
          end loop;
