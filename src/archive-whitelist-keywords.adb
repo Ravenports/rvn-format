@@ -31,7 +31,8 @@ package body Archive.Whitelist.Keywords is
    begin
       keyword_obj.scan_file (keyword_dir & "/" & keyword & ".ucl", level);
       if not keyword_obj.file_found then
-         return False;
+         --  Don't cause a missing keyword to break an archive build
+         return True;
       end if;
       keyword_obj.process_arguments
         (arguments => arguments,
