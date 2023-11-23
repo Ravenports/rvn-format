@@ -240,7 +240,11 @@ package body ThickUCL.Emitter is
       SQpattern : constant String (1 .. 1) := (1 => SQ);
    begin
       if ASF.Index (raw, newline) > 0 then
-         return "<<EOD" & newline & raw & newline & "EOD" & LF;
+         if raw(raw'Last) = newline(newline'First) then
+            return "<<EOD" & newline & raw & "EOD" & LF;
+         else
+            return "<<EOD" & newline & raw & newline & "EOD" & LF;
+         end if;
       end if;
       if ASF.Index (raw, SQpattern) = 0 then
          return SQ & raw & SQ & LF;
