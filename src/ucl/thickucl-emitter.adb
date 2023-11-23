@@ -59,7 +59,7 @@ package body ThickUCL.Emitter is
          array_len : constant Natural := tree.get_number_of_array_elements (vndx);
          indent    : constant String (1 .. indent_len) := (others => ' ');
       begin
-         for elndx in 1 .. array_len loop
+         for elndx in 0 .. array_len - 1 loop
             declare
                valtype : Leaf_type;
             begin
