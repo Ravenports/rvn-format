@@ -130,11 +130,11 @@ package body ThickUCL.Emitter is
                   ASU.Append (canvas, format_time_value
                               (tree.get_object_value (vndx, this_key)));
                when data_array =>
-                  ASU.Append (canvas, indent & '[' & LF);
+                  ASU.Append (canvas, '[' & LF);
                   dive_into_array (tree.get_object_array (vndx, this_key), indent_len + 2);
                   ASU.Append (canvas, indent & ']' & LF);
                when data_object =>
-                  ASU.Append (canvas, indent & '{' & LF);
+                  ASU.Append (canvas, '{' & LF);
                   dive_into_object (tree.get_object_object (vndx, this_key), indent_len + 2);
                   ASU.Append (canvas, indent & '}' & LF);
             end case;
