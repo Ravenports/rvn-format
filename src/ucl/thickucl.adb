@@ -1507,6 +1507,7 @@ package body ThickUCL is
    begin
       object_keys.Clear;
       tree.tree_stump.Iterate (collect_key'Access);
+      string_sorting.Sort (object_keys);
    end get_base_object_keys;
 
 
@@ -1532,6 +1533,7 @@ package body ThickUCL is
    begin
       object_keys.Clear;
       tree.store_objects.Element (vndx).Iterate (collect_key'Access);
+      string_sorting.Sort (object_keys);
    end get_object_object_keys;
 
 
@@ -1554,5 +1556,14 @@ package body ThickUCL is
       key_container.Iterate (scan'Access);
       return found;
    end key_found;
+
+
+   ---------
+   --  <  --
+   ---------
+   function "<" (left, right : DataString) return Boolean is
+   begin
+            return ASU."<" (left.payload, right.payload);
+   end "<";
 
 end ThickUCL;

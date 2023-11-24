@@ -286,11 +286,13 @@ package ThickUCL is
       key  : String) return object_index;
 
    --  Returns a container full of keys from a stump-level object
+   --  The container is sorted alphabetically ascending
    procedure get_base_object_keys
      (tree : UclTree;
       object_keys : in out jar_string.Vector);
 
    --  Returns a container full of keys from nested object
+   --  The container is sorted alphabetically ascending
    procedure get_object_object_keys
      (tree : UclTree;
       vndx : object_index;
@@ -401,6 +403,10 @@ private
       key   : String;
       ftype : DataType) return Boolean;
 
+   --  Define comparision function for DataString for sorting purposes.
+   function "<" (left, right : DataString) return Boolean;
+
+   package string_sorting is new jar_string.Generic_Sorting;
 
    ERR_NEEDS_KEY  : constant String := "Error: key required but is missing.  Item skipped.";
    WARN_EXTRA_KEY : constant String := "Warning: key was found but not expected, ignoring.";
