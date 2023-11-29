@@ -32,6 +32,7 @@ package body Archive.Pack is
       metadata_file       : String;
       manifest_file       : String;
       prefix              : String;
+      abi                 : String;
       keyword_dir         : String;
       output_file         : String;
       fixed_timestamp     : filetime;
@@ -77,7 +78,8 @@ package body Archive.Pack is
       metadata.write_blank_header (output_file);     --  block 1
       metadata.write_metadata_block (output_file,
                                      metadata_file,
-                                     prefix);        --  block 2
+                                     prefix,
+                                     abi);           --  block 2
       metadata.write_file_index_block (output_file); --  block 3
       metadata.write_archive_block (output_file);    --  block 4
       metadata.overwrite_header (output_file);
@@ -848,7 +850,8 @@ package body Archive.Pack is
      (AS               : in out Arc_Structure;
       output_file_path : String;
       metadata_path    : String;
-      prefix           : String)
+      prefix           : String;
+      abi              : String)
    is
       use type ZST.File_Size;
 
@@ -862,6 +865,7 @@ package body Archive.Pack is
       KEY_DIRS     : constant String := "directories";
       KEY_SCRIPTS  : constant String := "scripts";
       KEY_DESCR    : constant String := "desc";
+      KEY_ABI      : constant String := "abi";
    begin
       AS.meta_size := 0;
       AS.flat_meta := 0;
@@ -914,6 +918,18 @@ package body Archive.Pack is
       else
          tree.insert (KEY_PREFIX, prefix);
       end if;
+
+      --  augment with abi
+      if tree.key_exists (KEY_ABI) then
+         AS.print (normal, "Metadata unexpected contains abi field; not overwriting.");
+      else
+         if abi = "" then
+            tree.insert (KEY_ABI, "*:0:*");
+         else
+            tree.insert (KEY_ABI, abi);
+         end if;
+      end if;
+
 
       --  augment directories
       if tree.key_exists (KEY_DIRS) then

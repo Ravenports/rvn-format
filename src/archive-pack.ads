@@ -21,6 +21,7 @@ package Archive.Pack is
       metadata_file       : String;
       manifest_file       : String;
       prefix              : String;
+      abi                 : String;
       keyword_dir         : String;
       output_file         : String;
       fixed_timestamp     : filetime;
@@ -177,7 +178,8 @@ private
      (AS : in out Arc_Structure;
       output_file_path : String;
       metadata_path    : String;
-      prefix           : String);
+      prefix           : String;
+      abi              : String);
 
    --  Write block 3 (the compressed concatentation of blocks FA .. FE)
    procedure write_file_index_block (AS : in out Arc_Structure; output_file_path : String);

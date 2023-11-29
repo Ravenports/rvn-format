@@ -8,7 +8,7 @@ on the RVN library.
 This program constructs a rvn-formatted package.
 The command-line options it accepts:
 
-#### packrvn [-vq] -r rootdir [-o outdir] [-w whitelist] [-p prefix] [-k keyword_dir] [-m metadata] filename
+#### packrvn [-vq] -r rootdir [-o outdir] [-w whitelist] [-p prefix] [-a abi] [-k keyword_dir] [-m metadata] filename
 
 ```
     -r rootdir, --root-dir rootdir
@@ -38,6 +38,12 @@ The command-line options it accepts:
 
         Set the prefix which is a subdirectory of the rootdir, e.g. /usr/local
         or /prefix.
+
+    -a abi, --abi abi
+
+        The default for this parameter is "*:0:*".  This parameter is typically
+        generated data contained in an ELF binary, or otherwise overridden in
+        a configuration file.  This parameter is added the generated metadata file.
 
     -k keyword_dir, --keyword-dir
 
@@ -99,7 +105,7 @@ It can:
 - display file counts to standard out
 ```
 
-#### xrvn [-vq] [-xmlc] [-d] [-t] [-o outdir] filename
+#### xrvn [-vq] [-xmlc] [-d | -a] [-t] [-o outdir] filename
 
 ```
     -x, --extract
