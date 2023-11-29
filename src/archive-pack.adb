@@ -887,7 +887,7 @@ package body Archive.Pack is
 
       if attempt_read then
          begin
-            TUC.Files.parse_ucl_file (tree, metadata_path);
+            TUC.Files.parse_ucl_file (tree, metadata_path, "");
          exception
             when TUC.Files.ucl_file_unparseable =>
                declare

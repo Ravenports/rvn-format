@@ -234,7 +234,7 @@ package body Archive.Whitelist.Keywords is
       end if;
 
       keyword.file_found := True;
-      TUC.Files.parse_ucl_file (keyword.tree, full_path);
+      TUC.Files.parse_ucl_file (keyword.tree, full_path, "");
       if keyword.tree.array_field_exists (action_key) then
          --  valid (only) is "[]", "[file]", "[dir]"
          --  Historically there could have been multiple fields, but currently all are
