@@ -667,7 +667,7 @@ package body Archive.Unpack is
                   DS.print (normal, Blake_3.hex (block.blake_sum) & " " & fullpath);
                elsif show_attr then
                   DS.print (normal,
-                            Unix.display_permissions (block.file_perms)
+                            Unix.display_permissions (block.file_perms, block.type_of_file)
                             & verbose_display_owngrp (DS.owners.Element (block.index_owner).name)
                             & verbose_display_owngrp (DS.groups.Element (block.index_group).name)
                             & verbose_display_filesize (block.file_size_tb)
@@ -722,7 +722,7 @@ package body Archive.Unpack is
                   TIO.Put_Line (output_handle, Blake_3.hex (block.blake_sum) & " " & fullpath);
                elsif show_attr then
                   TIO.Put_Line (output_handle,
-                            Unix.display_permissions (block.file_perms)
+                            Unix.display_permissions (block.file_perms, block.type_of_file)
                             & verbose_display_owngrp (DS.owners.Element (block.index_owner).name)
                             & verbose_display_owngrp (DS.groups.Element (block.index_group).name)
                             & verbose_display_filesize (block.file_size_tb)

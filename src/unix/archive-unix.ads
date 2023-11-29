@@ -75,7 +75,7 @@ package Archive.Unix is
    function file_is_writable (path : String) return Boolean;
 
    --  Display rwx permissions including sticky bit, setuid-on-exec, etc
-   function display_permissions (perms : permissions) return String;
+   function display_permissions (perms : permissions; ftype : file_type) return String;
 
    --  Returns file modification time formated to yyyy-mm-dd HH:MM
    function format_file_time (modtime : filetime) return String;

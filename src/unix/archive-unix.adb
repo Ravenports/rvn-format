@@ -600,14 +600,15 @@ package body Archive.Unix is
    --------------------------------------------------------------------------------------------
    --  display_permissions
    --------------------------------------------------------------------------------------------
-   function display_permissions (perms : permissions) return String
+   function display_permissions (perms : permissions; ftype : file_type) return String
    is
-      --                             UUUGGGOOO
+      --                            UUUGGGOOO
       all_set : constant String := "rwxrwxrwx";
       result  : String := "---------";
       mask    : permissions;
       bpos    : Natural := 9;
       rpos    : Natural := result'First;
+      T       : Character;
    begin
       for x in all_set'Range loop
          bpos := bpos - 1;
@@ -645,7 +646,16 @@ package body Archive.Unix is
          end if;
       end if;
 
-      return result;
+      case ftype is
+         when directory   => T := 'd';
+         when regular     => T := '-';
+         when symlink     => T := 'l';
+         when hardlink    => T := 'h';
+         when fifo        => T := 'p';
+         when unsupported => T := '?';
+      end case;
+
+      return T & result;
    end display_permissions;
 
 

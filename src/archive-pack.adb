@@ -365,7 +365,7 @@ package body Archive.Pack is
             AS.files.Append (new_block);
             if AS.level = verbose then
                AS.print (verbose,
-                         Unix.display_permissions (new_block.file_perms)
+                         Unix.display_permissions (new_block.file_perms, new_block.type_of_file)
                          & verbose_display_owngrp (features.owner)
                          & verbose_display_owngrp (features.group)
                          & verbose_display_filesize
