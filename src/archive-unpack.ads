@@ -38,12 +38,18 @@ package Archive.Unpack is
    --  This procedure sends the file index to standard out.  Directories are omitted.
    --  The print order matches the order written to the archive.
    --  If 'show_b3sum' is true, each line is prefixed with the blake3 checksum (hex).
-   procedure print_manifest (DS : in out DArc; show_b3sum : Boolean := False);
+   --  If 'show_attr' is true, each list is prefixed with mode/owner/group/size information
+   --  if both are provided, the b3sum setting takes priority
+   procedure print_manifest
+     (DS         : in out DArc;
+      show_b3sum : Boolean := False;
+      show_attr  : Boolean := False);
 
    --  Same as print_manifest, but writes to a given output file instead of standard out
    procedure write_manifest_to_file
      (DS         : in out DArc;
       show_b3sum : Boolean := False;
+      show_attr  : Boolean := False;
       filepath   : String);
 
    --  This function extracts the archive and returns true if successful.

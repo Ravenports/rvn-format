@@ -133,7 +133,14 @@ It can:
     -d, --digests
 
         This option is used only in conjunction with -l.  It forces the
-        manifest to be generated with the stored Blake-3 digest.
+        manifest to be generated with the stored Blake-3 digest.  This is
+        mutually exclusive with -a.
+
+    -a, --attributes
+
+        This option is used only in conjunction with -l.  It forces the
+        manifest to be generated with the file permissions, ownership, group
+        membership and file size.  This is mutually exclusive with -d.
 
     -o outdir, --out-dir outdir
 

@@ -123,4 +123,17 @@ package Archive is
    format_version : constant one_byte := 3;
    null_owngrp : constant ownergroup := (others => Character'Val (0));
 
+private
+
+   --  Return owner or group, 9 characters long.  If owner or group is longer than 8 characters,
+   --  only the first seven is displayed followed by "*" and a space
+   function verbose_display_owngrp (owngrp : ownergroup) return String;
+
+   --  Returns 9-character string representing file size, left aligned after leftmost space.
+   --  Values over 100 million are have "M" suffix and values over 1 gigabyte use G suffix.
+   function verbose_display_filesize (fsize : size_type) return String;
+
+   --  Cut out trailing characters set to zero and return as a trimmed string
+   function trim_trailing_zeros (full_string : String) return String;
+
 end Archive;
