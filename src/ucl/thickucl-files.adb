@@ -3,6 +3,7 @@
 
 
 with Ada.Text_IO;
+with Ada.Strings.Fixed;
 with System;
 
 package body ThickUCL.Files is
@@ -14,12 +15,48 @@ package body ThickUCL.Files is
    ----------------------
    procedure parse_ucl_file
      (tree : in out UclTree;
-      path : String)
+      path : String;
+      nvpairs : String)
    is
+      procedure register_pair (pair : String);
+
       parser  : Ucl.T_parser;
       obj     : access libucl.ucl_object_t;
+
+      procedure register_pair (pair : String)
+      is
+         slash : constant Integer := Ada.Strings.Fixed.Index (pair, "=");
+      begin
+         if slash = 0 then
+            TIO.Put_Line ("Will not register '" & pair & "' because '=' is missing");
+         else
+            declare
+               key : constant String := pair (pair'First .. slash - 1);
+               val : constant String := pair (slash + 1 .. pair'Last);
+            begin
+               Ucl.ucl_parser_register_variable (parser, key, val);
+            end;
+         end if;
+      end register_pair;
    begin
       parser := Ucl.ucl_parser_new_nofilevars;
+      if nvpairs /= "" then
+         declare
+            back : Integer;
+            front : Integer := nvpairs'First;
+         begin
+            loop
+               back := Ada.Strings.Fixed.Index (Source => nvpairs, Pattern => "|", From => front);
+               if back > 0 then
+                  register_pair (nvpairs (front .. back - 1));
+               else
+                  register_pair (nvpairs (front .. nvpairs'Last));
+                  exit;
+               end if;
+               front := back + 1;
+            end loop;
+         end;
+      end if;
       if not Ucl.ucl_parser_add_file (parser, path) then
          libucl.ucl_parser_free (parser);
          raise ucl_file_unparseable with path;

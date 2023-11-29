@@ -6,7 +6,6 @@ with Ada.Exceptions;
 with Ada.IO_Exceptions;
 with Ada.Directories;
 with Ada.Direct_IO;
-with Ada.Strings.Fixed;
 with Archive.Unix;
 with Archive.Dirent.Scan;
 with ThickUCL.Files;
@@ -20,7 +19,6 @@ package body Archive.Pack is
    package DIR renames Ada.Directories;
    package EX  renames Ada.Exceptions;
    package IOX renames Ada.IO_Exceptions;
-   package ASF renames Ada.Strings.Fixed;
    package UNX renames Archive.Unix;
    package SCN renames Archive.Dirent.Scan;
    package TUC renames ThickUCL;
@@ -34,6 +32,7 @@ package body Archive.Pack is
       metadata_file       : String;
       manifest_file       : String;
       prefix              : String;
+      abi                 : String;
       keyword_dir         : String;
       output_file         : String;
       fixed_timestamp     : filetime;
@@ -79,7 +78,8 @@ package body Archive.Pack is
       metadata.write_blank_header (output_file);     --  block 1
       metadata.write_metadata_block (output_file,
                                      metadata_file,
-                                     prefix);        --  block 2
+                                     prefix,
+                                     abi);           --  block 2
       metadata.write_file_index_block (output_file); --  block 3
       metadata.write_archive_block (output_file);    --  block 4
       metadata.overwrite_header (output_file);
@@ -367,7 +367,7 @@ package body Archive.Pack is
             AS.files.Append (new_block);
             if AS.level = verbose then
                AS.print (verbose,
-                         Unix.display_permissions (new_block.file_perms)
+                         Unix.display_permissions (new_block.file_perms, new_block.type_of_file)
                          & verbose_display_owngrp (features.owner)
                          & verbose_display_owngrp (features.group)
                          & verbose_display_filesize
@@ -850,7 +850,8 @@ package body Archive.Pack is
      (AS               : in out Arc_Structure;
       output_file_path : String;
       metadata_path    : String;
-      prefix           : String)
+      prefix           : String;
+      abi              : String)
    is
       use type ZST.File_Size;
 
@@ -864,6 +865,7 @@ package body Archive.Pack is
       KEY_DIRS     : constant String := "directories";
       KEY_SCRIPTS  : constant String := "scripts";
       KEY_DESCR    : constant String := "desc";
+      KEY_ABI      : constant String := "abi";
    begin
       AS.meta_size := 0;
       AS.flat_meta := 0;
@@ -885,7 +887,7 @@ package body Archive.Pack is
 
       if attempt_read then
          begin
-            TUC.Files.parse_ucl_file (tree, metadata_path);
+            TUC.Files.parse_ucl_file (tree, metadata_path, "");
          exception
             when TUC.Files.ucl_file_unparseable =>
                declare
@@ -916,6 +918,18 @@ package body Archive.Pack is
       else
          tree.insert (KEY_PREFIX, prefix);
       end if;
+
+      --  augment with abi
+      if tree.key_exists (KEY_ABI) then
+         AS.print (normal, "Metadata unexpected contains abi field; not overwriting.");
+      else
+         if abi = "" then
+            tree.insert (KEY_ABI, "*:0:*");
+         else
+            tree.insert (KEY_ABI, abi);
+         end if;
+      end if;
+
 
       --  augment directories
       if tree.key_exists (KEY_DIRS) then
@@ -1031,24 +1045,6 @@ package body Archive.Pack is
 
 
    ------------------------------------------------------------------------------------------
-   --  trim_trailing_zeros
-   ------------------------------------------------------------------------------------------
-   function trim_trailing_zeros (full_string : String) return String
-   is
-      first_zero : Natural;
-      pattern    : constant String (1 .. 1) := (others => Character'Val (0));
-   begin
-      first_zero := ASF.Index (Source  => full_string, Pattern => pattern);
-      if first_zero = full_string'First then
-         return "";
-      elsif first_zero > full_string'First then
-         return full_string (full_string'First .. first_zero - 1);
-      end if;
-      return full_string;
-   end trim_trailing_zeros;
-
-
-   ------------------------------------------------------------------------------------------
    --  able_to_write_rvn_archive
    ------------------------------------------------------------------------------------------
    function able_to_write_rvn_archive
@@ -1084,62 +1080,5 @@ package body Archive.Pack is
       end if;
       return dir_is_writable;
    end able_to_write_rvn_archive;
-
-
-   ------------------------------------------------------------------------------------------
-   --  verbose_display_owngrp
-   ------------------------------------------------------------------------------------------
-   function verbose_display_owngrp (owngrp : ownergroup) return String
-   is
-      name   : constant String := trim_trailing_zeros (owngrp);
-      result : String (1 .. 9) := (others => ' ');
-      rindex : Natural;
-   begin
-      if name'Length > 8 then
-         result := " " & name (name'First .. name'First + 6) & "*";
-      else
-         rindex := 10 - name'Length;
-         result (rindex .. 9) := name;
-      end if;
-      return result;
-   end verbose_display_owngrp;
-
-
-   ------------------------------------------------------------------------------------------
-   --  verbose_display_filesize
-   ------------------------------------------------------------------------------------------
-   function verbose_display_filesize (fsize : size_type) return String
-   is
-      function trim_first (S : String) return String;
-      function trim_first (S : String) return String is
-      begin
-         return S (S'First + 1 .. S'Last);
-      end trim_first;
-
-      result : String (1 .. 9) := (others => ' ');
-   begin
-      if fsize < 100_000_000 then
-         declare
-            myimage : constant String := trim_first (fsize'Img);
-         begin
-            result (10 - myimage'Length .. result'Last) := myimage;
-         end;
-      elsif fsize < 10_000_000_000 then
-         declare
-            basenum : constant Natural := Natural (fsize / 1_000_000);
-            myimage : constant String := trim_first (basenum'Img & "M+");
-         begin
-            result (10 - myimage'Length .. result'Last) := myimage;
-         end;
-      else
-         declare
-            basenum : constant Natural := Natural (fsize / 1_000_000_000);
-            myimage : constant String := trim_first (basenum'Img & "G+");
-         begin
-            result (10 - myimage'Length .. result'Last) := myimage;
-         end;
-      end if;
-      return result;
-   end verbose_display_filesize;
 
 end Archive.Pack;

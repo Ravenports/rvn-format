@@ -21,6 +21,7 @@ package Archive.Pack is
       metadata_file       : String;
       manifest_file       : String;
       prefix              : String;
+      abi                 : String;
       keyword_dir         : String;
       output_file         : String;
       fixed_timestamp     : filetime;
@@ -177,7 +178,8 @@ private
      (AS : in out Arc_Structure;
       output_file_path : String;
       metadata_path    : String;
-      prefix           : String);
+      prefix           : String;
+      abi              : String);
 
    --  Write block 3 (the compressed concatentation of blocks FA .. FE)
    procedure write_file_index_block (AS : in out Arc_Structure; output_file_path : String);
@@ -185,20 +187,9 @@ private
    --  Write block 4 (the compressed single archive)
    procedure write_archive_block (AS : in out Arc_Structure; output_file_path : String);
 
-   --  Cut out trailing characters set to zero and return as a trimmed string
-   function trim_trailing_zeros (full_string : String) return String;
-
    --  Returns false if the part of output_file_path is not writable
    function able_to_write_rvn_archive
      (AS : Arc_Structure;
       output_file_path : String) return Boolean;
-
-   --  Return owner or group, 9 characters long.  If owner or group is longer than 8 characters,
-   --  only the first seven is displayed followed by "*" and a space
-   function verbose_display_owngrp (owngrp : ownergroup) return String;
-
-   --  Returns 9-character string representing file size, left aligned after leftmost space.
-   --  Values over 100 million are have "M" suffix and values over 1 gigabyte use G suffix.
-   function verbose_display_filesize (fsize : size_type) return String;
 
 end Archive.Pack;

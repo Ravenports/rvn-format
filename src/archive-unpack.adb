@@ -636,7 +636,10 @@ package body Archive.Unpack is
    ------------------------------------------------------------------------------------------
    --  print_manifest
    ------------------------------------------------------------------------------------------
-   procedure print_manifest (DS : in out DArc; show_b3sum : Boolean := False)
+   procedure print_manifest
+     (DS : in out DArc;
+      show_b3sum : Boolean := False;
+      show_attr  : Boolean := False)
    is
       procedure print (position : file_block_crate.Cursor);
       procedure print (position : file_block_crate.Cursor)
@@ -662,6 +665,16 @@ package body Archive.Unpack is
             begin
                if show_b3sum then
                   DS.print (normal, Blake_3.hex (block.blake_sum) & " " & fullpath);
+               elsif show_attr then
+                  DS.print (normal,
+                            Unix.display_permissions (block.file_perms, block.type_of_file)
+                            & verbose_display_owngrp (DS.owners.Element (block.index_owner).name)
+                            & verbose_display_owngrp (DS.groups.Element (block.index_group).name)
+                            & verbose_display_filesize (block.file_size_tb)
+                            & " "
+                            & Unix.format_file_time (block.modified_sec)
+                            & " "
+                            & fullpath);
                else
                   DS.print (normal, fullpath);
                end if;
@@ -688,6 +701,7 @@ package body Archive.Unpack is
    procedure write_manifest_to_file
      (DS         : in out DArc;
       show_b3sum : Boolean := False;
+      show_attr  : Boolean := False;
       filepath   : String)
    is
       procedure print (position : file_block_crate.Cursor);
@@ -706,6 +720,16 @@ package body Archive.Unpack is
             begin
                if show_b3sum then
                   TIO.Put_Line (output_handle, Blake_3.hex (block.blake_sum) & " " & fullpath);
+               elsif show_attr then
+                  TIO.Put_Line (output_handle,
+                            Unix.display_permissions (block.file_perms, block.type_of_file)
+                            & verbose_display_owngrp (DS.owners.Element (block.index_owner).name)
+                            & verbose_display_owngrp (DS.groups.Element (block.index_group).name)
+                            & verbose_display_filesize (block.file_size_tb)
+                            & " "
+                            & Unix.format_file_time (block.modified_sec)
+                            & " "
+                            & fullpath);
                else
                   TIO.Put_Line (output_handle, fullpath);
                end if;

@@ -25,6 +25,7 @@ is
    opt_extract  : Boolean := False;
    opt_metadata : Boolean := False;
    opt_manifest : Boolean := False;
+   opt_attr     : Boolean := False;
    opt_outdir   : Boolean := False;
    opt_touch    : Boolean := False;
    opt_counts   : Boolean := False;
@@ -60,6 +61,8 @@ is
                         opt_metadata := True;
                      elsif this_arg = "--list-manifest" then
                         opt_manifest := True;
+                     elsif this_arg = "--attributes" then
+                        opt_attr := True;
                      elsif this_arg = "--out-dir" then
                         opt_outdir := True;
                         next_parameter := outdir;
@@ -89,6 +92,7 @@ is
                               when 'x' => opt_extract := True;
                               when 'm' => opt_metadata := True;
                               when 'l' => opt_manifest := True;
+                              when 'a' => opt_attr:= True;
                               when 'c' => opt_counts := True;
                               when 'o' =>
                                  case this_arg (single) is
@@ -138,7 +142,7 @@ is
    procedure usage (error_msg : String) is
    begin
       TIO.Put_Line (error_msg);
-      TIO.Put_Line ("xrvn [-vq] [-xmlc] [-d] [-t] [-o outdir] filename");
+      TIO.Put_Line ("xrvn [-vq] [-xmlc] [-d|-a] [-t] [-o outdir] filename");
    end usage;
 
    procedure error (error_msg : String) is
@@ -205,6 +209,10 @@ begin
       usage ("The --quiet and --verbose options are mutually exclusive");
       return;
    end if;
+   if opt_digest and then opt_attr then
+      usage ("The --digest and --attributes options are mutually exclusive");
+      return;
+   end if;
    if opt_touch and then not opt_extract then
       error ("Notice: The --touch option only has effect while extracting.");
    end if;
@@ -262,10 +270,10 @@ begin
             declare
                target : constant String := outputdir & "/" & basename & ".manifest";
             begin
-               operation.write_manifest_to_file (opt_digest, target);
+               operation.write_manifest_to_file (opt_digest, opt_attr, target);
             end;
          else
-            operation.print_manifest (opt_digest);
+            operation.print_manifest (opt_digest, opt_attr);
          end if;
       elsif opt_metadata then
          if opt_outdir then

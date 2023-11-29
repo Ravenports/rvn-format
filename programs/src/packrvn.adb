@@ -46,12 +46,14 @@ is
    arg_outdir    : text;
    arg_filename  : text;
    arg_prefix    : text;
+   arg_abi       : text;
    arg_timestamp : text;
    arg_keyword   : text := ASU.To_Unbounded_String ("/var/ravenports/conspiracy/Mk/Keywords");
 
    procedure process_arguments
    is
-      type compound is (waiting, rootdir, outdir, whitelist, metadata, prefix, timestamp, kwdir);
+      type compound is (waiting, rootdir, outdir, whitelist, metadata, prefix, abi,
+                        timestamp, kwdir);
       argx : Natural := 0;
       next_parameter : compound := waiting;
 
@@ -70,6 +72,7 @@ is
                when whitelist => arg_whitelist := ASU.To_Unbounded_String (this_arg);
                when metadata  => arg_metadata  := ASU.To_Unbounded_String (this_arg);
                when prefix    => arg_prefix    := ASU.To_Unbounded_String (this_arg);
+               when abi       => arg_abi       := ASU.To_Unbounded_String (this_arg);
                when timestamp => arg_timestamp := ASU.To_Unbounded_String (this_arg);
                when kwdir     => arg_keyword   := ASU.To_Unbounded_String (this_arg);
             end case;
@@ -94,6 +97,8 @@ is
                         next_parameter := metadata;
                      elsif this_arg = "--prefix" then
                         next_parameter := prefix;
+                     elsif this_arg = "--abi" then
+                        next_parameter := abi;
                      elsif this_arg = "--timestamp" then
                         next_parameter := timestamp;
                      elsif this_arg = "--verbose" then
@@ -111,7 +116,7 @@ is
                            case this_arg (single) is
                               when 'v' => opt_verbose := True;
                               when 'q' => opt_quiet := True;
-                              when 'r' | 'o' | 'w' | 'm' | 'p' | 't' | 'k' =>
+                              when 'r' | 'o' | 'w' | 'm' | 'p' | 'a' | 't' | 'k' =>
                                  case this_arg (single) is
                                     when 'r' => opt_rootdir   := True;
                                     when 'o' => opt_outdir    := True;
@@ -128,6 +133,7 @@ is
                                        when 'w' => next_parameter := whitelist;
                                        when 'm' => next_parameter := metadata;
                                        when 'p' => next_parameter := prefix;
+                                       when 'a' => next_parameter := abi;
                                        when 't' => next_parameter := timestamp;
                                        when others => null;
                                     end case;
@@ -143,6 +149,7 @@ is
                                           when 'w' => arg_whitelist := remainder;
                                           when 'm' => arg_metadata  := remainder;
                                           when 'p' => arg_prefix    := remainder;
+                                          when 'a' => arg_abi       := remainder;
                                           when 't' => arg_timestamp := remainder;
                                           when others => null;
                                        end case;
@@ -175,8 +182,8 @@ is
    procedure usage (error_msg : String) is
    begin
       TIO.Put_Line (error_msg);
-      TIO.Put_Line ("packrvn [-vq] -r rootdir [-o outdir] [-w whitelist] " &
-                      "[-p prefix] [-k keyword_dir] [-m metadata] [-t timestamp] filename");
+      TIO.Put_Line ("packrvn [-vq] -r rootdir [-o outdir] [-w whitelist] [-p prefix] [-a abi]");
+      TIO.Put_Line ("        [-k keyword_dir] [-m metadata] [-t timestamp] filename");
    end usage;
 
    procedure error (error_msg : String) is
@@ -344,6 +351,7 @@ begin
                                      metadata_file       => ASU.To_String (arg_metadata),
                                      manifest_file       => ASU.To_String (arg_whitelist),
                                      prefix              => ASU.To_String (arg_prefix),
+                                     abi                 => ASU.To_String (arg_abi),
                                      keyword_dir         => ASU.To_String (arg_keyword),
                                      fixed_timestamp     => provide_timestamp (arg_timestamp),
                                      output_file         => rvn_file,
