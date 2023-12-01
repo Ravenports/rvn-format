@@ -6,6 +6,7 @@ private with libucl;
 package ThickUCL.Files is
 
    ucl_file_unparseable : exception;
+   ucl_data_unparseable : exception;
 
    --  Opens UCL file for reading and attempts to parse the contents.
    --  If it fails, the ucl_file_unparseable exception is thrown.
@@ -15,6 +16,13 @@ package ThickUCL.Files is
    procedure parse_ucl_file
      (tree    : in out UclTree;
       path    : String;
+      nvpairs : String);
+
+   --  Version of parse_ucl_file, but the file has already been read into in string.
+   --  Rather than force a write and read, just parse the string directly.
+   procedure parse_ucl_string
+     (tree    : in out UclTree;
+      ucldata : String;
       nvpairs : String);
 
 private
@@ -29,5 +37,12 @@ private
 
    function extract_key
      (item : access constant libucl.ucl_object_t) return String;
+
+   --  isfile determines if ucldata is a path name or the file contents
+   procedure parse_ucl_guts
+     (tree    : in out UclTree;
+      isfile  : Boolean;
+      ucldata : String;
+      nvpairs : String);
 
 end ThickUCL.Files;

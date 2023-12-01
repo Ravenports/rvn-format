@@ -73,7 +73,7 @@ package body ThickUCL is
    procedure insert
      (tree : in out UclTree;
       name : String;
-      value : ucl.ucl_integer)
+      value : Ucl.ucl_integer)
    is
       procedure wrap_payload;
       procedure append_into_array (Element : in out jar_array.Vector);
@@ -427,13 +427,13 @@ package body ThickUCL is
       is
          spanking_array : jar_array.Vector;
       begin
-         tree.store_arrays.append (spanking_array);
+         tree.store_arrays.Append (spanking_array);
          global_index := tree.store_arrays.Last_Index;
 
          dref.data_type := ucl_array;
          dref.vector_index := global_index;
 
-         tree.open_structure.append (dref);
+         tree.open_structure.Append (dref);
       end wrap_payload;
 
       procedure append_into_array (Element : in out jar_array.Vector) is
@@ -446,7 +446,7 @@ package body ThickUCL is
          Element.Insert (name_us, dref);
       end append_into_uclobj;
    begin
-       if tree.open_structure.Is_Empty then
+      if tree.open_structure.Is_Empty then
          if key_missing (name) then
             TIO.Put_Line (ERR_NEEDS_KEY & ": new array");
             return;
@@ -455,7 +455,7 @@ package body ThickUCL is
          wrap_payload;
          tree.tree_stump.Insert (name_us, dref);
          return;
-       end if;
+      end if;
 
       struct_index := tree.last_reference_index;
       case tree.last_open_structure is
@@ -506,7 +506,7 @@ package body ThickUCL is
                TIO.Put_Line (ERR_ARRAY_DNE & " (" & name & ")");
             when data_array =>
                dref.vector_index := tree.get_index_of_base_array (name);
-               tree.open_structure.append (dref);
+               tree.open_structure.Append (dref);
             when others =>
                TIO.Put_Line (ERR_NOT_ARRAY & " (" & name & ")");
          end case;
@@ -529,7 +529,7 @@ package body ThickUCL is
             case leaf is
                when data_array =>
                   dref.vector_index := tree.get_array_element_vector_index (LRI, element_index);
-                  tree.open_structure.append (dref);
+                  tree.open_structure.Append (dref);
                when others =>
                   TIO.Put_Line (ERR_NOT_ARRAY & " (index" & element_index'Img & ")");
             end case;
@@ -545,7 +545,7 @@ package body ThickUCL is
                   TIO.Put_Line (ERR_ARRAY_DNE & " (" & name & ")");
                when data_array =>
                   dref.vector_index := tree.get_object_vector_index (LRI, name);
-                  tree.open_structure.append (dref);
+                  tree.open_structure.Append (dref);
                when others =>
                   TIO.Put_Line (ERR_NOT_ARRAY & " (index" & element_index'Img & ")");
             end case;
@@ -604,7 +604,7 @@ package body ThickUCL is
          dref.data_type := ucl_object;
          dref.vector_index := global_index;
 
-         tree.open_structure.append (dref);
+         tree.open_structure.Append (dref);
       end wrap_payload;
 
       procedure append_into_array (Element : in out jar_array.Vector) is
@@ -617,7 +617,7 @@ package body ThickUCL is
          Element.Insert (name_us, dref);
       end append_into_uclobj;
    begin
-       if tree.open_structure.Is_Empty then
+      if tree.open_structure.Is_Empty then
          if key_missing (name) then
             TIO.Put_Line (ERR_NEEDS_KEY & ": new object map");
             return;
@@ -626,7 +626,7 @@ package body ThickUCL is
          wrap_payload;
          tree.tree_stump.Insert (name_us, dref);
          return;
-       end if;
+      end if;
 
       struct_index := tree.last_reference_index;
       case tree.last_open_structure is
@@ -677,7 +677,7 @@ package body ThickUCL is
                TIO.Put_Line (ERR_OBJECT_DNE & " (" & name & ")");
             when data_object =>
                dref.vector_index := tree.get_index_of_base_ucl_object (name);
-               tree.open_structure.append (dref);
+               tree.open_structure.Append (dref);
             when others =>
                TIO.Put_Line (ERR_NOT_OBJECT & " (" & name & ")");
          end case;
@@ -700,7 +700,7 @@ package body ThickUCL is
             case leaf is
                when data_object =>
                   dref.vector_index := tree.get_array_element_vector_index (LRI, element_index);
-                  tree.open_structure.append (dref);
+                  tree.open_structure.Append (dref);
                when others =>
                   TIO.Put_Line (ERR_NOT_OBJECT & " (index" & element_index'Img & ")");
             end case;
@@ -716,7 +716,7 @@ package body ThickUCL is
                   TIO.Put_Line (ERR_OBJECT_DNE & " (" & name & ")");
                when data_object =>
                   dref.vector_index := tree.get_object_vector_index (LRI, name);
-                  tree.open_structure.append (dref);
+                  tree.open_structure.Append (dref);
                when others =>
                   TIO.Put_Line (ERR_NOT_OBJECT & " (index" & element_index'Img & ")");
             end case;

@@ -87,8 +87,8 @@ package body Archive.Whitelist is
       succeeded   : Boolean := True;
       regmech     : constant REX.Pattern_Matcher := REX.Compile ("^@[(].*,.*,.*[)] ");
       captured    : constant REX.Pattern_Matcher := REX.Compile ("^@[(](.*),(.*),(.*)[)] (.*)");
-      keymech     : constant REX.Pattern_Matcher := REX.compile ("^@([^(]\S*) (.*)");
-      dirmech     : constant REX.Pattern_Matcher := REX.compile ("^dir[(](.*),(.*),(.*)[)]");
+      keymech     : constant REX.Pattern_Matcher := REX.Compile ("^@([^(]\S*) (.*)");
+      dirmech     : constant REX.Pattern_Matcher := REX.Compile ("^dir[(](.*),(.*),(.*)[)]");
       key_jar     : REX.Match_Array (0 .. 2);
       match_jar   : REX.Match_Array (0 .. 1);
       capture_jar : REX.Match_Array (0 .. 5);
@@ -633,7 +633,7 @@ package body Archive.Whitelist is
          end if;
       end process;
    begin
-      whitelist.temp_dirs.Iterate(process'Access);
+      whitelist.temp_dirs.Iterate (process'Access);
       whitelist.temp_dirs.Clear;
    end process_temporary_directories;
 

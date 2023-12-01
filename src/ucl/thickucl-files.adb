@@ -16,6 +16,37 @@ package body ThickUCL.Files is
    procedure parse_ucl_file
      (tree : in out UclTree;
       path : String;
+      nvpairs : String) is
+   begin
+      parse_ucl_guts (tree    => tree,
+                      isfile  => True,
+                      ucldata => path,
+                      nvpairs => nvpairs);
+   end parse_ucl_file;
+
+
+   ------------------------
+   --  parse_ucl_string  --
+   ------------------------
+   procedure parse_ucl_string
+     (tree    : in out UclTree;
+      ucldata : String;
+      nvpairs : String) is
+   begin
+      parse_ucl_guts (tree    => tree,
+                      isfile  => False,
+                      ucldata => ucldata,
+                      nvpairs => nvpairs);
+   end parse_ucl_string;
+
+
+   ----------------------
+   --  parse_ucl_guts  --
+   ----------------------
+   procedure parse_ucl_guts
+     (tree    : in out UclTree;
+      isfile  : Boolean;
+      ucldata : String;
       nvpairs : String)
    is
       procedure register_pair (pair : String);
@@ -57,9 +88,16 @@ package body ThickUCL.Files is
             end loop;
          end;
       end if;
-      if not Ucl.ucl_parser_add_file (parser, path) then
-         libucl.ucl_parser_free (parser);
-         raise ucl_file_unparseable with path;
+      if isfile then
+         if not Ucl.ucl_parser_add_file (parser, ucldata) then
+            libucl.ucl_parser_free (parser);
+            raise ucl_file_unparseable with ucldata;
+         end if;
+      else
+         if not Ucl.ucl_parser_add_chunk (parser, ucldata) then
+            libucl.ucl_parser_free (parser);
+            raise ucl_data_unparseable;
+         end if;
       end if;
       obj := Ucl.ucl_parser_get_object (parser);
       libucl.ucl_parser_free (parser);
@@ -74,7 +112,7 @@ package body ThickUCL.Files is
       end if;
 
       libucl.ucl_object_unref (obj);
-   end parse_ucl_file;
+   end parse_ucl_guts;
 
 
    ------------------
@@ -95,39 +133,39 @@ package body ThickUCL.Files is
    is
       iter : aliased libucl.ucl_object_iter_t := libucl.ucl_object_iter_t (System.Null_Address);
       item : access constant libucl.ucl_object_t;
-      item_type : ucl.intermediate_ucl_type;
+      item_type : Ucl.intermediate_ucl_type;
    begin
       loop
          item := Ucl.ucl_object_iterate (rootobj, iter'Access, True);
          exit when item = null;
 
-         item_type := ucl.intermediate_type (item);
+         item_type := Ucl.intermediate_type (item);
          case item_type is
-            when ucl.med_null =>
+            when Ucl.med_null =>
                TIO.Put_Line ("Unexpected ucl parse error: object type is null, key="
                              & extract_key (item));
 
-            when ucl.med_userdata =>
+            when Ucl.med_userdata =>
                TIO.Put_Line ("Data of type UCL_USERDATA found.  Skipping unsupported type, key="
                              & extract_key (item));
 
-            when ucl.med_boolean =>
-               tree.insert (extract_key (item), ucl.ucl_object_toboolean (item));
-            when ucl.med_int =>
-               tree.insert (extract_key (item), ucl.ucl_object_toint (item));
-            when ucl.med_float =>
-               tree.insert (extract_key (item), ucl.ucl_object_tofloat (item));
-            when ucl.med_string =>
-               tree.insert (extract_key (item), ucl.ucl_object_tostring_forced (item));
-            when ucl.med_time =>
-               tree.insert (extract_key (item), ucl.ucl_object_totime (item));
+            when Ucl.med_boolean =>
+               tree.insert (extract_key (item), Ucl.ucl_object_toboolean (item));
+            when Ucl.med_int =>
+               tree.insert (extract_key (item), Ucl.ucl_object_toint (item));
+            when Ucl.med_float =>
+               tree.insert (extract_key (item), Ucl.ucl_object_tofloat (item));
+            when Ucl.med_string =>
+               tree.insert (extract_key (item), Ucl.ucl_object_tostring_forced (item));
+            when Ucl.med_time =>
+               tree.insert (extract_key (item), Ucl.ucl_object_totime (item));
 
-            when ucl.med_object =>
+            when Ucl.med_object =>
                tree.start_object (extract_key (item));
                populate_the_tree (tree, item);
                tree.close_object;
 
-            when ucl.med_array =>
+            when Ucl.med_array =>
                tree.start_array (extract_key (item));
                populate_array (tree, item);
                tree.close_array;
@@ -145,37 +183,37 @@ package body ThickUCL.Files is
    is
       iter : aliased libucl.ucl_object_iter_t := libucl.ucl_object_iter_t (System.Null_Address);
       item : access constant libucl.ucl_object_t;
-      item_type : ucl.intermediate_ucl_type;
+      item_type : Ucl.intermediate_ucl_type;
    begin
       loop
          item := Ucl.ucl_object_iterate (arrayobj, iter'Access, True);
          exit when item = null;
 
-         item_type := ucl.intermediate_type (item);
+         item_type := Ucl.intermediate_type (item);
          case item_type is
-            when ucl.med_null =>
+            when Ucl.med_null =>
                TIO.Put_Line ("Unexpected ucl parse error: array type is null");
 
-            when ucl.med_userdata =>
+            when Ucl.med_userdata =>
                TIO.Put_Line ("Data of type UCL_USERDATA found.  Skipping unsupported type");
 
-            when ucl.med_boolean =>
-               tree.insert ("", ucl.ucl_object_toboolean (item));
-            when ucl.med_int =>
-               tree.insert ("", ucl.ucl_object_toint (item));
-            when ucl.med_float =>
-               tree.insert ("", ucl.ucl_object_tofloat (item));
-            when ucl.med_string =>
-               tree.insert ("", ucl.ucl_object_tostring_forced (item));
-            when ucl.med_time =>
-               tree.insert ("", ucl.ucl_object_totime (item));
+            when Ucl.med_boolean =>
+               tree.insert ("", Ucl.ucl_object_toboolean (item));
+            when Ucl.med_int =>
+               tree.insert ("", Ucl.ucl_object_toint (item));
+            when Ucl.med_float =>
+               tree.insert ("", Ucl.ucl_object_tofloat (item));
+            when Ucl.med_string =>
+               tree.insert ("", Ucl.ucl_object_tostring_forced (item));
+            when Ucl.med_time =>
+               tree.insert ("", Ucl.ucl_object_totime (item));
 
-            when ucl.med_object =>
+            when Ucl.med_object =>
                tree.start_object ("");
                populate_the_tree (tree, item);
                tree.close_object;
 
-            when ucl.med_array =>
+            when Ucl.med_array =>
                tree.start_array ("");
                populate_array (tree, item);
                tree.close_array;

@@ -80,7 +80,7 @@ package body Archive.Whitelist.Keywords is
          end if;
       end loop;
 
-      return Result;
+      return result;
    end process_external_keyword;
 
 

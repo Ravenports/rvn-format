@@ -8,7 +8,7 @@ package Archive.Dirent is
    type Directory_Entity is tagged private;
 
    --  Returns the filename of the directory entity (up to 255 characters)
-   function simple_name (item: Directory_Entity) return String;
+   function simple_name (item : Directory_Entity) return String;
 
    --  Returns the absolute path of the directory entity
    function full_path (item : Directory_Entity) return String;

@@ -859,7 +859,7 @@ package body Archive.Pack is
       dossier_size : ZST.File_Size;
       tree         : ThickUCL.UclTree;
       flat_archive : constant String := output_file_path & ".archive";
-      archive_size : constant UCL.ucl_integer := UCL.ucl_integer (DIR.Size (flat_archive));
+      archive_size : constant Ucl.ucl_integer := Ucl.ucl_integer (DIR.Size (flat_archive));
       KEY_FLATSIZE : constant String := "flatsize";
       KEY_PREFIX   : constant String := "prefix";
       KEY_DIRS     : constant String := "directories";
@@ -939,7 +939,7 @@ package body Archive.Pack is
          for z in 0 .. AS.white_list.empty_directory_count - 1 loop
             tree.start_object ("");
             declare
-               attr : constant WhiteList.white_features :=
+               attr : constant Whitelist.white_features :=
                  AS.white_list.get_empty_directory_attributes (z);
                KEY_OWNER : constant String := "owner";
                KEY_GROUP : constant String := "group";

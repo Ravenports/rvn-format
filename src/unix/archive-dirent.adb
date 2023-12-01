@@ -9,9 +9,9 @@ package body Archive.Dirent is
    -------------------
    --  simple_name  --
    -------------------
-   function simple_name (item: Directory_Entity) return String is
+   function simple_name (item : Directory_Entity) return String is
    begin
-      return ASU.To_String (Item.filename);
+      return ASU.To_String (item.filename);
    end simple_name;
 
 
@@ -20,7 +20,7 @@ package body Archive.Dirent is
    -----------------
    function full_path (item : Directory_Entity) return String is
    begin
-      return ASU.To_String (Item.directory) & "/" & ASU.To_String (Item.filename);
+      return ASU.To_String (item.directory) & "/" & ASU.To_String (item.filename);
    end full_path;
 
 

@@ -4,7 +4,7 @@
 with Ada.Real_Time;
 with Ada.Strings.Unbounded;
 with Ada.Containers.Vectors;
-with ucl;
+with Ucl;
 
 private with Ada.Containers.Hashed_Maps;
 
@@ -49,7 +49,7 @@ package ThickUCL is
    procedure insert
      (tree : in out UclTree;
       name : String;
-      value : ucl.ucl_integer);
+      value : Ucl.ucl_integer);
 
    procedure insert
      (tree : in out UclTree;
@@ -330,7 +330,7 @@ private
 
    package jar_integer is new CON.Vectors
      (Index_Type   => Natural,
-      Element_Type => ucl.ucl_integer);
+      Element_Type => Ucl.ucl_integer);
 
    package jar_float is new CON.Vectors
      (Index_Type   => Natural,

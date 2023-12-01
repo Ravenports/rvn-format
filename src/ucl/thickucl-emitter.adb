@@ -190,7 +190,7 @@ package body ThickUCL.Emitter is
    begin
       negative := raw < 0.0;
       int_part := Ucl.ucl_integer (abs_raw);
-      stripped := abs_raw - Float(int_part);
+      stripped := abs_raw - Float (int_part);
       dec_part := Ucl.ucl_integer (stripped * 1_000_000_000.0);
       declare
          sint_part : constant String := ASF.Trim (int_part'Img, Ada.Strings.Left);
@@ -240,7 +240,7 @@ package body ThickUCL.Emitter is
       SQpattern : constant String (1 .. 1) := (1 => SQ);
    begin
       if ASF.Index (raw, newline) > 0 then
-         if raw(raw'Last) = newline(newline'First) then
+         if raw (raw'Last) = newline (newline'First) then
             return "<<EOD" & newline & raw & "EOD" & LF;
          else
             return "<<EOD" & newline & raw & newline & "EOD" & LF;
@@ -318,8 +318,8 @@ package body ThickUCL.Emitter is
          case raw (k) is
             when '0' .. '9' | 'A' .. 'Z' | 'a' .. 'z' | '-' | '_' =>
                single_copy (raw (k));
-            when Character'Val(0) .. Character'Val(31) |
-                 Character'Val(127) .. Character'Val(255) =>
+            when Character'Val (0) .. Character'Val (31) |
+                 Character'Val (127) .. Character'Val (255) =>
                null;
             when SQ =>
                escape_quote;
