@@ -639,9 +639,13 @@ package body Archive.Unpack is
    procedure print_manifest
      (DS : in out DArc;
       show_b3sum : Boolean := False;
-      show_attr  : Boolean := False)
+      show_attr  : Boolean := False;
+      indent     : Natural)
    is
       procedure print (position : file_block_crate.Cursor);
+
+      spacer : constant String (1 .. indent) := (others => ' ');
+
       procedure print (position : file_block_crate.Cursor)
       is
          function get_fullpath (index_parent : index_type; filename : String) return String;
@@ -676,7 +680,7 @@ package body Archive.Unpack is
                             & " "
                             & fullpath);
                else
-                  DS.print (normal, fullpath);
+                  DS.print (normal, spacer & fullpath);
                end if;
             end;
          end if;

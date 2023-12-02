@@ -43,7 +43,8 @@ package Archive.Unpack is
    procedure print_manifest
      (DS         : in out DArc;
       show_b3sum : Boolean := False;
-      show_attr  : Boolean := False);
+      show_attr  : Boolean := False;
+      indent     : Natural);
 
    --  Same as print_manifest, but writes to a given output file instead of standard out
    procedure write_manifest_to_file

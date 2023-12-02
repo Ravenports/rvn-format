@@ -273,7 +273,7 @@ begin
                operation.write_manifest_to_file (opt_digest, opt_attr, target);
             end;
          else
-            operation.print_manifest (opt_digest, opt_attr);
+            operation.print_manifest (opt_digest, opt_attr, 0);
          end if;
       elsif opt_metadata then
          if opt_outdir then
