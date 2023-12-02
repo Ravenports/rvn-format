@@ -795,6 +795,14 @@ package body Archive.Pack is
       archive_size : constant ZST.File_Size := ZST.File_Size (DIR.Size (uncompressed_archive));
    begin
       AS.ndx_size := 0;
+      case archive_size is
+         when 0 =>
+            --  We can't compress a zero-byte string
+            AS.print (debug, "Zero-byte file_index, compression skipped");
+            AS.flat_ndx := 0;
+            return;
+         when others => null;
+      end case;
       ZST.incorporate_regular_file
         (filename    => uncompressed_archive,
          size        => archive_size,
@@ -808,7 +816,8 @@ package body Archive.Pack is
          AS.ndx_size := zstd_size (out_size);
          AS.flat_ndx := zstd_size (archive_size);
       else
-         AS.print (normal, "Failed to compress " & uncompressed_archive);
+         AS.print (normal, "Failed to compress " & uncompressed_archive &
+                     " (size" & archive_size'Img & ")");
       end if;
    end write_file_index_block;
 
@@ -825,6 +834,13 @@ package body Archive.Pack is
    begin
       AS.tmp_size := 0;
       AS.flat_arc := 0;
+      case archive_size is
+         when 0 =>
+            --  We can't compress a zero-byte string
+            AS.print (debug, "Zero-byte archive block, compression skipped");
+            return;
+         when others => null;
+      end case;
       ZST.incorporate_regular_file
         (filename    => uncompressed_archive,
          size        => archive_size,
@@ -838,7 +854,8 @@ package body Archive.Pack is
          AS.tmp_size := zstd_size (out_size);
          AS.flat_arc := size_type (archive_size);
       else
-         AS.print (normal, "Failed to compress " & uncompressed_archive);
+         AS.print (normal, "Failed to compress " & uncompressed_archive & " (size" &
+                  archive_size'Img & ")");
       end if;
    end write_archive_block;
 
@@ -914,7 +931,13 @@ package body Archive.Pack is
 
       --  augment with prefix
       if tree.key_exists (KEY_PREFIX) then
-         AS.print (normal, "Metadata unexpected contains prefix field; not overwriting.");
+         declare
+            stored_prefix : constant String := tree.get_base_value (KEY_PREFIX);
+         begin
+            if stored_prefix /= prefix then
+               AS.print (normal, "Metadata unexpected contains prefix field; not overwriting.");
+            end if;
+         end;
       else
          tree.insert (KEY_PREFIX, prefix);
       end if;
@@ -924,7 +947,7 @@ package body Archive.Pack is
          AS.print (normal, "Metadata unexpected contains abi field; not overwriting.");
       else
          if abi = "" then
-            tree.insert (KEY_ABI, "*:0:*");
+            tree.insert (KEY_ABI, "*:*:0");
          else
             tree.insert (KEY_ABI, abi);
          end if;

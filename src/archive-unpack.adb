@@ -477,6 +477,14 @@ package body Archive.Unpack is
                DS.print (normal, "Failed to decompress file index (RFI)");
          end;
       else
+         case DS.header.size_filedata is
+            when 0 =>
+               left_over := DS.consume_index ("");
+               DS.processed := True;
+               return;
+            when others => null;
+         end case;
+
          declare
             decompress_success : Boolean;
             all_files : constant String :=
