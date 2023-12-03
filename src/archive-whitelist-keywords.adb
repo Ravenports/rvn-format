@@ -416,6 +416,7 @@ package body Archive.Whitelist.Keywords is
       is
          num_spaces : constant Natural := count_char (S, ' ');
          tray_zero  : keyword_argument;
+         true_count : Natural := 0;
       begin
          tray_zero.argument := ASU.To_Unbounded_String (S);
          if keyword.level >= debug then
@@ -426,14 +427,18 @@ package body Archive.Whitelist.Keywords is
             declare
                arg : constant String := specific_field (S, x);
                tray : keyword_argument;
-               xstr : constant String := x'Img;
             begin
                if arg /= "" then
+                  true_count := true_count + 1;
                   tray.argument := ASU.To_Unbounded_String (arg);
                   keyword.split_args.Append (tray);
                   if keyword.level >= debug then
-                     TIO.Put_Line ("Push into arguments: " & arg & " (%"
-                                   & xstr (xstr'First + 1 .. xstr'Last) & ")");
+                     declare
+                        tcstr : constant String := true_count'Img;
+                     begin
+                        TIO.Put_Line ("Push into arguments: " & arg & " (%"
+                                      & tcstr (tcstr'First + 1 .. tcstr'Last) & ")");
+                     end;
                   end if;
                end if;
             end;
