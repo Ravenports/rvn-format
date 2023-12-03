@@ -20,16 +20,25 @@ package body Archive.Whitelist.Keywords is
       keyword       : String;
       arguments     : String;
       keyword_dir   : String;
-      full_path     : String;
       real_top_path : String;
       prefix_dir    : String;
+      last_file     : String;
       level         : info_level) return Boolean
    is
       procedure process_action (Position : action_set.Cursor);
+      function get_true_path (line : String) return String;
 
       keyword_obj : A_Keyword;
       result      : Boolean := True;
       act_count   : Natural := 0;
+
+      function get_true_path (line : String) return String is
+      begin
+         if line (line'First) = '/' then
+            return Unix.real_path (real_top_path & line);
+         end if;
+         return Unix.real_path (real_top_path & prefix_dir & "/" & line);
+      end get_true_path;
 
       procedure process_action (Position : action_set.Cursor)
       is
@@ -48,6 +57,7 @@ package body Archive.Whitelist.Keywords is
          declare
             act_path : constant String :=
               ASU.To_String (keyword_obj.split_args.Element (act_count).argument);
+            full_path : constant String := get_true_path (act_path);
          begin
             case action is
                when file_action =>
@@ -81,7 +91,7 @@ package body Archive.Whitelist.Keywords is
       keyword_obj.process_arguments
         (arguments => arguments,
          prefix    => prefix_dir,
-         full_path => full_path,
+         last_file => last_file,
          stagedir  => real_top_path);
 
       keyword_obj.actions.Iterate (process_action'Access);
@@ -406,12 +416,10 @@ package body Archive.Whitelist.Keywords is
      (keyword : in out A_Keyword;
       arguments : String;
       prefix    : String;
-      full_path : String;
+      last_file : String;
       stagedir  : String)
    is
       procedure split_formatted_string (S : String);
-      function perform_expansion (S, token, replacement : String) return String;
-
       procedure split_formatted_string (S : String)
       is
          num_spaces : constant Natural := count_char (S, ' ');
@@ -444,42 +452,65 @@ package body Archive.Whitelist.Keywords is
             end;
          end loop;
       end split_formatted_string;
-
-      function perform_expansion (S, token, replacement : String) return String
-      is
-         US : ASU.Unbounded_String := ASU.To_Unbounded_String (S);
-      begin
-         if keyword.level >= debug then
-            TIO.Put_Line ("perform expansion of " & S);
-            TIO.Put_Line ("Expand any " & token & " with " & replacement);
-         end if;
-         loop
-            exit when ASU.Index (Source => US, Pattern => token) = 0;
-            US := replace_substring (US, token, replacement);
-         end loop;
-         return ASU.To_String (US);
-      end perform_expansion;
    begin
       if keyword.preformat then
-         declare
-            postD : constant String := perform_expansion (arguments, "%D", prefix);
-            sdlen : constant Natural := stagedir'Length;
-         begin
-            declare
-               postf : constant String := perform_expansion (postD, "%f", tail (full_path, "/"));
-               path  : constant String := full_path (full_path'First + sdlen .. full_path'Last);
-            begin
-               declare
-                  postB : constant String := perform_expansion (postf, "%B", head (path, "/"));
-               begin
-                  split_formatted_string (postB);
-                  return;
-               end;
-            end;
-         end;
+         split_formatted_string (perform_expansion (arguments, prefix, last_file, keyword.level));
+      else
+         split_formatted_string (arguments);
       end if;
-      split_formatted_string (arguments);
    end process_arguments;
+
+
+   -------------------------
+   --  token_expansion  --
+   -------------------------
+   function token_expansion (S, token, replacement : String; level : info_level) return String
+   is
+      US : ASU.Unbounded_String := ASU.To_Unbounded_String (S);
+   begin
+      if level >= debug then
+         TIO.Put_Line ("perform expansion of " & S);
+         TIO.Put_Line ("Expand any " & token & " with " & replacement);
+      end if;
+      loop
+         exit when ASU.Index (Source => US, Pattern => token) = 0;
+         US := replace_substring (US, token, replacement);
+      end loop;
+      return ASU.To_String (US);
+   end token_expansion;
+
+
+   -------------------------
+   --  perform_expansion  --
+   -------------------------
+   function perform_expansion
+     (original  : String;
+      prefix    : String;
+      last_file : String;
+      level     : info_level) return String
+   is
+      --  %D expands to prefix
+      --  %F expands to $last_file
+      --  %f expands to basename ($last_file)
+      --  %B expands to dirname ($last_file)
+
+      postD : constant String := token_expansion (original, "%D", prefix, level);
+   begin
+      declare
+         postF : constant String := token_expansion (postD, "%F", last_file, level);
+      begin
+         declare
+            post_f : constant String := token_expansion (postF, "%f", tail (last_file, "/"), level);
+            fchar  : constant Character := last_file (last_file'First);
+         begin
+            if fchar = '/' then
+               return token_expansion (post_f, "%B", head (last_file, "/"), level);
+            else
+               return token_expansion (post_f, "%B", head (prefix & "/" & last_file, "/"), level);
+            end if;
+         end;
+      end;
+   end perform_expansion;
 
 
 end Archive.Whitelist.Keywords;

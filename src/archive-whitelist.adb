@@ -80,10 +80,11 @@ package body Archive.Whitelist is
       function categorize_line (line : String) return linecat;
       procedure handle_file_path (line : String);
       procedure handle_mode_keyword (line : String);
-      procedure invoke_keyword_callback (line : String);
+      procedure invoke_keyword_callback (line : String; last_file : String);
 
       features    : Unix.File_Characteristics;
       file_handle : TIO.File_Type;
+      last_filex  : ASU.Unbounded_String;
       succeeded   : Boolean := True;
       regmech     : constant REX.Pattern_Matcher := REX.Compile ("^@[(].*,.*,.*[)] ");
       captured    : constant REX.Pattern_Matcher := REX.Compile ("^@[(](.*),(.*),(.*)[)] (.*)");
@@ -150,6 +151,7 @@ package body Archive.Whitelist is
                succeeded := False;
             end if;
          end if;
+         last_filex := ASU.To_Unbounded_String (line);  --  intentionally don't use true_path
       end handle_file_path;
 
       procedure handle_mode_keyword (line : String) is
@@ -188,10 +190,11 @@ package body Archive.Whitelist is
                   succeeded := False;
                end if;
             end if;
+            last_filex := ASU.To_Unbounded_String (ASF.Trim (grp_path, Ada.Strings.Both));
          end;
       end handle_mode_keyword;
 
-      procedure invoke_keyword_callback (line : String)
+      procedure invoke_keyword_callback (line : String; last_file : String)
       is
          use type REX.Match_Location;
       begin
@@ -211,7 +214,9 @@ package body Archive.Whitelist is
             relative  : constant String := first_word (arguments);
             full_path : constant String := get_true_path (relative);
          begin
+            last_filex := ASU.To_Unbounded_String (relative);
             if keyword = "dir" then
+               --  @dir path
                --  standard directory creation/destruction
                whitelist.insert_temporary_directory (dir_path  => relative,
                                                      full_path => full_path,
@@ -239,9 +244,9 @@ package body Archive.Whitelist is
                keyword       => keyword,
                arguments     => arguments,
                keyword_dir   => keywords_directory,
-               full_path     => full_path,
                real_top_path => real_top_directory,
                prefix_dir    => prefix_directory,
+               last_file     => last_file,
                level         => level)
             then
                succeeded := False;
@@ -294,7 +299,7 @@ package body Archive.Whitelist is
                      TIO.Put_Line ("Manifest entity [" & line & "] has invalid keyword, ignoring");
                   end if;
                when external_keyword =>
-                  invoke_keyword_callback (line);
+                  invoke_keyword_callback (line, ASU.To_String (last_filex));
                when file_path  =>
                   handle_file_path (line);
                when mode_override =>

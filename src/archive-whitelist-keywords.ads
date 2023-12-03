@@ -12,9 +12,9 @@ package Archive.Whitelist.Keywords is
       keyword       : String;
       arguments     : String;
       keyword_dir   : String;
-      full_path     : String;
       real_top_path : String;
       prefix_dir    : String;
+      last_file     : String;
       level         : info_level) return Boolean;
 
 private
@@ -78,7 +78,7 @@ private
      (keyword : in out A_Keyword;
       arguments : String;
       prefix    : String;
-      full_path : String;
+      last_file : String;
       stagedir  : String);
 
    --  Returns number of instances of a given character in a given string
@@ -96,5 +96,16 @@ private
      (US : ASU.Unbounded_String;
       old_string : String;
       new_string : String) return ASU.Unbounded_String;
+
+   --  Replaces every occurrance of "token" with "replacement" and returns the result
+   function token_expansion (S, token, replacement : String; level : info_level) return String;
+
+   --  Evaluates the tokenized argument line and return the result
+   function perform_expansion
+     (original  : String;
+      prefix    : String;
+      last_file : String;
+      level     : info_level) return String;
+
 
 end Archive.Whitelist.Keywords;
