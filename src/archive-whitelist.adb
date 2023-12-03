@@ -115,7 +115,7 @@ package body Archive.Whitelist is
             return jump;
          end if;
          if line (line'First) = '@' then
-            if line (line'First .. line'First + 8) = "@comment " then
+            if line'Length > 7 and then line (line'First .. line'First + 7) = "@comment" then
                return jump;
             end if;
             position := ASF.Index (line, " ");
