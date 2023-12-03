@@ -800,6 +800,8 @@ package body Archive.Pack is
             --  We can't compress a zero-byte string
             AS.print (debug, "Zero-byte file_index, compression skipped");
             AS.flat_ndx := 0;
+            out_succ := True;
+            out_size := 0;
             return;
          when others => null;
       end case;
@@ -838,6 +840,8 @@ package body Archive.Pack is
          when 0 =>
             --  We can't compress a zero-byte string
             AS.print (debug, "Zero-byte archive block, compression skipped");
+            out_succ := True;
+            out_size := 0;
             return;
          when others => null;
       end case;
@@ -1015,7 +1019,7 @@ package body Archive.Pack is
          if keep_going then
             for phase in Whitelist.package_phase'Range loop
                if AS.white_list.script_count (phase) > 0 then
-                  AS.print (debug, "apply" & phase'Img & " phase scripts.");
+                  AS.print (debug, "apply " & phase'Img & " phase scripts.");
                   if ThickUCL.key_found (keyjar, Whitelist.convert_phase (phase)) then
                      tree.reopen_array (Whitelist.convert_phase (phase));
                   else
