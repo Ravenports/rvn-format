@@ -928,7 +928,7 @@ package body Archive.Pack is
 
       --  augment with flatsize
       if tree.key_exists (KEY_FLATSIZE) then
-         AS.print (normal, "Metadata unexpectedly contains flatsize field; not overwriting.");
+         AS.print (verbose, "Metadata unexpectedly contains flatsize field; not overwriting.");
       else
          tree.insert (KEY_FLATSIZE, archive_size);
       end if;
@@ -939,7 +939,7 @@ package body Archive.Pack is
             stored_prefix : constant String := tree.get_base_value (KEY_PREFIX);
          begin
             if stored_prefix /= prefix then
-               AS.print (normal, "Metadata unexpected contains prefix field; not overwriting.");
+               AS.print (verbose, "Metadata unexpected contains prefix field; not overwriting.");
             end if;
          end;
       else
@@ -948,7 +948,7 @@ package body Archive.Pack is
 
       --  augment with abi
       if tree.key_exists (KEY_ABI) then
-         AS.print (normal, "Metadata unexpected contains abi field; not overwriting.");
+         AS.print (verbose, "Metadata unexpected contains abi field; not overwriting.");
       else
          if abi = "" then
             tree.insert (KEY_ABI, "*:*:0");
@@ -960,7 +960,7 @@ package body Archive.Pack is
 
       --  augment directories
       if tree.key_exists (KEY_DIRS) then
-         AS.print (normal, "Metadata unexpected contains directories field; not overwriting.");
+         AS.print (verbose, "Metadata unexpected contains directories field; not overwriting.");
       else
          tree.start_array (KEY_DIRS);
          for z in 0 .. AS.white_list.empty_directory_count - 1 loop

@@ -43,7 +43,7 @@ package body Archive.Whitelist.Keywords is
       procedure process_action (Position : action_set.Cursor)
       is
          --  split_args are zero-indexed
-         action   : action_type renames action_set.Element (Position);
+         action   : Action_Type renames action_set.Element (Position);
          num_args : constant Natural := Natural (keyword_obj.split_args.Length) - 1;
          num_act  : constant Natural := Natural (keyword_obj.actions.Length);
       begin
@@ -138,7 +138,7 @@ package body Archive.Whitelist.Keywords is
       keyword     : String;
       script      : String) return Boolean
    is
-      num_args : constant Natural := Natural (keyword_obj.split_args.length) - 1;
+      num_args : constant Natural := Natural (keyword_obj.split_args.Length) - 1;
    begin
       for token in 0 .. 9 loop
          declare
@@ -167,7 +167,7 @@ package body Archive.Whitelist.Keywords is
       script      : String) return ASU.Unbounded_String
    is
       result : ASU.Unbounded_String := ASU.To_Unbounded_String (script);
-      num_args : constant Natural := Natural (keyword_obj.split_args.length) - 1;
+      num_args : constant Natural := Natural (keyword_obj.split_args.Length) - 1;
    begin
       for token in 0 .. num_args loop
          declare

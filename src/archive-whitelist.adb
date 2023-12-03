@@ -140,7 +140,7 @@ package body Archive.Whitelist is
       begin
          if Archive.Unix.real_path (full_path) = "" then
             if level >= normal then
-               TIO.Put_Line ("Manifest entity [" & line & "] does not exist");
+               std_error ("Manifest entity [" & line & "] does not exist");
             end if;
             succeeded := False;
          else
@@ -162,7 +162,7 @@ package body Archive.Whitelist is
          then
             succeeded := False;
             if level >= normal then
-               TIO.Put_Line ("Manifest entity [" & line & "] mode keyword has no path argument");
+               std_error ("Manifest entity [" & line & "] mode keyword has no path argument");
             end if;
             return;
          end if;
@@ -178,7 +178,7 @@ package body Archive.Whitelist is
          begin
             if full_path = "" then
                if level >= normal then
-                  TIO.Put_Line ("Manifest entity [" & grp_path & "] does not exist");
+                  std_error ("Manifest entity [" & grp_path & "] does not exist");
                   succeeded := False;
                end if;
             else
@@ -204,7 +204,7 @@ package body Archive.Whitelist is
          REX.Match (Self => keymech, Data => line, Matches => key_jar);
          if key_jar (0) = REX.No_Match then
             if level >= normal then
-               TIO.Put_Line ("Manifest entity [" & line & "] keyword line failed to parse");
+               std_error ("Manifest entity [" & line & "] keyword line failed to parse");
                return;
             end if;
             succeeded := False;
@@ -299,7 +299,7 @@ package body Archive.Whitelist is
                   null;
                when key_error =>
                   if level >= normal then
-                     TIO.Put_Line ("Manifest entity [" & line & "] has invalid keyword");
+                     std_error ("Manifest entity [" & line & "] has invalid keyword");
                   end if;
                   succeeded := False;
                when external_keyword =>
@@ -916,6 +916,15 @@ package body Archive.Whitelist is
    begin
       return ASU.To_String (whitelist.scripts (phase).Element (index).script);
    end get_script;
+
+
+   -----------------
+   --  std_error  --
+   -----------------
+   procedure std_error (message : String) is
+   begin
+      TIO.Put_Line (TIO.Standard_Error, message);
+   end std_error;
 
 
 end Archive.Whitelist;
