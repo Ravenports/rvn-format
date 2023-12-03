@@ -25,13 +25,46 @@ package body Archive.Whitelist.Keywords is
       prefix_dir    : String;
       level         : info_level) return Boolean
    is
+      procedure process_action (Position : action_set.Cursor);
+
       keyword_obj : A_Keyword;
-      relative    : constant String := first_word (arguments);
       result      : Boolean := True;
+      act_count   : Natural := 0;
+
+      procedure process_action (Position : action_set.Cursor)
+      is
+         --  split_args are zero-indexed
+         action   : action_type renames action_set.Element (Position);
+         act_path : constant String :=
+           ASU.To_String (keyword_obj.split_args.Element (act_count).argument);
+      begin
+         act_count := act_count + 1;
+         case action is
+            when file_action =>
+               if not whitelist.ingest_manifest_with_mode_override
+                 (full_path     => act_path,
+                  real_top_path => real_top_path,
+                  new_owner     => keyword_obj.get_owner,
+                  new_group     => keyword_obj.get_group,
+                  new_perms     => keyword_obj.get_permissions,
+                  level         => level)
+               then
+                  result := False;
+               end if;
+            when directory_action =>
+               whitelist.insert_temporary_directory
+                 (dir_path   => act_path,
+                  full_path  => full_path,
+                  attr_owner => keyword_obj.get_owner,
+                  attr_group => keyword_obj.get_group,
+                  attr_perms => keyword_obj.get_permissions,
+                  level      => level);
+         end case;
+      end process_action;
    begin
       keyword_obj.scan_file (keyword_dir & "/" & keyword & ".ucl", level);
-      if not keyword_obj.file_found then
-         --  FreeBSD pkg testsuite considers this a fatal issue, so mimic
+      if not keyword_obj.file_found or else keyword_obj.scan_failed then
+         --  FreeBSD pkg testsuite considers these fatal issues, so mimic
          return False;
       end if;
       keyword_obj.process_arguments
@@ -40,29 +73,8 @@ package body Archive.Whitelist.Keywords is
          full_path => full_path,
          stagedir  => real_top_path);
 
-      case keyword_obj.action is
-         when no_action =>
-            null;
-         when file_action =>
-            if not whitelist.ingest_manifest_with_mode_override
-              (full_path     => full_path,
-               real_top_path => real_top_path,
-               new_owner     => keyword_obj.get_owner,
-               new_group     => keyword_obj.get_group,
-               new_perms     => keyword_obj.get_permissions,
-               level         => level)
-            then
-               result := False;
-            end if;
-         when directory_action =>
-            whitelist.insert_temporary_directory
-              (dir_path   => relative,
-               full_path  => full_path,
-               attr_owner => keyword_obj.get_owner,
-               attr_group => keyword_obj.get_group,
-               attr_perms => keyword_obj.get_permissions,
-               level      => level);
-      end case;
+      keyword_obj.actions.Iterate (process_action'Access);
+
       if keyword_obj.deprecated then
          if level >= normal then
             TIO.Put_Line ("The " & keyword & " keyword is deprecated and it should be retired.");
@@ -257,8 +269,8 @@ package body Archive.Whitelist.Keywords is
       dmsg_key   : constant String := "deprecation_message";
       prefmt_key : constant String := "preformat_arguments";
    begin
+      keyword.scan_failed := False;
       keyword.file_found := False;
-      keyword.action := no_action;
       keyword.preformat := False;
       keyword.deprecated := False;
       keyword.deprecated_message := ASU.Null_Unbounded_String;
@@ -274,22 +286,29 @@ package body Archive.Whitelist.Keywords is
       TUC.Files.parse_ucl_file (keyword.tree, full_path, "");
       if keyword.tree.array_field_exists (action_key) then
          --  valid (only) is "[]", "[file]", "[dir]"
-         --  Historically there could have been multiple fields, but currently all are
-         --  mutually exclusive.  Therefore, only check the first field and ignore any others
          declare
             ai : constant TUC.array_index := keyword.tree.get_index_of_base_array (action_key);
+            num_elements : constant Natural := keyword.tree.get_number_of_array_elements (ai);
          begin
-            if keyword.tree.get_number_of_array_elements (ai) > 0 then
-               if keyword.tree.get_array_element_value (ai, 0) = "file" then
-                  keyword.action := file_action;
-               elsif keyword.tree.get_array_element_value (ai, 0) = "dir" then
-                  keyword.action := directory_action;
-               end if;
-            end if;
+            for index in 0 .. num_elements - 1 loop
+               declare
+                  action : constant String := keyword.tree.get_array_element_value (ai, index);
+               begin
+                  if action = "file" then
+                     keyword.actions.Append  (file_action);
+                  elsif action = "dir" then
+                     keyword.actions.Append (directory_action);
+                  else
+                     keyword.scan_failed := True;
+                     TIO.Put_Line (TIO.Standard_Error,  filename & ": action '" & action
+                                   & "' not recognized");
+                  end if;
+                  if level >= debug then
+                     TIO.Put_Line ("Action: " & action & "   " & full_path);
+                  end if;
+               end;
+            end loop;
          end;
-      end if;
-      if level >= debug then
-         TIO.Put_Line ("Action: " & keyword.action'Img & "   " & full_path);
       end if;
       if keyword.tree.boolean_field_exists (deprec_key) then
          keyword.deprecated := keyword.tree.get_base_value (deprec_key);

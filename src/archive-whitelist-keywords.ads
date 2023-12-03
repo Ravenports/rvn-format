@@ -21,16 +21,21 @@ private
 
    package ASU renames Ada.Strings.Unbounded;
 
-   type Action_Type is (no_action, file_action, directory_action);
+   type Action_Type is (file_action, directory_action);
+
+   package action_set is new CON.Vectors
+     (Index_Type => Natural,
+      Element_Type => Action_Type);
 
    type A_Keyword is tagged
       record
+         scan_failed        : Boolean;
          file_found         : Boolean;
          preformat          : Boolean;
          deprecated         : Boolean;
          deprecated_message : ASU.Unbounded_String;
          tree               : ThickUCL.UclTree;
-         action             : Action_Type;
+         actions            : action_set.Vector;
          split_args         : arg_crate.Vector;
          level              : info_level;
       end record;
