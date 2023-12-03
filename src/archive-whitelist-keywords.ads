@@ -50,8 +50,16 @@ private
    --  returns the script for a given package phase
    function retrieve_script (keyword : A_Keyword; phase : package_phase) return String;
 
-   --  convert phase into a UCL key
-   function convert (phase : package_phase) return String;
+   --  Returns false if script has more % argument tokens than arguments.
+   function valid_template
+     (keyword_obj : A_Keyword;
+      keyword     : String;
+      script      : String) return Boolean;
+
+   --  Replaces %0, %1, %2 tokens with the arguments and returns as unbounded string
+   function populate_template
+     (keyword_obj : A_Keyword;
+      script      : String) return ASU.Unbounded_String;
 
    --  Read the keyword UCL files and set some internal variables from it
    procedure scan_file

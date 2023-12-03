@@ -25,7 +25,8 @@ package Archive.Whitelist is
       post_install,
       post_install_lua,
       post_deinstall,
-      post_deinstall_lua);
+      post_deinstall_lua,
+      prepackaging);
 
    --  Returns true if archive should only archive specifically designated files.
    --  Likewise, returns false if all files in the root directory should be archived.

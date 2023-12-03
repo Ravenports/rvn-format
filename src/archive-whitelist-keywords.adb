@@ -31,8 +31,8 @@ package body Archive.Whitelist.Keywords is
    begin
       keyword_obj.scan_file (keyword_dir & "/" & keyword & ".ucl", level);
       if not keyword_obj.file_found then
-         --  Don't cause a missing keyword to break an archive build
-         return True;
+         --  FreeBSD pkg testsuite considers this a fatal issue, so mimic
+         return False;
       end if;
       keyword_obj.process_arguments
         (arguments => arguments,
@@ -73,15 +73,71 @@ package body Archive.Whitelist.Keywords is
          if keyword_obj.phase_script_defined (phase) then
             declare
                bourne : phase_script;
+               script : constant String := keyword_obj.retrieve_script (phase);
             begin
-               bourne.script := ASU.To_Unbounded_String (keyword_obj.retrieve_script (phase));
-               whitelist.scripts (phase).Append (bourne);
+               if keyword_obj.valid_template (keyword, script) then
+                  bourne.script := keyword_obj.populate_template (script);
+                  whitelist.scripts (phase).Append (bourne);
+               else
+                  return False;
+               end if;
             end;
          end if;
       end loop;
 
       return result;
    end process_external_keyword;
+
+   ----------------------
+   --  valid_template  --
+   ----------------------
+   function valid_template
+     (keyword_obj : A_Keyword;
+      keyword     : String;
+      script      : String) return Boolean
+   is
+      num_args : constant Natural := Natural (keyword_obj.split_args.length) - 1;
+   begin
+      for token in 0 .. 9 loop
+         declare
+            timage : constant String := token'Img;
+            tokarg : constant String := "%" & timage (timage'First + 1 .. timage'Last);
+         begin
+            if AS.Fixed.Index (Source => script, Pattern => tokarg) > 0 then
+               if token > num_args then
+                  TIO.Put_Line (TIO.Standard_Error, "Requesting argument " & tokarg &
+                                  " while only" & num_args'Img & " arguments are available");
+                  TIO.Put_Line (TIO.Standard_Error, "Failed to apply keyword '" & keyword & "'");
+                  return False;
+               end if;
+            end if;
+         end;
+      end loop;
+      return True;
+   end valid_template;
+
+
+   -------------------------
+   --  populate_template  --
+   -------------------------
+   function populate_template
+     (keyword_obj : A_Keyword;
+      script      : String) return ASU.Unbounded_String
+   is
+      result : ASU.Unbounded_String := ASU.To_Unbounded_String (script);
+      num_args : constant Natural := Natural (keyword_obj.split_args.length) - 1;
+   begin
+      for token in 0 .. num_args loop
+         declare
+            timage : constant String := token'Img;
+            tokarg : constant String := "%" & timage (timage'First + 1 .. timage'Last);
+            newstr : constant String := ASU.To_String (keyword_obj.split_args (token).argument);
+         begin
+            result := replace_substring (result, tokarg, newstr);
+         end;
+      end loop;
+      return result;
+   end populate_template;
 
 
    -----------------
@@ -165,30 +221,12 @@ package body Archive.Whitelist.Keywords is
    end get_permissions;
 
 
-   ---------------
-   --  convert  --
-   ---------------
-   function convert (phase : package_phase) return String is
-   begin
-      case phase is
-         when pre_install          => return "pre-install";
-         when pre_install_lua      => return "pre-install-lua";
-         when pre_deinstall        => return "pre-deinstall";
-         when pre_deinstall_lua    => return "pre-deinstall-lua";
-         when post_install         => return "post-install";
-         when post_install_lua     => return "post-install-lua";
-         when post_deinstall       => return "post-deinstall";
-         when post_deinstall_lua   => return "post-deinstall-lua";
-      end case;
-   end convert;
-
-
    ----------------------------
    --  phase_script_defined  --
    ----------------------------
    function phase_script_defined (keyword : A_Keyword; phase : package_phase) return Boolean
    is
-      phase_key : constant String := convert (phase);
+      phase_key : constant String := convert_phase (phase);
    begin
       return keyword.tree.string_field_exists (phase_key);
    end phase_script_defined;
@@ -199,7 +237,7 @@ package body Archive.Whitelist.Keywords is
    -----------------------
    function retrieve_script (keyword : A_Keyword; phase : package_phase) return String
    is
-      phase_key : constant String := convert (phase);
+      phase_key : constant String := convert_phase (phase);
    begin
       if keyword.tree.string_field_exists (phase_key) then
          return keyword.tree.get_base_value (phase_key);
@@ -227,9 +265,8 @@ package body Archive.Whitelist.Keywords is
       keyword.level := level;
 
       if full_path = "" then
-         if level >= normal then
-            TIO.Put_Line (filename & ": UCL keyword not found, ignored.");
-         end if;
+         --  level doesn't matter, show stderr even if silent
+         TIO.Put_Line (TIO.Standard_Error, filename & ": UCL keyword not found, fatal.");
          return;
       end if;
 
@@ -359,12 +396,14 @@ package body Archive.Whitelist.Keywords is
             declare
                arg : constant String := specific_field (S, x);
                tray : keyword_argument;
+               xstr : constant String := x'Img;
             begin
                if arg /= "" then
                   tray.argument := ASU.To_Unbounded_String (arg);
                   keyword.split_args.Append (tray);
                   if keyword.level >= debug then
-                     TIO.Put_Line ("Push into arguments: " & arg);
+                     TIO.Put_Line ("Push into arguments: " & arg & " (%"
+                                   & xstr (xstr'First + 1 .. xstr'Last) & ")");
                   end if;
                end if;
             end;

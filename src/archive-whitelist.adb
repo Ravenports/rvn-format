@@ -879,6 +879,7 @@ package body Archive.Whitelist is
          when post_install_lua   => return "post-install-lua";
          when post_deinstall     => return "post-deinstall";
          when post_deinstall_lua => return "post-deinstall-lua";
+         when prepackaging       => return "prepackaging";
       end case;
    end convert_phase;
 
