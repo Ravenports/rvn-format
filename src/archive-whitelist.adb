@@ -100,9 +100,9 @@ package body Archive.Whitelist is
       function get_true_path (line : String) return String is
       begin
          if line (line'First) = '/' then
-            return Unix.real_path (real_top_directory & line);
+            return real_top_directory & line;
          end if;
-         return Unix.real_path (real_top_directory & prefix_directory & "/" & line);
+         return real_top_directory & prefix_directory & "/" & line;
       end get_true_path;
 
       function categorize_line (line : String) return linecat
@@ -135,16 +135,16 @@ package body Archive.Whitelist is
 
       procedure handle_file_path (line : String)
       is
-         true_path : constant String := get_true_path (line);
+         full_path : constant String := Unix.real_path (get_true_path (line));
          insert_succeeded : Boolean;
       begin
-         if Archive.Unix.real_path (true_path) = "" then
+         if Archive.Unix.real_path (full_path) = "" then
             if level >= normal then
                TIO.Put_Line ("Manifest entity [" & line & "] does not exist, ignoring");
             end if;
          else
             insert_succeeded := whitelist.insert_file_into_whitelist
-              (full_path     => true_path,
+              (full_path     => full_path,
                real_top_path => real_top_directory,
                level         => level);
             if not insert_succeeded then
@@ -173,14 +173,15 @@ package body Archive.Whitelist is
             grp_perms : constant String := line (capture_jar (3).First .. capture_jar (3).Last);
             grp_path  : constant String := line (capture_jar (4).First .. capture_jar (4).Last);
             true_path : constant String := get_true_path (ASF.Trim (grp_path, Ada.Strings.Both));
+            full_path : constant String := Archive.Unix.real_path (true_path);
          begin
-            if Archive.Unix.real_path (true_path) = "" then
+            if full_path = "" then
                if level >= normal then
-                  TIO.Put_Line ("Manifest entity [" & line & "] does not exist, ignoring");
+                  TIO.Put_Line ("Manifest entity [" & grp_path & "] does not exist, ignoring");
                end if;
             else
                insert_succeeded := whitelist.ingest_manifest_with_mode_override
-                 (full_path     => true_path,
+                 (full_path     => full_path,
                   real_top_path => real_top_directory,
                   new_owner     => grp_owner,
                   new_group     => grp_group,
@@ -212,14 +213,14 @@ package body Archive.Whitelist is
             keyword   : constant String := line (key_jar (1).First .. key_jar (1).Last);
             arguments : constant String := line (key_jar (2).First .. key_jar (2).Last);
             relative  : constant String := first_word (arguments);
-            full_path : constant String := get_true_path (relative);
+            true_path : constant String := get_true_path (relative);
          begin
             last_filex := ASU.To_Unbounded_String (relative);
             if keyword = "dir" then
                --  @dir path
                --  standard directory creation/destruction
                whitelist.insert_temporary_directory (dir_path  => relative,
-                                                     full_path => full_path,
+                                                     true_path => true_path,
                                                      level     => level);
                return;
             end if;
@@ -230,7 +231,7 @@ package body Archive.Whitelist is
                --  Either directory creation/destruction or POG override
                whitelist.insert_temporary_directory
                  (dir_path   => relative,
-                  full_path  => full_path,
+                  true_path  => true_path,
                   attr_owner => keyword (dir_jar (1).First .. dir_jar (1).Last),
                   attr_group => keyword (dir_jar (2).First .. dir_jar (2).Last),
                   attr_perms => keyword (dir_jar (3).First .. dir_jar (3).Last),
@@ -403,7 +404,7 @@ package body Archive.Whitelist is
    procedure insert_temporary_directory
      (whitelist     : in out A_Whitelist;
       dir_path      : String;
-      full_path     : String;
+      true_path     : String;
       level         : info_level)
    is
       --  This directory usually does not exist (it needs to be created/destroyed with package
@@ -411,7 +412,7 @@ package body Archive.Whitelist is
       file_hash : Blake_3.blake3_hash;
       props     : white_properties;
    begin
-      file_hash := Blake_3.digest (full_path);
+      file_hash := Blake_3.digest (true_path);
       if whitelist.temp_dirs.Contains (file_hash) then
          if level >= normal then
             TIO.Put_Line ("Ignoring duplicate @dir " & dir_path);
@@ -433,7 +434,7 @@ package body Archive.Whitelist is
    procedure insert_temporary_directory
      (whitelist     : in out A_Whitelist;
       dir_path      : String;
-      full_path     : String;
+      true_path     : String;
       attr_owner    : String;
       attr_group    : String;
       attr_perms    : String;
@@ -444,7 +445,7 @@ package body Archive.Whitelist is
       file_hash : Blake_3.blake3_hash;
       props     : white_properties;
    begin
-      file_hash := Blake_3.digest (full_path);
+      file_hash := Blake_3.digest (true_path);
       if whitelist.temp_dirs.Contains (file_hash) then
          if level >= normal then
             TIO.Put_Line ("Ignoring duplicate @dir " & dir_path);

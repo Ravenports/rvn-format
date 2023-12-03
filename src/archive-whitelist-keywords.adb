@@ -35,34 +35,43 @@ package body Archive.Whitelist.Keywords is
       function get_true_path (line : String) return String is
       begin
          if line (line'First) = '/' then
-            return Unix.real_path (real_top_path & line);
+            return real_top_path & line;
          end if;
-         return Unix.real_path (real_top_path & prefix_dir & "/" & line);
+         return real_top_path & prefix_dir & "/" & line;
       end get_true_path;
 
       procedure process_action (Position : action_set.Cursor)
       is
          --  split_args are zero-indexed
          action   : action_type renames action_set.Element (Position);
-         num_args : constant Natural := Natural (keyword_obj.split_args.Length);
+         num_args : constant Natural := Natural (keyword_obj.split_args.Length) - 1;
          num_act  : constant Natural := Natural (keyword_obj.actions.Length);
       begin
-         if act_count + 1 > num_args then
+         act_count := act_count + 1;
+         if act_count > num_args then
             TIO.Put_Line (TIO.Standard_Error, "The " & keyword & " has" & num_act'Img
                           & " actions, but only" & num_args'Img & " arguments.");
             result := False;
             return;
          end if;
-         act_count := act_count + 1;
+
          declare
             act_path : constant String :=
               ASU.To_String (keyword_obj.split_args.Element (act_count).argument);
-            full_path : constant String := get_true_path (act_path);
+            true_path : constant String := get_true_path (act_path);
+            full_path : constant String := Unix.real_path (true_path);
          begin
             case action is
                when file_action =>
+                  if full_path = "" then
+                     if level >= normal then
+                        TIO.Put_Line ("Manifest file [" & act_path & "] does not exist, ignoring");
+                     end if;
+                     result := False;
+                     return;
+                  end if;
                   if not whitelist.ingest_manifest_with_mode_override
-                    (full_path     => act_path,
+                    (full_path     => full_path,
                      real_top_path => real_top_path,
                      new_owner     => keyword_obj.get_owner,
                      new_group     => keyword_obj.get_group,
@@ -74,7 +83,7 @@ package body Archive.Whitelist.Keywords is
                when directory_action =>
                   whitelist.insert_temporary_directory
                     (dir_path   => act_path,
-                     full_path  => full_path,
+                     true_path  => true_path,
                      attr_owner => keyword_obj.get_owner,
                      attr_group => keyword_obj.get_group,
                      attr_perms => keyword_obj.get_permissions,
