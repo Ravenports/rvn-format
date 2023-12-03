@@ -35,31 +35,42 @@ package body Archive.Whitelist.Keywords is
       is
          --  split_args are zero-indexed
          action   : action_type renames action_set.Element (Position);
-         act_path : constant String :=
-           ASU.To_String (keyword_obj.split_args.Element (act_count).argument);
+         num_args : constant Natural := Natural (keyword_obj.split_args.Length);
+         num_act  : constant Natural := Natural (keyword_obj.actions.Length);
       begin
+         if act_count + 1 > num_args then
+            TIO.Put_Line (TIO.Standard_Error, "The " & keyword & " has" & num_act'Img
+                          & " actions, but only" & num_args'Img & " arguments.");
+            result := False;
+            return;
+         end if;
          act_count := act_count + 1;
-         case action is
-            when file_action =>
-               if not whitelist.ingest_manifest_with_mode_override
-                 (full_path     => act_path,
-                  real_top_path => real_top_path,
-                  new_owner     => keyword_obj.get_owner,
-                  new_group     => keyword_obj.get_group,
-                  new_perms     => keyword_obj.get_permissions,
-                  level         => level)
-               then
-                  result := False;
-               end if;
-            when directory_action =>
-               whitelist.insert_temporary_directory
-                 (dir_path   => act_path,
-                  full_path  => full_path,
-                  attr_owner => keyword_obj.get_owner,
-                  attr_group => keyword_obj.get_group,
-                  attr_perms => keyword_obj.get_permissions,
-                  level      => level);
-         end case;
+         declare
+            act_path : constant String :=
+              ASU.To_String (keyword_obj.split_args.Element (act_count).argument);
+         begin
+            case action is
+               when file_action =>
+                  if not whitelist.ingest_manifest_with_mode_override
+                    (full_path     => act_path,
+                     real_top_path => real_top_path,
+                     new_owner     => keyword_obj.get_owner,
+                     new_group     => keyword_obj.get_group,
+                     new_perms     => keyword_obj.get_permissions,
+                     level         => level)
+                  then
+                     result := False;
+                  end if;
+               when directory_action =>
+                  whitelist.insert_temporary_directory
+                    (dir_path   => act_path,
+                     full_path  => full_path,
+                     attr_owner => keyword_obj.get_owner,
+                     attr_group => keyword_obj.get_group,
+                     attr_perms => keyword_obj.get_permissions,
+                     level      => level);
+            end case;
+         end;
       end process_action;
    begin
       keyword_obj.scan_file (keyword_dir & "/" & keyword & ".ucl", level);
@@ -300,8 +311,8 @@ package body Archive.Whitelist.Keywords is
                      keyword.actions.Append (directory_action);
                   else
                      keyword.scan_failed := True;
-                     TIO.Put_Line (TIO.Standard_Error,  filename & ": action '" & action
-                                   & "' not recognized");
+                     TIO.Put_Line (TIO.Standard_Error,  tail (filename, "/") & ": action '"
+                                   & action & "' not recognized");
                   end if;
                   if level >= debug then
                      TIO.Put_Line ("Action: " & action & "   " & full_path);
