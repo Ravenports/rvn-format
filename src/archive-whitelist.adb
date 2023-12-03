@@ -140,8 +140,9 @@ package body Archive.Whitelist is
       begin
          if Archive.Unix.real_path (full_path) = "" then
             if level >= normal then
-               TIO.Put_Line ("Manifest entity [" & line & "] does not exist, ignoring");
+               TIO.Put_Line ("Manifest entity [" & line & "] does not exist");
             end if;
+            succeeded := False;
          else
             insert_succeeded := whitelist.insert_file_into_whitelist
               (full_path     => full_path,
@@ -177,7 +178,8 @@ package body Archive.Whitelist is
          begin
             if full_path = "" then
                if level >= normal then
-                  TIO.Put_Line ("Manifest entity [" & grp_path & "] does not exist, ignoring");
+                  TIO.Put_Line ("Manifest entity [" & grp_path & "] does not exist");
+                  succeeded := False;
                end if;
             else
                insert_succeeded := whitelist.ingest_manifest_with_mode_override
@@ -297,8 +299,9 @@ package body Archive.Whitelist is
                   null;
                when key_error =>
                   if level >= normal then
-                     TIO.Put_Line ("Manifest entity [" & line & "] has invalid keyword, ignoring");
+                     TIO.Put_Line ("Manifest entity [" & line & "] has invalid keyword");
                   end if;
+                  succeeded := False;
                when external_keyword =>
                   invoke_keyword_callback (line, ASU.To_String (last_filex));
                when file_path  =>
