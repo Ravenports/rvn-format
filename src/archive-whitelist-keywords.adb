@@ -128,7 +128,7 @@ package body Archive.Whitelist.Keywords is
       end loop;
       for mtype in Message_Type'Range loop
          if ASU.Length (keyword_obj.messages (mtype)) > 0 then
-            whitelist.messages (mtype).Append (keyword_obj.messages (always));
+            whitelist.messages (mtype).Append (keyword_obj.messages (mtype));
          end if;
       end loop;
 
@@ -298,9 +298,6 @@ package body Archive.Whitelist.Keywords is
    -----------------
    procedure scan_file (keyword : in out A_Keyword; filename : String; level : info_level)
    is
-      function message_exists (vndx : ThickUcl.object_index; key : String) return Boolean;
-      function get_message (vndx : ThickUcl.object_index; key : String) return ASU.Unbounded_String;
-
       full_path  : constant String := Archive.Unix.real_path (filename);
       msgset_key : constant String := "messages";
       action_key : constant String := "actions";
@@ -308,19 +305,6 @@ package body Archive.Whitelist.Keywords is
       dmsg_key   : constant String := "deprecation_message";
       prefmt_key : constant String := "preformat_arguments";
 
-      function message_exists (vndx : ThickUcl.object_index; key : String) return Boolean is
-      begin
-         case keyword.tree.get_object_data_type (vndx, key) is
-            when ThickUCL.data_string => return True;
-            when others => return False;
-         end case;
-      end message_exists;
-
-      function get_message (vndx : ThickUcl.object_index; key : String) return ASU.Unbounded_String
-      is
-      begin
-         return ASU.To_Unbounded_String (keyword.tree.get_object_value (vndx, key));
-      end get_message;
    begin
       keyword.scan_failed := False;
       keyword.file_found := False;
@@ -378,20 +362,56 @@ package body Archive.Whitelist.Keywords is
          keyword.preformat := keyword.tree.get_base_value (prefmt_key);
       end if;
       if keyword.tree.key_exists (msgset_key) then
+         --  messages are an array of objects
          case keyword.tree.get_data_type (msgset_key) is
-            when ThickUCL.data_object =>
+            when TUC.data_array =>
                declare
-                  vndx : constant ThickUCL.object_index :=
-                    keyword.tree.get_index_of_base_ucl_object (msgset_key);
+                  vndx : constant TUC.array_index :=
+                    keyword.tree.get_index_of_base_array (msgset_key);
+                  num_msgs : constant Natural := keyword.tree.get_number_of_array_elements (vndx);
                begin
-                  for msgtype in Message_Type'Range loop
-                     declare
-                        key : constant String := get_message_key (msgtype);
-                     begin
-                        if message_exists (vndx, key) then
-                           keyword.messages (msgtype) := get_message (vndx, key);
-                        end if;
-                     end;
+                  for msg_index in 0 .. num_msgs - 1 loop
+                     case keyword.tree.get_array_element_type (vndx, msg_index) is
+                        when TUC.data_object =>
+                           declare
+                              ondx : constant TUC.object_index :=
+                                keyword.tree.get_array_element_object (vndx, msg_index);
+                              msg_key  : constant String := "message";
+                              type_key : constant String := "type";
+                           begin
+                              case keyword.tree.get_object_data_type (ondx, msg_key) is
+                                 when TUC.data_string =>
+                                    declare
+                                       msg : constant ASU.Unbounded_String :=
+                                         ASU.To_Unbounded_String
+                                           (keyword.tree.get_object_value (ondx, msg_key));
+                                    begin
+                                       case keyword.tree.get_object_data_type (ondx, type_key) is
+                                          when TUC.data_string =>
+                                             declare
+                                                tstr : constant String :=
+                                                  keyword.tree.get_object_value (ondx, type_key);
+                                             begin
+                                                if tstr = "upgrade" then
+                                                   keyword.messages (upgrade) := msg;
+                                                elsif tstr = "install" then
+                                                   keyword.messages (install) := msg;
+                                                elsif tstr = "remove" then
+                                                   keyword.messages (deinstall) := msg;
+                                                else
+                                                   keyword.messages (always) := msg;
+                                                end if;
+                                             end;
+                                          when TUC.data_not_present =>
+                                             keyword.messages (always) := msg;
+                                          when others => null;
+                                       end case;
+                                    end;
+                                 when others => null;
+                              end case;
+                           end;
+                        when others => null;
+                     end case;
                   end loop;
                end;
             when others => null;
