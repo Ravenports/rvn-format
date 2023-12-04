@@ -28,6 +28,8 @@ package Archive.Whitelist is
       post_deinstall_lua,
       prepackaging);
 
+   type Message_Type is (always, install, deinstall, upgrade);
+
    --  Returns true if archive should only archive specifically designated files.
    --  Likewise, returns false if all files in the root directory should be archived.
    function whitelist_in_use (whitelist : A_Whitelist) return Boolean;
@@ -107,8 +109,25 @@ package Archive.Whitelist is
       index         : Natural) return String;
 
 
+   --  Returns the number of messages defined for this message type
+   function message_count
+     (whitelist     : A_Whitelist;
+      msg_type      : Message_Type) return Natural;
+
+
+   --  Returns the script mapped to the given message type and index
+   function get_message
+     (whitelist     : A_Whitelist;
+      msg_type      : Message_Type;
+      index         : Natural) return String;
+
+
    --  Returns the metadata key mapped to the package phase
    function convert_phase (phase : package_phase) return String;
+
+
+   --  Get the message object key for each type of message
+   function get_message_key (msgtype : Message_Type) return String;
 
 
 private
@@ -161,15 +180,23 @@ private
       Hash            => digest_hash,
       Equivalent_Keys => digest_equivalent);
 
+   package text_crate is new CON.Vectors
+     (Index_Type   => Natural,
+      Element_Type => ASU.Unbounded_String,
+      "="          => ASU."=");
+
+   type Message_Collection is array (Message_Type) of text_crate.Vector;
+
    type A_Whitelist is tagged
       record
-         list_used : Boolean := False;
-         level     : info_level;
-         files     : white_crate.Map;
-         temp_dirs : white_crate.Map;
-         just_dirs : white_crate.Map;
-         dirs_keys : dir_keys_crate.Vector;
-         scripts   : maintenance;
+         list_used   : Boolean := False;
+         level       : info_level;
+         files       : white_crate.Map;
+         temp_dirs   : white_crate.Map;
+         just_dirs   : white_crate.Map;
+         dirs_keys   : dir_keys_crate.Vector;
+         scripts     : maintenance;
+         messages    : Message_Collection;
       end record;
 
    --  If the full path is not already in the whitelist, it will be inserted.

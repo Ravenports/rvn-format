@@ -939,7 +939,7 @@ package body Archive.Pack is
             stored_prefix : constant String := tree.get_base_value (KEY_PREFIX);
          begin
             if stored_prefix /= prefix then
-               AS.print (verbose, "Metadata unexpected contains prefix field; not overwriting.");
+               AS.print (verbose, "Metadata unexpectedly contains prefix field; not overwriting.");
             end if;
          end;
       else
@@ -948,7 +948,7 @@ package body Archive.Pack is
 
       --  augment with abi
       if tree.key_exists (KEY_ABI) then
-         AS.print (verbose, "Metadata unexpected contains abi field; not overwriting.");
+         AS.print (verbose, "Metadata unexpectedly contains abi field; not overwriting.");
       else
          if abi = "" then
             tree.insert (KEY_ABI, "*:*:0");
@@ -960,7 +960,7 @@ package body Archive.Pack is
 
       --  augment directories
       if tree.key_exists (KEY_DIRS) then
-         AS.print (verbose, "Metadata unexpected contains directories field; not overwriting.");
+         AS.print (verbose, "Metadata unexpectedly contains directories field; not overwriting.");
       else
          tree.start_array (KEY_DIRS);
          for z in 0 .. AS.white_list.empty_directory_count - 1 loop
@@ -1029,6 +1029,62 @@ package body Archive.Pack is
                      tree.insert ("", AS.white_list.get_script (phase, z));
                   end loop;
                   tree.close_array;
+               end if;
+            end loop;
+            tree.close_object;
+         end if;
+      end;
+
+      --  Build up message object
+      --  If the object already exists, don't complain, append it.
+      --  If the object's key values are arrays, append them.
+      declare
+         messages_key : constant String := "messages";
+         keep_going   : Boolean := True;
+         inner_type   : TUC.Leaf_type;
+         vndx         : TUC.object_index;
+         msg_count    : Natural;
+      begin
+         if tree.key_exists (messages_key) then
+            case tree.get_data_type (messages_key) is
+               when TUC.data_object =>
+                  tree.reopen_object (messages_key);
+               when others =>
+                  keep_going := False;
+                  AS.print (verbose, "Metadata unexpectedly contains a non-object messages "
+                            & "field; no messages will be written.");
+            end case;
+         else
+            tree.start_object (messages_key);
+         end if;
+
+         if keep_going then
+            vndx := tree.get_index_of_base_ucl_object (messages_key);
+            for mtype in Archive.Whitelist.Message_Type'Range loop
+               msg_count := AS.white_list.message_count (mtype);
+               if msg_count > 0 then
+                  declare
+                     key2 : constant String := Archive.Whitelist.get_message_key (mtype);
+                  begin
+                     inner_type := tree.get_object_data_type (vndx, key2);
+                     case inner_type is
+                        when TUC.data_not_present =>
+                           tree.start_array (key2);
+                           for m in 0 .. msg_count - 1 loop
+                              tree.insert ("", AS.white_list.get_message (mtype, m));
+                           end loop;
+                           tree.close_array;
+                        when TUC.data_array =>
+                           tree.reopen_array (key2);
+                           for m in 0 .. msg_count - 1 loop
+                              tree.insert ("", AS.white_list.get_message (mtype, m));
+                           end loop;
+                           tree.close_array;
+                        when others =>
+                           AS.print (verbose, key2 & " messages in unexpectedly not an array; "
+                                     & "no messages of this type will be added:" & msg_count'Img);
+                     end case;
+                  end;
                end if;
             end loop;
             tree.close_object;

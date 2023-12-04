@@ -22,6 +22,7 @@ private
    package ASU renames Ada.Strings.Unbounded;
 
    type Action_Type is (file_action, directory_action);
+   type Message_Set is array (Message_Type) of ASU.Unbounded_String;
 
    package action_set is new CON.Vectors
      (Index_Type => Natural,
@@ -34,6 +35,7 @@ private
          preformat          : Boolean;
          deprecated         : Boolean;
          deprecated_message : ASU.Unbounded_String;
+         messages           : Message_Set;
          tree               : ThickUCL.UclTree;
          actions            : action_set.Vector;
          split_args         : arg_crate.Vector;

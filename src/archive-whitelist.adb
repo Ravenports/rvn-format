@@ -918,6 +918,29 @@ package body Archive.Whitelist is
    end get_script;
 
 
+   ---------------------
+   --  message_count  --
+   ---------------------
+   function message_count
+     (whitelist     : A_Whitelist;
+      msg_type      : Message_Type) return Natural is
+   begin
+      return Natural (whitelist.messages (msg_type).Length);
+   end message_count;
+
+
+   -------------------
+   --  get_message  --
+   -------------------
+   function get_message
+     (whitelist     : A_Whitelist;
+      msg_type      : Message_Type;
+      index         : Natural) return String is
+   begin
+      return ASU.To_String (whitelist.messages (msg_type).Element (index));
+   end get_message;
+
+
    -----------------
    --  std_error  --
    -----------------
@@ -926,5 +949,18 @@ package body Archive.Whitelist is
       TIO.Put_Line (TIO.Standard_Error, message);
    end std_error;
 
+
+   -----------------------
+   --  get_message_key  --
+   -----------------------
+   function get_message_key (msgtype : Message_Type) return String is
+   begin
+      case msgtype is
+         when always    => return "always";
+         when deinstall => return "remove";
+         when install   => return "install";
+         when upgrade   => return "upgrade";
+      end case;
+   end get_message_key;
 
 end Archive.Whitelist;
