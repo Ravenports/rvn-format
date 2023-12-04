@@ -563,7 +563,7 @@ package body Archive.Unpack is
       function str_to_64bits (index : Natural) return filetime
       is
          result : filetime := 0;
-         multiplier : Natural;
+         multiplier : filetime;
          bytex : Natural;
          spos  : Natural := 0;
       begin
@@ -574,7 +574,7 @@ package body Archive.Unpack is
                   bytex := Character'Pos (Source (index + spos));
                   if bytex > 0 then
                      multiplier := 2 ** (8 * bitndx);
-                     result := result + filetime (bytex * multiplier);
+                     result := result + filetime (bytex) * multiplier;
                   end if;
                   spos := spos + 1;
                end loop;
@@ -585,7 +585,7 @@ package body Archive.Unpack is
                   bytex := Character'Pos (Source (index + spos));
                   if bytex > 0 then
                      multiplier := 2 ** (8 * bitndx);
-                     result := result + filetime (bytex * multiplier);
+                     result := result + filetime (bytex) * multiplier;
                   end if;
                   spos := spos + 1;
                end loop;
