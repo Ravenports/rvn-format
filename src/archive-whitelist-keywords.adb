@@ -65,7 +65,8 @@ package body Archive.Whitelist.Keywords is
                when file_action =>
                   if full_path = "" then
                      if level >= normal then
-                        TIO.Put_Line ("Manifest file [" & act_path & "] does not exist, ignoring");
+                        TIO.Put_Line (TIO.Standard_Error,
+                                      "Manifest file [" & act_path & "] does not exist, ignoring");
                      end if;
                      result := False;
                      return;
@@ -107,8 +108,13 @@ package body Archive.Whitelist.Keywords is
 
       if keyword_obj.deprecated then
          if level >= normal then
-            TIO.Put_Line ("The " & keyword & " keyword is deprecated and it should be retired.");
-            TIO.Put_Line ("Deprecation message: " & ASU.To_String (keyword_obj.deprecated_message));
+            TIO.Put (TIO.Standard_Error, "The use of '@" & keyword & "' is deprecated");
+            if ASU.Length (keyword_obj.deprecated_message) > 0 then
+               TIO.Put_Line (TIO.Standard_Error, ": " &
+                               ASU.To_String (keyword_obj.deprecated_message));
+            else
+               TIO.Put_Line (TIO.Standard_Error, "");
+            end if;
          end if;
       end if;
       for phase in package_phase'Range loop
