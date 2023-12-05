@@ -24,6 +24,9 @@ package Archive.Unix is
    --  Return set of file characteristis given the path to a file or a directory
    function get_charactistics (path : String) return File_Characteristics;
 
+   --  True if the path points to a file, directory, symlink, hardlink or FIFO
+   function file_exists (path : String) return Boolean;
+
    --  Return symlink target path
    function link_target (symlink_path : String) return String;
 

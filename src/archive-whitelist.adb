@@ -135,17 +135,17 @@ package body Archive.Whitelist is
 
       procedure handle_file_path (line : String)
       is
-         full_path : constant String := Unix.real_path (get_true_path (line));
+         true_path : constant String := get_true_path (line);
          insert_succeeded : Boolean;
       begin
-         if Archive.Unix.real_path (full_path) = "" then
+         if not Unix.file_exists (true_path) then
             if level >= normal then
                std_error ("Manifest entity [" & line & "] does not exist");
             end if;
             succeeded := False;
          else
             insert_succeeded := whitelist.insert_file_into_whitelist
-              (full_path     => full_path,
+              (full_path     => true_path,
                real_top_path => real_top_directory,
                level         => level);
             if not insert_succeeded then
@@ -174,16 +174,15 @@ package body Archive.Whitelist is
             grp_perms : constant String := line (capture_jar (3).First .. capture_jar (3).Last);
             grp_path  : constant String := line (capture_jar (4).First .. capture_jar (4).Last);
             true_path : constant String := get_true_path (ASF.Trim (grp_path, Ada.Strings.Both));
-            full_path : constant String := Archive.Unix.real_path (true_path);
          begin
-            if full_path = "" then
+            if not Unix.file_exists (true_path) then
                if level >= normal then
                   std_error ("Manifest entity [" & grp_path & "] does not exist");
                   succeeded := False;
                end if;
             else
                insert_succeeded := whitelist.ingest_manifest_with_mode_override
-                 (full_path     => full_path,
+                 (full_path     => true_path,
                   real_top_path => real_top_directory,
                   new_owner     => grp_owner,
                   new_group     => grp_group,

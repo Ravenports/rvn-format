@@ -84,6 +84,23 @@ package body Archive.Unix is
 
 
    ------------------------------------------------------------------------------------------
+   --  file_exists
+   ------------------------------------------------------------------------------------------
+   function file_exists (path : String) return Boolean
+   is
+      sb : aliased Unix.struct_stat;
+   begin
+      if Unix.stat_ok (path, sb'Unchecked_Access) then
+         case type_of_file (sb'Unchecked_Access) is
+            when unsupported => return False;
+            when others      => return True;
+         end case;
+      end if;
+      return False;
+   end file_exists;
+
+
+   ------------------------------------------------------------------------------------------
    --  get_mtime
    ------------------------------------------------------------------------------------------
    function file_modification_time (sb : struct_stat_Access) return time_specification
