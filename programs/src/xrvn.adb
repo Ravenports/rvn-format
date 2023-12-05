@@ -4,6 +4,8 @@ with Ada.Command_Line;
 with Ada.Directories;
 with Archive.Unpack;
 with Archive.Unix;
+with ThickUCL.Files;
+with Bourne;
 
 procedure Xrvn
 is
@@ -179,6 +181,51 @@ is
       end loop;
    end tail;
 
+   function get_meta_string (metatree : ThickUCL.UclTree; data_key : String) return String is
+   begin
+      case metatree.get_data_type (data_key) is
+         when ThickUCL.data_string =>
+            return metatree.get_base_value (data_key);
+         when others =>
+            return data_key & "-not-found";
+      end case;
+   end get_meta_string;
+
+   procedure execute_scripts
+     (metatree  : ThickUCL.UclTree;
+      vndx      : ThickUCL.object_index;
+      phase_key : String)
+   is
+      andx        : ThickUCL.array_index;
+      num_scripts : Natural;
+   begin
+      case metatree.get_object_data_type (vndx, phase_key) is
+         when ThickUCL.data_array =>
+            andx := metatree.get_object_array (vndx, phase_key);
+            num_scripts := metatree.get_number_of_array_elements (andx);
+            for index in 0 .. num_scripts - 1 loop
+               case metatree.get_array_element_type (andx, index) is
+                  when ThickUCL.data_string =>
+                     declare
+                        script : constant String := metatree.get_array_element_value (andx, index);
+                     begin
+                        Bourne.run_shell_script
+                          (namebase    => get_meta_string (metatree, "namebase"),
+                           subpackage  => get_meta_string (metatree, "subpackage"),
+                           variant     => get_meta_string (metatree, "variant"),
+                           prefix      => get_meta_string (metatree, "prefix"),
+                           root_dir    => ASU.To_String (arg_outdir),
+                           upgrading   => False,
+                           interpreter => "/bin/sh",
+                           script      => script);
+                     end;
+                  when others => null;
+               end case;
+            end loop;
+         when others => null;
+      end case;
+   end execute_scripts;
+
 begin
    process_arguments;
    declare
@@ -291,12 +338,43 @@ begin
             set_owners  : constant Boolean := Archive.Unix.user_is_root;
             set_perms   : constant Boolean := set_owners;
             success     : Boolean;
+            scripts_yes : Boolean := False;
+            metadata    : constant String := operation.extract_metadata;
+            scripts_key : constant String := "scripts";
+            pre_key     : constant String := "pre-install";
+            post_key    : constant String := "post-install";
+            metatree    : ThickUCL.UclTree;
+            vndx        : ThickUCL.object_index;
          begin
+            begin
+               ThickUCL.Files.parse_ucl_string (metatree, metadata, "");
+            exception
+               when ThickUCL.Files.ucl_data_unparseable =>
+                  if not opt_quiet then
+                     TIO.Put_Line ("Failed to parse metadata; loss of any phase actions");
+                  end if;
+            end;
+            --  Run the pre-install actions
+            case metatree.get_data_type (scripts_key) is
+               when ThickUCL.data_object =>
+                  scripts_yes := True;
+                  vndx := metatree.get_index_of_base_ucl_object (scripts_key);
+               when others => null;
+            end case;
+            if scripts_yes then
+               execute_scripts (metatree, vndx, pre_key);
+            end if;
+
             success := operation.extract_archive (top_directory => extraction_directory,
                                                   set_owners    => set_owners,
                                                   set_perms     => set_perms,
                                                   set_modtime   => set_modtime);
-            if not success then
+
+            if success then
+               if scripts_yes then
+                  execute_scripts (metatree, vndx, post_key);
+               end if;
+            else
                if not opt_quiet then
                   TIO.Put_Line ("Extraction did not fully succeed.");
                end if;
@@ -313,4 +391,3 @@ begin
       CLI.Set_Exit_Status (exitcode);
    end;
 end Xrvn;
-
