@@ -8,7 +8,6 @@ with Ada.Real_Time;
 with Ada.Direct_IO;
 with Ada.Text_IO;
 with GNAT.OS_Lib;
-with Archive.Unix;
 
 package body Bourne is
 
@@ -44,13 +43,24 @@ package body Bourne is
    ---------------------------
    function unique_msgfile_path return String
    is
-      home  : constant String := Archive.Unix.real_path ("~");
+      function tmp return String
+      is
+         root_tmp : constant String := "/tmp";
+      begin
+         if DIR.Exists (root_tmp) then
+            case DIR.Kind (root_tmp) is
+               when DIR.Directory => return root_tmp & "/";
+               when others => null;
+            end case;
+         end if;
+         return "";
+      end tmp;
    begin
       loop
          declare
             extension  : constant String := random_extension;
-            candidate  : constant String := home & "/.rvn_outmsg." & extension;
-            scriptfile : constant String := home & "/.rvn_script." & extension;
+            candidate  : constant String := tmp & ".rvn_outmsg." & extension;
+            scriptfile : constant String := tmp & ".rvn_script." & extension;
          begin
             if not DIR.Exists (candidate) and then
               not DIR.Exists (scriptfile)
