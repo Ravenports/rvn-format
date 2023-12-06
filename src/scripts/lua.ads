@@ -46,7 +46,9 @@ private
 
    package IC renames Interfaces.C;
 
-   Lua_Error : exception;
+   Lua_Error          : exception;
+   Lua_Type_Error     : exception;
+   Lua_Override_Error : exception;
 
    --  Lua state is the structure containing the state of the interpreter.
    type Lua_State is new System.Address;
@@ -93,6 +95,7 @@ private
    subtype Lua_Index is Integer;
 
 
+   top_slot : constant Lua_Index := -1;
 
    --  Returns the nanosecond portion of the current time.
    --  This is used for a temporary file prefix.
@@ -134,24 +137,39 @@ private
       Name  : String;
       value : Boolean);
 
+   function Get_Global_String
+      (State : Lua_State;
+       Name  : String) return String;
+
+   function Get_Global_Type
+     (State : Lua_State;
+       Name  : String) return Lua_Type;
+
+   procedure validate_argument
+     (State : Lua_State;
+      valid : Boolean;
+      index : Positive;
+      fail_msg : String);
+
+   function retrieve_argument
+     (State : Lua_State;
+      index : Positive) return String;
+
    function API_luaL_loadstring
      (State : Lua_State;
-      Str   : IC.Strings.chars_ptr)
-      return Lua_Return_Code;
+      Str   : IC.Strings.chars_ptr) return Lua_Return_Code;
    pragma Import (C, API_luaL_loadstring, "luaL_loadstring");
 
    function API_lua_tolstring
      (State  : Lua_State;
       Index  : Integer;
-      Length : out IC.size_t)
-      return IC.Strings.chars_ptr;
+      Length : out IC.size_t) return IC.Strings.chars_ptr;
    pragma Import (C, API_lua_tolstring, "lua_tolstring");
 
    function API_lua_pushlstring
      (State    : Lua_State;
       Str_Addr : System.Address;
-      Str_Size : IC.size_t)
-      return IC.Strings.chars_ptr;
+      Str_Size : IC.size_t) return IC.Strings.chars_ptr;
    pragma Import (C, API_lua_pushlstring, "lua_pushlstring");
 
    procedure API_lua_pushboolean
@@ -159,10 +177,39 @@ private
       Data : Integer);
    pragma Import (C, API_lua_pushboolean, "lua_pushboolean");
 
-   procedure API_lua_setglobal
+   procedure API_lua_getglobal
      (State : Lua_State;
       Name  : IC.Strings.chars_ptr);
-   pragma Import (C, API_lua_setglobal, "lua_setglobal");
+   pragma Import (C, API_lua_getglobal, "lua_getglobal");
+
+   --  Raises an error; it never returns
+   function API_luaL_argerror
+     (State    : Lua_State;
+      narg     : Integer;
+      extramsg : IC.Strings.chars_ptr) return Integer;
+   pragma Import (C, API_luaL_argerror, "luaL_argerror");
+
+   function API_luaL_checklstring
+     (State : Lua_State;
+      narg  : Integer;
+      l     : access IC.size_t) return IC.Strings.chars_ptr;
+   pragma Import (C, API_luaL_checklstring, "luaL_checklstring");
+
+   procedure API_lua_pushcclosure
+     (State : Lua_State;
+      Fun   : Lua_Function;
+      Closure_Size : Integer := 0);
+   pragma Import (C, API_lua_pushcclosure, "lua_pushcclosure");
+
+   function API_lua_absindex
+     (State : Lua_State;
+      Index : Lua_Index) return Lua_Index;
+   pragma Import (C, API_lua_absindex, "lua_absindex");
+
+   function API_lua_type
+     (State : Lua_State;
+      Index : Lua_Index) return Lua_Type;
+   pragma Import (C, API_lua_type, "lua_type");
 
 
    -----------------------
@@ -175,8 +222,27 @@ private
    procedure API_lua_settop (State : Lua_State; Index : Lua_Index);
    pragma Import (C, API_lua_settop, "lua_settop");
 
+   --  Returns the index of the top element in the stack. Because indices start
+   --  at 1, this result is equal to the number of elements in the stack (and
+   --  so 0 means an empty stack).
+   function API_lua_gettop (State : Lua_State) return Lua_Index;
+   pragma Import (C, API_lua_gettop, "lua_gettop");
+
+   procedure API_lua_pushnil (State : Lua_State);
+   pragma Import (C, API_lua_pushnil, "lua_pushnil");
+
+   --  Pushes a copy of the element at the given index onto the stack.
+   procedure API_lua_pushvalue (State : Lua_State; Index : Lua_Index);
+   pragma Import (C, API_lua_pushvalue, "lua_pushvalue");
+
    --  Pops n elements from the stack.
    procedure Pop (State : Lua_State; N : Integer := 1);
+
+   --  Pushes a nil value onto the stack.
+   procedure Push (State : Lua_State);
+
+   --  Push a string on the stack
+   procedure Push (State : Lua_State; Data : String);
 
 
    -------------------
@@ -188,5 +254,102 @@ private
    --  lua_tolstring also changes the actual value in the stack to a string. (This change
    --  confuses lua_next when lua_tolstring is applied to keys during a table traversal.)
    function convert_to_string (State : Lua_State; Index : Lua_Index) return String;
+
+
+   -----------------------
+   --  Table Functions  --
+   -----------------------
+
+   --  Pushes onto the stack the value t[k], where t is the value at the given index.
+   --  As in Lua, this function may trigger a metamethod for the "index" event
+   procedure Get_Field
+     (State : Lua_State;
+      Index : Lua_Index;
+      Name  : String);
+
+   procedure API_lua_getfield
+     (State : Lua_State;
+      Index : Lua_Index;
+      Name  : IC.Strings.chars_ptr);
+   pragma Import (C, API_lua_getfield, "lua_getfield");
+
+   procedure API_lua_createtable
+     (State       : Lua_State;
+      N_Seq_Elmts : Integer := 0;
+      N_Elmts     : Integer := 0);
+   pragma Import (C, API_lua_createtable, "lua_createtable");
+
+   --  Does the equivalent to t[k] = v, where t is the value at the given index,
+   --  v is the value at the top of the stack, and k is the value just below the top.
+   --
+   --  This function pops both the key and the value from the stack. As in Lua,
+   --  this function may trigger a metamethod for the "newindex" event
+   procedure API_lua_settable
+     (State : Lua_State;
+      Index : Lua_Index);
+   pragma Import (C, API_lua_settable, "lua_settable");
+
+   procedure API_lua_setfield
+     (State : Lua_State;
+      Index : Lua_Index;
+      Name  : IC.Strings.chars_ptr);
+   pragma Import (C, API_lua_setfield, "lua_setfield");
+
+   --  Does the equivalent to t[k] = v, where t is the value at the given
+   --  index and v is the value at the top of the stack.
+   --
+   --  This function pops the value from the stack. As in Lua, this function
+   --  may trigger a metamethod for the "newindex" event
+   procedure Set_Field
+     (State    : Lua_State;
+      Index    : Lua_Index;
+      Name     : String;
+      Override : Boolean := True);
+
+
+   --------------------------
+   --  Global Environment  --
+   --------------------------
+   procedure API_lua_setglobal
+     (State : Lua_State;
+      Name  : IC.Strings.chars_ptr);
+   pragma Import (C, API_lua_setglobal, "lua_setglobal");
+
+   --  Pops a value from the stack and sets it as the new value of global name.
+   procedure Set_Global
+     (State : Lua_State;
+      Name  : String);
+
+   --  Helper function to register an Ada object inside lua state. Name is the
+   --  name in Lua global environment with which the function is associated to.
+   --  To ease creation of hierarchies in the global environment, if Name
+   --  contains '.' then a hierarchy using Lua tables is created. For example:
+   --
+   --     Register (S, "a.b.c");
+   --
+   --  will create a global table called "a". The table "a" will contain a
+   --  table at index "b" and this last table will contain one element "b" set
+   --  to the object on top of the stack. Note that an error will be raised
+   --  in case you try to register twice at the same location.
+   procedure Register_Object
+     (State : Lua_State;
+      Name  : String);
+
+   --  Same as previous function except that the registered object is a
+   --  closure passed as argument to the function instead of using the stack
+   procedure Register_Function
+     (State : Lua_State;
+      Name  : String;
+      Fun   : Lua_Function);
+
+
+   -----------------------------------------
+   --  PKG custom functions and routines  --
+   -----------------------------------------
+
+
+   function custom_print_msg (State : Lua_State) return Integer;
+   pragma Convention (C, custom_print_msg);
+   --  praxxxgma Export (C, custom_print_msg, "pkg_print_msg");
 
 end Lua;

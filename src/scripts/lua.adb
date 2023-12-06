@@ -48,7 +48,10 @@ package body Lua is
       Set_Global_String (state, "pkg_variant",    variant);
       Set_Global_String (state, "pkg_prefix",     prefix);
       Set_Global_String (state, "pkg_rootdir",    root_dir);
+      Set_Global_String (state, "msgfile_path",   msg_outfile);
       Set_Global_Boolean (State, "pkg_upgrade",   upgrading);
+
+      Register_Function (State, "pkg.print_msg", custom_print_msg'Access);
 
       status := Protected_Call (state);
       case status is
@@ -162,6 +165,26 @@ package body Lua is
    end Pop;
 
 
+   ---------------
+   --  Push #1  --
+   ---------------
+   procedure Push (State : Lua_State) is
+   begin
+      API_lua_pushnil (State);
+   end Push;
+
+   ---------------
+   --  Push #2  --
+   ---------------
+   procedure Push (State : Lua_State; Data : String)
+   is
+      Result : IC.Strings.chars_ptr;
+      pragma Unreferenced (Result);
+   begin
+      Result := API_lua_pushlstring (State, Data'Address, Data'Length);
+   end Push;
+
+
    -------------------------
    --  convert_to_string  --
    -------------------------
@@ -170,6 +193,9 @@ package body Lua is
       Length : IC.size_t;
    begin
       return IC.Strings.Value (API_lua_tolstring (State, Index, Length));
+   exception
+      when others =>
+         return "Failed to retrieve string value";
    end convert_to_string;
 
 
@@ -182,12 +208,13 @@ package body Lua is
       value : String)
    is
       Result   : IC.Strings.chars_ptr;
-      Name_Ptr : constant IC.Strings.chars_ptr := IC.Strings.New_String (Name);
+      Name_Ptr : IC.Strings.chars_ptr := IC.Strings.New_String (Name);
 
       pragma Unreferenced (Result);
    begin
       Result := API_lua_pushlstring (State, value'Address, value'Length);
       API_lua_setglobal (State, Name_Ptr);
+      IC.Strings.Free (Name_Ptr);
    end Set_Global_String;
 
 
@@ -199,7 +226,7 @@ package body Lua is
       Name  : String;
       value : Boolean)
    is
-      Name_Ptr : constant IC.Strings.chars_ptr := IC.Strings.New_String (Name);
+      Name_Ptr : IC.Strings.chars_ptr := IC.Strings.New_String (Name);
    begin
       if value then
          API_lua_pushboolean (State, 1);
@@ -207,6 +234,260 @@ package body Lua is
          API_lua_pushboolean (State, 0);
       end if;
       API_lua_setglobal (State, Name_Ptr);
+      IC.Strings.Free (Name_Ptr);
    end Set_Global_Boolean;
+
+
+   ------------------
+   --  Set_Global  --
+   ------------------
+   procedure Set_Global
+     (State : Lua_State;
+      Name  : String)
+   is
+      Name_Ptr : IC.Strings.chars_ptr := IC.Strings.New_String (Name);
+   begin
+      API_lua_setglobal (State, Name_Ptr);
+      IC.Strings.Free (Name_Ptr);
+   end Set_Global;
+
+
+   -------------------------
+   --  Get_Global_String  --
+   -------------------------
+   function Get_Global_String
+      (State : Lua_State;
+       Name  : String) return String
+   is
+      Name_Ptr : IC.Strings.chars_ptr := IC.Strings.New_String (Name);
+   begin
+      API_lua_getglobal (State, Name_Ptr);
+      IC.Strings.Free (Name_Ptr);
+      return convert_to_string (state, top_slot);
+   end Get_Global_String;
+
+
+   -----------------------
+   --  Get_Global_Type  --
+   -----------------------
+   function Get_Global_Type
+     (State : Lua_State;
+      Name  : String) return Lua_Type
+   is
+      Name_Ptr : IC.Strings.chars_ptr := IC.Strings.New_String (Name);
+   begin
+      API_lua_getglobal (State, Name_Ptr);
+      IC.Strings.Free (Name_Ptr);
+      return API_lua_type (State, top_slot);
+   end Get_Global_Type;
+
+
+   -------------------------
+   --  validate_argument  --
+   -------------------------
+   procedure validate_argument
+     (State : Lua_State;
+      valid : Boolean;
+      index : Positive;
+      fail_msg : String)
+   is
+      extramsg : IC.Strings.chars_ptr := IC.Strings.New_String (fail_msg);
+      result : Integer;
+      pragma Unreferenced (result);
+   begin
+      if not valid then
+         result := API_luaL_argerror (State, index, extramsg);
+      end if;
+      --  memory leak, we need get here.
+      IC.Strings.Free (extramsg);
+   end validate_argument;
+
+
+   -------------------------
+   --  retrieve_argument  --
+   -------------------------
+   function retrieve_argument
+     (State : Lua_State;
+      index : Positive) return String
+   is
+      result : IC.Strings.chars_ptr;
+   begin
+      result := API_luaL_checklstring (State, index, null);
+      return IC.Strings.Value (result);
+   end retrieve_argument;
+
+
+   ------------------------
+   --  custom_print_msg  --
+   ------------------------
+   function custom_print_msg (State : Lua_State) return Integer
+   is
+      n       : constant Lua_Index := API_lua_gettop (State);
+      msgfile : constant String := Get_Global_String (State, "msgfile_path");
+      handle  : TIO.File_Type;
+      valid   : Boolean;
+      narg    : Positive := n;
+   begin
+      valid := n = 1;
+      if n > 1 then
+         narg := 2;
+      end if;
+      --  validate_argument will not return on failure
+      validate_argument (State, valid, narg, "pkg.print_msg takes exactly one argument");
+
+      if DIR.Exists (msgfile) then
+         TIO.Open (handle, TIO.Append_File, msgfile);
+      else
+         TIO.Create (handle, TIO.Out_File, msgfile);
+      end if;
+      TIO.Put_Line (handle, retrieve_argument (State, 1));
+      TIO.Close (handle);
+      return 0;
+   exception
+      when others =>
+         if TIO.Is_Open (handle) then
+            TIO.Close (handle);
+         end if;
+         return 1;
+   end custom_print_msg;
+
+
+   -----------------
+   --  Get_Field  --
+   -----------------
+   procedure Get_Field
+     (State : Lua_State;
+      Index : Lua_Index;
+      Name  : String)
+   is
+      Result : IC.Strings.chars_ptr := IC.Strings.New_String (Name);
+   begin
+      API_lua_getfield (State, Index, Result);
+      IC.Strings.Free (Result);
+   end Get_Field;
+
+   -----------------
+   --  Set_Field  --
+   -----------------
+   procedure Set_Field
+     (State    : Lua_State;
+      Index    : Lua_Index;
+      Name     : String;
+      Override : Boolean := True)
+   is
+      Result : IC.Strings.chars_ptr := IC.Strings.New_String (Name);
+   begin
+      if not Override then
+         Get_Field (State, Index, Name);
+         if API_lua_type (State, top_slot) /= LUA_TNIL then
+            Pop (State);
+            IC.Strings.Free (Result);
+            raise Lua_Override_Error with "element already set";
+         end if;
+         Pop (State);
+      end if;
+
+      API_lua_setfield (State, Index, Result);
+      IC.Strings.Free (Result);
+   end Set_Field;
+
+
+   -------------------------
+   --  Register_Function  --
+   -------------------------
+   procedure Register_Function
+     (State : Lua_State;
+      Name  : String;
+      Fun   : Lua_Function)
+   is
+   begin
+      API_lua_pushcclosure (State, Fun);
+      Register_Object (State, Name);
+   end Register_Function;
+
+
+   -----------------------
+   --  Register_Object  --
+   -----------------------
+   procedure Register_Object
+     (State : Lua_State;
+      Name  : String)
+   is
+      Start           : Integer := Name'First;
+      Is_First        : Boolean := True;
+      Need_Global     : Boolean := False;
+      Pop_Times       : Integer := 0;
+      Set_Table_Times : Integer := 0;
+      Global_First    : Integer := 0;
+      Global_Last     : Integer := 0;
+      Obj_Index       : constant Lua_Index := API_lua_absindex (State, top_slot);
+   begin
+      --  check that name does not start or ends with . and cannot be empty
+
+      for Index in Name'Range loop
+         if Name (Index) = '.' then
+
+            declare
+               Name_Comp : constant String := Name (Start .. Index - 1);
+               Comp_Type : Lua_Type;
+            begin
+
+               if Is_First then
+                  Comp_Type := Get_Global_Type (State, Name_Comp);
+                  Global_First := Start;
+                  Global_Last := Index - 1;
+               else
+                  Get_Field (State, top_slot, Name_Comp);
+                  Comp_Type := API_lua_type (State, top_slot);
+               end if;
+
+               if Comp_Type = LUA_TNIL then
+                  --  Create the table
+                  Pop (State);
+                  if not Is_First then
+                     Push (State, Name_Comp);
+                     Set_Table_Times := Set_Table_Times + 1;
+                  else
+                     Need_Global := True;
+                  end if;
+
+                  API_lua_createtable (State);
+
+               elsif Comp_Type /= LUA_TTABLE then
+                  raise Lua_Type_Error with "expecting table";
+               else
+                  Pop_Times := Pop_Times + 1;
+               end if;
+
+               Is_First := False;
+            end;
+            Start := Index + 1;
+         end if;
+      end loop;
+
+      if Start = Name'First then
+         Set_Global (State, Name);
+      else
+         API_lua_pushvalue (State, Obj_Index);
+         --  At least one dot has been found so create a hierarchy
+         Set_Field (State, -2, Name (Start .. Name'Last),
+                    Override => False);
+
+         for J in 1 .. Set_Table_Times loop
+            API_lua_settable (State, -3);
+         end loop;
+
+         if Pop_Times > 0 then
+            Pop (State, Pop_Times);
+         end if;
+
+         if Need_Global then
+            Set_Global (State, Name (Global_First .. Global_Last));
+         end if;
+
+         --  Remove the object from the stack
+         Pop (State);
+      end if;
+   end Register_Object;
 
 end Lua;
