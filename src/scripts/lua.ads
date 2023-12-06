@@ -129,6 +129,11 @@ private
       Name  : String;
       value : String);
 
+   procedure Set_Global_Boolean
+     (State : Lua_State;
+      Name  : String;
+      value : Boolean);
+
    function API_luaL_loadstring
      (State : Lua_State;
       Str   : IC.Strings.chars_ptr)
@@ -148,6 +153,11 @@ private
       Str_Size : IC.size_t)
       return IC.Strings.chars_ptr;
    pragma Import (C, API_lua_pushlstring, "lua_pushlstring");
+
+   procedure API_lua_pushboolean
+     (State : Lua_State;
+      Data : Integer);
+   pragma Import (C, API_lua_pushboolean, "lua_pushboolean");
 
    procedure API_lua_setglobal
      (State : Lua_State;

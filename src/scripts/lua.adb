@@ -48,6 +48,7 @@ package body Lua is
       Set_Global_String (state, "pkg_variant",    variant);
       Set_Global_String (state, "pkg_prefix",     prefix);
       Set_Global_String (state, "pkg_rootdir",    root_dir);
+      Set_Global_Boolean (State, "pkg_upgrade",   upgrading);
 
       status := Protected_Call (state);
       case status is
@@ -189,5 +190,23 @@ package body Lua is
       API_lua_setglobal (State, Name_Ptr);
    end Set_Global_String;
 
+
+   --------------------------
+   --  Set_Global_Boolean  --
+   --------------------------
+   procedure Set_Global_Boolean
+     (State : Lua_State;
+      Name  : String;
+      value : Boolean)
+   is
+      Name_Ptr : constant IC.Strings.chars_ptr := IC.Strings.New_String (Name);
+   begin
+      if value then
+         API_lua_pushboolean (State, 1);
+      else
+         API_lua_pushboolean (State, 0);
+      end if;
+      API_lua_setglobal (State, Name_Ptr);
+   end Set_Global_Boolean;
 
 end Lua;
