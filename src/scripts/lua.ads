@@ -124,6 +124,11 @@ private
       return Lua_Return_Code;
    pragma Import (C, Protected_Call, "lua_pcallk");
 
+   procedure Set_Global_String
+     (State : Lua_State;
+      Name  : String;
+      value : String);
+
    function API_luaL_loadstring
      (State : Lua_State;
       Str   : IC.Strings.chars_ptr)
@@ -136,6 +141,19 @@ private
       Length : out IC.size_t)
       return IC.Strings.chars_ptr;
    pragma Import (C, API_lua_tolstring, "lua_tolstring");
+
+   function API_lua_pushlstring
+     (State    : Lua_State;
+      Str_Addr : System.Address;
+      Str_Size : IC.size_t)
+      return IC.Strings.chars_ptr;
+   pragma Import (C, API_lua_pushlstring, "lua_pushlstring");
+
+   procedure API_lua_setglobal
+     (State : Lua_State;
+      Name  : IC.Strings.chars_ptr);
+   pragma Import (C, API_lua_setglobal, "lua_setglobal");
+
 
    -----------------------
    --  Stack Functions  --

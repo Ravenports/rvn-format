@@ -42,6 +42,13 @@ package body Lua is
                           "Failed to load Lua script> " &  EX.Exception_Message (LE));
             return;
       end;
+
+      Set_Global_String (state, "pkg_namebase",   namebase);
+      Set_Global_String (state, "pkg_subpackage", subpackage);
+      Set_Global_String (state, "pkg_variant",    variant);
+      Set_Global_String (state, "pkg_prefix",     prefix);
+      Set_Global_String (state, "pkg_rootdir",    root_dir);
+
       status := Protected_Call (state);
       case status is
          when LUA_OK =>
@@ -163,5 +170,24 @@ package body Lua is
    begin
       return IC.Strings.Value (API_lua_tolstring (State, Index, Length));
    end convert_to_string;
+
+
+   -------------------------
+   --  Set_Global_String  --
+   -------------------------
+   procedure Set_Global_String
+     (State : Lua_State;
+      Name  : String;
+      value : String)
+   is
+      Result   : IC.Strings.chars_ptr;
+      Name_Ptr : constant IC.Strings.chars_ptr := IC.Strings.New_String (Name);
+
+      pragma Unreferenced (Result);
+   begin
+      Result := API_lua_pushlstring (State, value'Address, value'Length);
+      API_lua_setglobal (State, Name_Ptr);
+   end Set_Global_String;
+
 
 end Lua;
