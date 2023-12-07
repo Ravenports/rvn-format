@@ -107,6 +107,9 @@ private
    custerr_filecmp : IC.char_array := Archive.Unix.convert_to_char_array
      ("pkg.filecmp takes exactly two arguments");
 
+   custerr_symlink : IC.char_array := Archive.Unix.convert_to_char_array
+     ("pkg.symlink takes exactly two arguments");
+
    top_slot : constant Lua_Index := -1;
 
    --  Returns the nanosecond portion of the current time.
@@ -211,6 +214,12 @@ private
      (State : Lua_State;
       Index : Lua_Index) return Lua_Type;
    pragma Import (C, API_lua_type, "lua_type");
+
+   function API_luaL_fileresult
+      (State : Lua_State;
+       stat  : Integer;
+       Fname : system.Address) return Integer;
+   pragma Import (C, API_luaL_fileresult, "luaL_fileresult");
 
 
    -----------------------
@@ -413,5 +422,8 @@ private
 
    function custom_filecmp (State : Lua_State) return Integer;
    pragma Convention (C, custom_filecmp);
+
+   function custom_symlink (State : Lua_State) return Integer;
+   pragma Convention (C, custom_symlink);
 
 end Lua;

@@ -58,6 +58,7 @@ package body Lua is
       Register_Function (State, "pkg.print_msg", custom_print_msg'Access);
       Register_Function (State, "pkg.prefixed_path", custum_prefix_path'Access);
       Register_Function (State, "pkg.filecmp", custom_filecmp'Access);
+      Register_Function (State, "pkg.symlink", custom_symlink'Access);
 
       status := Protected_Call (state);
       case status is
@@ -680,5 +681,41 @@ package body Lua is
          return 1;
       end;
    end custom_filecmp;
+
+
+   ----------------------
+   --  custom_symlink  --
+   ----------------------
+   function custom_symlink (State : Lua_State) return Integer
+   is
+      n       : constant Lua_Index := API_lua_gettop (State);
+      valid   : Boolean;
+      narg    : Positive := n;
+   begin
+      valid := n = 2;
+      if n > 2 then
+         narg := 3;
+      elsif n = 1 then
+         narg := 2;
+      end if;
+      --  validate_argument will not return on failure
+      validate_argument (State, valid, narg, custerr_symlink);
+
+      declare
+         package UNX renames Archive.Unix;
+
+         source : constant String := retrieve_argument (State, 1);
+         destin : constant String := retrieve_argument (State, 2);
+      begin
+         if not UNX.create_symlink (source, destin) then
+            declare
+               fname : IC.char_array := UNX.convert_to_char_array (source);
+            begin
+               return API_luaL_fileresult (State, 0, fname'Address);
+            end;
+         end if;
+         return 1;
+      end;
+   end custom_symlink;
 
 end Lua;
