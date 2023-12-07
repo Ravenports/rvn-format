@@ -235,6 +235,9 @@ private
    procedure API_lua_pushnil (State : Lua_State);
    pragma Import (C, API_lua_pushnil, "lua_pushnil");
 
+   procedure API_lua_pushinteger (State : Lua_State; Data : Lua_Integer);
+   pragma Import (C, API_lua_pushinteger, "lua_pushinteger");
+
    --  Pushes a copy of the element at the given index onto the stack.
    procedure API_lua_pushvalue (State : Lua_State; Index : Lua_Index);
    pragma Import (C, API_lua_pushvalue, "lua_pushvalue");
@@ -245,8 +248,11 @@ private
    --  Pushes a nil value onto the stack.
    procedure Push (State : Lua_State);
 
-   --  Push a string on the stack
+   --  Push a string onto the stack
    procedure Push (State : Lua_State; Data : String);
+
+   --  Push an integer onto the stack
+   procedure Push (State : Lua_State; Data : Integer);
 
    --  Replace (Define?) the panic routine
    procedure set_panic (State : Lua_State; Fun : Lua_Function);
@@ -394,5 +400,7 @@ private
    function custum_prefix_path (State : Lua_State) return Integer;
    pragma Convention (C, custum_prefix_path);
 
+   function custom_filecmp (State : Lua_State) return Integer;
+   pragma Convention (C, custom_filecmp);
 
 end Lua;

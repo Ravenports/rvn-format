@@ -7,6 +7,8 @@ with Ada.Real_Time;
 with Ada.Exceptions;
 with Ada.Directories;
 with Ada.Strings.Unbounded;
+with Archive.Unix;
+with Blake_3;
 
 
 package body Lua is
@@ -56,6 +58,7 @@ package body Lua is
       set_panic (State, custom_panic'Access);
       Register_Function (State, "pkg.print_msg", custom_print_msg'Access);
       Register_Function (State, "pkg.prefixed_path", custum_prefix_path'Access);
+      Register_Function (State, "pkg.filecmp", custom_filecmp'Access);
 
       status := Protected_Call (state);
       case status is
@@ -187,6 +190,16 @@ package body Lua is
       pragma Unreferenced (Result);
    begin
       Result := API_lua_pushlstring (State, Data'Address, Data'Length);
+   end Push;
+
+
+   ---------------
+   --  Push #3  --
+   ---------------
+   procedure Push (State : Lua_State; Data : Integer)
+   is
+   begin
+      API_lua_pushinteger (State, Lua_Integer (Data));
    end Push;
 
 
@@ -608,5 +621,65 @@ package body Lua is
       end;
       return 1;
    end custum_prefix_path;
+
+
+   ----------------------
+   --  custom_filecmp  --
+   ----------------------
+   function custom_filecmp (State : Lua_State) return Integer
+   is
+      n       : constant Lua_Index := API_lua_gettop (State);
+      valid   : Boolean;
+      narg    : Positive := n;
+   begin
+      valid := n = 2;
+      if n > 2 then
+         narg := 3;
+      end if;
+      --  validate_argument will not return on failure
+      validate_argument (State, valid, narg, "pkg.prefix_path takes exactly one argument");
+      declare
+         package UNX renames Archive.Unix;
+         package B3 renames Blake_3;
+
+         file_1 : constant String := retrieve_argument (State, 1);
+         file_2 : constant String := retrieve_argument (State, 2);
+         files_identical : constant Integer := 0;
+         files_differ    : constant Integer := 1;
+         file_not_found  : constant Integer := 2;
+         f1_attributes : UNX.File_Characteristics;
+         f2_attributes : UNX.File_Characteristics;
+
+         use type Archive.file_type;
+         use type Archive.exabytes;
+      begin
+         f1_attributes := UNX.get_charactistics (file_1);
+         f2_attributes := UNX.get_charactistics (file_2);
+
+         --  both files exist?
+         if f1_attributes.ftype = Archive.unsupported or else
+           f2_attributes.ftype = Archive.unsupported
+         then
+            Push (State, file_not_found);
+            return 1;
+         end if;
+
+         --  Do file sizes match?
+         if f1_attributes.size /= f2_attributes.size then
+            Push (State, files_differ);
+            return 1;
+         end if;
+
+         --  File sizes are the same, so compare the digests
+         if B3.hex (B3.file_digest (file_1)) /= B3.hex (B3.file_digest (file_2)) then
+            Push (State, files_differ);
+            return 1;
+         end if;
+
+         --  Files are the same
+         Push (State, files_identical);
+         return 1;
+      end;
+   end custom_filecmp;
 
 end Lua;
