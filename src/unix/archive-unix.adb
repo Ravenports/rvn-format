@@ -59,6 +59,7 @@ package body Archive.Unix is
       result.mtime := 0;
       result.perms := 0;
       result.inode := 0;
+      result.size  := 0;
       result.error := True;
       begin
          if Unix.stat_ok (path, sb'Unchecked_Access) then
@@ -70,6 +71,7 @@ package body Archive.Unix is
             result.mnsec := tspec.nsecs;
             result.perms := file_permissions (sb'Unchecked_Access);
             result.inode := inode_number (sb'Unchecked_Access);
+            result.size  := File_Size (sb'Unchecked_Access);
             result.error := False;
          else
             result.owner := str2owngrp ("xxx");
@@ -237,7 +239,18 @@ package body Archive.Unix is
 
 
    ------------------------------------------------------------------------------------------
-      --  link_target
+   --  file_size
+   ------------------------------------------------------------------------------------------
+   function file_size  (sb : struct_stat_Access) return exabytes
+   is
+      res : constant IC.unsigned_long_long := arc_get_file_size (sb);
+   begin
+      return exabytes (res);
+   end file_size;
+
+
+   ------------------------------------------------------------------------------------------
+   --  link_target
    ------------------------------------------------------------------------------------------
    function link_target (symlink_path : String) return String
    is

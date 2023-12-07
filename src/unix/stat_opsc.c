@@ -80,6 +80,12 @@ get_group_name (struct stat *sb)
   return gr->gr_name;
 }
 
+off_t
+get_size (struct stat *sb)
+{
+  return sb->st_size;
+}
+
 gid_t
 clookup_group (const char * name)
 {

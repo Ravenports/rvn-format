@@ -17,6 +17,7 @@ package Archive.Unix is
          perms : permissions;
          inode : inode_type;
          error : Boolean;
+         size  : exabytes;
       end record;
 
    type metadata_rc is mod 2 ** 5;
@@ -152,6 +153,9 @@ private
    function arc_get_inode_number (sb : struct_stat_Access) return IC.unsigned_long_long;
    pragma Import (C, arc_get_inode_number, "get_inode_number");
 
+   function arc_get_file_size (sb : struct_stat_Access) return IC.unsigned_long_long;
+   pragma Import (C, arc_get_file_size, "get_size");
+
    function symlink (path1, path2 : IC.char_array) return IC.int;
    pragma Import (C, symlink);
 
@@ -248,6 +252,8 @@ private
    function file_owner (sb : struct_stat_Access) return ownergroup;
 
    function file_group (sb : struct_stat_Access) return ownergroup;
+
+   function file_size  (sb : struct_stat_Access) return exabytes;
 
    function type_of_file (sb : struct_stat_Access) return file_type;
 
