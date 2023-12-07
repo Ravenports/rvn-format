@@ -98,13 +98,13 @@ private
 
 
 
-   custerr_print_msg : aliased IC.char_array := Archive.Unix.convert_to_char_array
+   custerr_print_msg : IC.char_array := Archive.Unix.convert_to_char_array
      ("pkg.print_msg takes exactly one argument");
 
-   custerr_prefix_path : aliased IC.char_array := Archive.Unix.convert_to_char_array
+   custerr_prefix_path : IC.char_array := Archive.Unix.convert_to_char_array
      ("pkg.prefix_path takes exactly one argument");
 
-   custerr_filecmp : aliased IC.char_array := Archive.Unix.convert_to_char_array
+   custerr_filecmp : IC.char_array := Archive.Unix.convert_to_char_array
      ("pkg.filecmp takes exactly two arguments");
 
    top_slot : constant Lua_Index := -1;
@@ -161,7 +161,7 @@ private
      (State : Lua_State;
       valid : Boolean;
       index : Positive;
-      fail_msg : IC.Strings.char_array_access);
+      fail_msg : IC.char_array);
 
    function retrieve_argument
      (State : Lua_State;
@@ -187,7 +187,7 @@ private
    function API_luaL_argerror
      (State    : Lua_State;
       narg     : Integer;
-      extramsg : IC.Strings.chars_ptr) return Integer;
+      extramsg : System.Address) return Integer;
    pragma Import (C, API_luaL_argerror, "luaL_argerror");
 
    function API_luaL_checklstring

@@ -340,17 +340,14 @@ package body Lua is
      (State : Lua_State;
       valid : Boolean;
       index : Positive;
-      fail_msg : IC.Strings.char_array_access)
+      fail_msg : IC.char_array)
    is
-      extramsg : IC.Strings.chars_ptr := IC.Strings.To_Chars_Ptr (fail_msg);
       result : Integer;
       pragma Unreferenced (result);
    begin
       if not valid then
-         result := API_luaL_argerror (State, index, extramsg);
+         result := API_luaL_argerror (State, index, fail_msg'Address);
       end if;
-      --  memory leak, we need get here.
-      IC.Strings.Free (extramsg);
    end validate_argument;
 
 
@@ -384,7 +381,7 @@ package body Lua is
          narg := 2;
       end if;
       --  validate_argument will not return on failure
-      validate_argument (State, valid, narg, custerr_print_msg'Access);
+      validate_argument (State, valid, narg, custerr_print_msg);
 
       if DIR.Exists (msgfile) then
          TIO.Open (handle, TIO.Append_File, msgfile);
@@ -608,7 +605,7 @@ package body Lua is
          narg := 2;
       end if;
       --  validate_argument will not return on failure
-      validate_argument (State, valid, narg, custerr_prefix_path'Access);
+      validate_argument (State, valid, narg, custerr_prefix_path);
       declare
          inpath : constant String := retrieve_argument (State, 1);
       begin
@@ -638,7 +635,7 @@ package body Lua is
          narg := 2;
       end if;
       --  validate_argument will not return on failure
-      validate_argument (State, valid, narg, custerr_filecmp'Access);
+      validate_argument (State, valid, narg, custerr_filecmp);
 
       declare
          package UNX renames Archive.Unix;
