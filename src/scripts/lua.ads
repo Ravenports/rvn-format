@@ -3,6 +3,7 @@
 
 private with System;
 private with interfaces.C.Strings;
+private with Archive.Unix;
 
 package Lua is
 
@@ -96,6 +97,16 @@ private
    subtype Lua_Integer is IC.ptrdiff_t;
 
 
+
+   custerr_print_msg : aliased IC.char_array := Archive.Unix.convert_to_char_array
+     ("pkg.print_msg takes exactly one argument");
+
+   custerr_prefix_path : aliased IC.char_array := Archive.Unix.convert_to_char_array
+     ("pkg.prefix_path takes exactly one argument");
+
+   custerr_filecmp : aliased IC.char_array := Archive.Unix.convert_to_char_array
+     ("pkg.filecmp takes exactly two arguments");
+
    top_slot : constant Lua_Index := -1;
 
    --  Returns the nanosecond portion of the current time.
@@ -150,7 +161,7 @@ private
      (State : Lua_State;
       valid : Boolean;
       index : Positive;
-      fail_msg : String);
+      fail_msg : IC.Strings.char_array_access);
 
    function retrieve_argument
      (State : Lua_State;
@@ -166,17 +177,6 @@ private
       Index  : Integer;
       Length : access IC.size_t) return IC.Strings.chars_ptr;
    pragma Import (C, API_lua_tolstring, "lua_tolstring");
-
-   function API_lua_pushlstring
-     (State    : Lua_State;
-      Str_Addr : System.Address;
-      Str_Size : IC.size_t) return IC.Strings.chars_ptr;
-   pragma Import (C, API_lua_pushlstring, "lua_pushlstring");
-
-   procedure API_lua_pushboolean
-     (State : Lua_State;
-      Data : Integer);
-   pragma Import (C, API_lua_pushboolean, "lua_pushboolean");
 
    procedure API_lua_getglobal
      (State : Lua_State;
@@ -237,6 +237,17 @@ private
 
    procedure API_lua_pushinteger (State : Lua_State; Data : Lua_Integer);
    pragma Import (C, API_lua_pushinteger, "lua_pushinteger");
+
+   function API_lua_pushlstring
+     (State    : Lua_State;
+      Str_Addr : System.Address;
+      Str_Size : IC.size_t) return IC.Strings.chars_ptr;
+   pragma Import (C, API_lua_pushlstring, "lua_pushlstring");
+
+   procedure API_lua_pushboolean
+     (State : Lua_State;
+      Data : Integer);
+   pragma Import (C, API_lua_pushboolean, "lua_pushboolean");
 
    --  Pushes a copy of the element at the given index onto the stack.
    procedure API_lua_pushvalue (State : Lua_State; Index : Lua_Index);

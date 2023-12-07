@@ -762,4 +762,20 @@ package body Archive.Unix is
    end head;
 
 
+   --------------------------------------------------------------------------------------------
+   --  convert_to_char_array
+   --------------------------------------------------------------------------------------------
+   function convert_to_char_array (S : String) return IC.char_array
+   is
+      result : IC.char_array (0 .. S'Length) := (others => IC.char'Val (0));
+      index  : Natural := 0;
+   begin
+      for c in S'Range loop
+         result (IC.size_t (index)) := IC.char (S (c));
+         index := index + 1;
+      end loop;
+      return result;
+   end convert_to_char_array;
+
+
 end Archive.Unix;

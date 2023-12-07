@@ -7,7 +7,6 @@ with Ada.Real_Time;
 with Ada.Exceptions;
 with Ada.Directories;
 with Ada.Strings.Unbounded;
-with Archive.Unix;
 with Blake_3;
 
 
@@ -341,9 +340,9 @@ package body Lua is
      (State : Lua_State;
       valid : Boolean;
       index : Positive;
-      fail_msg : String)
+      fail_msg : IC.Strings.char_array_access)
    is
-      extramsg : IC.Strings.chars_ptr := IC.Strings.New_String (fail_msg);
+      extramsg : IC.Strings.chars_ptr := IC.Strings.To_Chars_Ptr (fail_msg);
       result : Integer;
       pragma Unreferenced (result);
    begin
@@ -385,7 +384,7 @@ package body Lua is
          narg := 2;
       end if;
       --  validate_argument will not return on failure
-      validate_argument (State, valid, narg, "pkg.print_msg takes exactly one argument");
+      validate_argument (State, valid, narg, custerr_print_msg'Access);
 
       if DIR.Exists (msgfile) then
          TIO.Open (handle, TIO.Append_File, msgfile);
@@ -609,7 +608,7 @@ package body Lua is
          narg := 2;
       end if;
       --  validate_argument will not return on failure
-      validate_argument (State, valid, narg, "pkg.prefix_path takes exactly one argument");
+      validate_argument (State, valid, narg, custerr_prefix_path'Access);
       declare
          inpath : constant String := retrieve_argument (State, 1);
       begin
@@ -635,9 +634,12 @@ package body Lua is
       valid := n = 2;
       if n > 2 then
          narg := 3;
+      elsif n = 1 then
+         narg := 2;
       end if;
       --  validate_argument will not return on failure
-      validate_argument (State, valid, narg, "pkg.prefix_path takes exactly one argument");
+      validate_argument (State, valid, narg, custerr_filecmp'Access);
+
       declare
          package UNX renames Archive.Unix;
          package B3 renames Blake_3;

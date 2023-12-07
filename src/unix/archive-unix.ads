@@ -87,6 +87,9 @@ package Archive.Unix is
    --  Useful function to format owners and groups
    function str2owngrp (name : String) return ownergroup;
 
+   --  Converts a string to a null-terminals char array
+   function convert_to_char_array (S : String) return IC.char_array;
+
 private
 
    function success (rc : IC.int) return Boolean;
