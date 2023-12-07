@@ -93,6 +93,7 @@ private
    pragma Convention (C, Lua_Function);
 
    subtype Lua_Index is Integer;
+   subtype Lua_Integer is IC.ptrdiff_t;
 
 
    top_slot : constant Lua_Index := -1;
@@ -163,7 +164,7 @@ private
    function API_lua_tolstring
      (State  : Lua_State;
       Index  : Integer;
-      Length : out IC.size_t) return IC.Strings.chars_ptr;
+      Length : access IC.size_t) return IC.Strings.chars_ptr;
    pragma Import (C, API_lua_tolstring, "lua_tolstring");
 
    function API_lua_pushlstring
@@ -228,6 +229,9 @@ private
    function API_lua_gettop (State : Lua_State) return Lua_Index;
    pragma Import (C, API_lua_gettop, "lua_gettop");
 
+   function API_lua_atpanic (State : Lua_State; Fun : Lua_Function) return Lua_Function;
+   pragma Import (C, API_lua_atpanic, "lua_atpanic");
+
    procedure API_lua_pushnil (State : Lua_State);
    pragma Import (C, API_lua_pushnil, "lua_pushnil");
 
@@ -244,16 +248,49 @@ private
    --  Push a string on the stack
    procedure Push (State : Lua_State; Data : String);
 
+   --  Replace (Define?) the panic routine
+   procedure set_panic (State : Lua_State; Fun : Lua_Function);
+
 
    -------------------
    --  Conversions  --
    -------------------
+
+   function API_lua_toboolean
+     (State : Lua_State;
+      Index : Lua_Index) return Integer;
+   pragma Import (C, API_lua_toboolean, "lua_toboolean");
+
+   function API_lua_tonumberx
+     (State   : Lua_State;
+      Index   : Lua_Index;
+      Success : access Integer) return Lua_Integer;
+   pragma Import (C, API_lua_tonumberx, "lua_tonumberx");
+
+   function API_lua_typename
+     (State : Lua_State;
+      Index : Lua_Index) return IC.Strings.chars_ptr;
+   pragma Import (C, API_lua_typename, "lua_typename");
 
    --  Converts the Lua value at the given index to a Ada string. The Lua value must be a string
    --  or a number; otherwise, the function raise Lua_Type_Error. If the value is a number, then
    --  lua_tolstring also changes the actual value in the stack to a string. (This change
    --  confuses lua_next when lua_tolstring is applied to keys during a table traversal.)
    function convert_to_string (State : Lua_State; Index : Lua_Index) return String;
+
+   --  Converts the Lua value at the given index to a boolean value.  Like all tests in Lua,
+   --  To_Boolean returns true for any Lua value different from false and nil; otherwise it
+   --  returns false. (If you want to accept only actual boolean values, use Is_Boolean to
+   --  test the value's type.)
+   function convert_to_boolean (State : Lua_State; Index : Lua_Index) return Boolean;
+
+   --  Converts the Lua value at the given index to the Ada type Lua_Integer. The Lua value
+   --  must be a number or a string convertible to a number otherwise, raise Lua_Type_Error.
+   function convert_to_integer (State : Lua_State; Index : Lua_Index) return Integer;
+
+   --  Returns the name of the type encoded by the value tp, which must be
+   --  one the values returned by lua_type.
+   function convert_to_type_name (State : Lua_State; Index : Lua_Index) return String;
 
 
    -----------------------
@@ -350,6 +387,12 @@ private
 
    function custom_print_msg (State : Lua_State) return Integer;
    pragma Convention (C, custom_print_msg);
-   --  praxxxgma Export (C, custom_print_msg, "pkg_print_msg");
+
+   function custom_panic (State : Lua_State) return Integer;
+   pragma Convention (C, custom_panic);
+
+   function custum_prefix_path (State : Lua_State) return Integer;
+   pragma Convention (C, custum_prefix_path);
+
 
 end Lua;

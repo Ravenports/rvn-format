@@ -6,6 +6,7 @@ with Ada.Text_IO;
 with Ada.Real_Time;
 with Ada.Exceptions;
 with Ada.Directories;
+with Ada.Strings.Unbounded;
 
 
 package body Lua is
@@ -14,6 +15,7 @@ package body Lua is
    package RT  renames Ada.Real_Time;
    package EX  renames Ada.Exceptions;
    package DIR renames Ada.Directories;
+   package ASU renames Ada.Strings.Unbounded;
 
 
    ----------------------
@@ -51,7 +53,9 @@ package body Lua is
       Set_Global_String (state, "msgfile_path",   msg_outfile);
       Set_Global_Boolean (State, "pkg_upgrade",   upgrading);
 
+      set_panic (State, custom_panic'Access);
       Register_Function (State, "pkg.print_msg", custom_print_msg'Access);
+      Register_Function (State, "pkg.prefixed_path", custum_prefix_path'Access);
 
       status := Protected_Call (state);
       case status is
@@ -59,6 +63,7 @@ package body Lua is
             null;
          when others =>
             TIO.Put_Line (TIO.Standard_Error, "Failed to execute Lua script:" & status'Img);
+            TIO.Put_Line (TIO.Standard_Error, convert_to_string (State, top_slot));
       end case;
 
       --  Provide delayed message text if it exists
@@ -188,15 +193,49 @@ package body Lua is
    -------------------------
    --  convert_to_string  --
    -------------------------
-   function convert_to_string (State : Lua_State; Index : Lua_Index) return String
-   is
-      Length : IC.size_t;
+   function convert_to_string (State : Lua_State; Index : Lua_Index) return String is
    begin
-      return IC.Strings.Value (API_lua_tolstring (State, Index, Length));
+      return IC.Strings.Value (API_lua_tolstring (State, Index, null));
    exception
       when others =>
          return "Failed to retrieve string value";
    end convert_to_string;
+
+
+   --------------------------
+   --  convert_to_boolean  --
+   --------------------------
+   function convert_to_boolean (State : Lua_State; Index : Lua_Index) return Boolean is
+   begin
+      if API_lua_toboolean (State, Index) = 0 then
+         return False;
+      end if;
+      return True;
+   end convert_to_boolean;
+
+
+   --------------------------
+   --  convert_to_integer  --
+   --------------------------
+   function convert_to_integer (State : Lua_State; Index : Lua_Index) return Integer
+   is
+      Result : constant IC.ptrdiff_t := API_lua_tonumberx (State, Index, null);
+   begin
+      return Integer (Result);
+   end convert_to_integer;
+
+
+   ----------------------------
+   --  convert_to_type_name  --
+   ----------------------------
+   function convert_to_type_name
+     (State : Lua_State;
+      Index : Lua_Index) return String
+   is
+      Result : constant IC.Strings.chars_ptr := API_lua_typename (State, Index);
+   begin
+      return IC.Strings.Value (Result);
+   end convert_to_type_name;
 
 
    -------------------------
@@ -366,6 +405,7 @@ package body Lua is
       IC.Strings.Free (Result);
    end Get_Field;
 
+
    -----------------
    --  Set_Field  --
    -----------------
@@ -489,5 +529,84 @@ package body Lua is
          Pop (State);
       end if;
    end Register_Object;
+
+
+   --------------------
+   --  custom_panic  --
+   --------------------
+   function custom_panic (State : Lua_State) return Integer
+   is
+      top   : Lua_Index;
+      ltype : Lua_Type;
+      stack : ASU.Unbounded_String;
+      LF    : constant Character := Character'Val (10);
+      TAB   : constant Character := Character'Val (9);
+   begin
+      top := API_lua_gettop (State);
+      ASU.Append (stack, "Stack" & LF);
+      ASU.Append (stack, "---------" & LF);
+      ASU.Append (stack, TAB & "Type   Data" & LF);
+      ASU.Append (stack, TAB & "-----------" & LF);
+
+      for index in 1 .. top loop
+         ltype := API_lua_type (State, index);
+         ASU.Append (stack, ltype'Img & TAB);
+         case ltype is
+            when LUA_TSTRING  =>
+               ASU.Append (stack, "String:  " & convert_to_string (State, index) & LF);
+            when LUA_TBOOLEAN =>
+               ASU.Append (stack, "Boolean: " & convert_to_boolean (State, index)'Img & LF);
+            when LUA_TNUMBER  =>
+               ASU.Append (stack, "Number:  " & convert_to_integer (State, index)'Img & LF);
+            when others =>
+               ASU.Append (Stack, "Other:   " & convert_to_type_name (State, index) & LF);
+         end case;
+      end loop;
+
+      TIO.Put (ASU.To_String (stack));
+      return 0;
+   end custom_panic;
+
+
+   -----------------
+   --  set_panic  --
+   -----------------
+   procedure set_panic (State : Lua_State; Fun : Lua_Function)
+   is
+      old_function : Lua_Function;
+
+      pragma Unreferenced (old_function);
+   begin
+      old_function := API_lua_atpanic (State, Fun);
+   end set_panic;
+
+
+   --------------------------
+   --  custum_prefix_path  --
+   --------------------------
+   function custum_prefix_path (State : Lua_State) return Integer
+   is
+      n       : constant Lua_Index := API_lua_gettop (State);
+      prefix  : constant String := Get_Global_String (State, "pkg_prefix");
+      valid   : Boolean;
+      narg    : Positive := n;
+   begin
+      valid := n = 1;
+      if n > 1 then
+         narg := 2;
+      end if;
+      --  validate_argument will not return on failure
+      validate_argument (State, valid, narg, "pkg.prefix_path takes exactly one argument");
+      declare
+         inpath : constant String := retrieve_argument (State, 1);
+      begin
+         if inpath (inpath'First) = '/' then
+            push (state, inpath);
+         else
+            push (state, prefix & '/' & inpath);
+         end if;
+      end;
+      return 1;
+   end custum_prefix_path;
 
 end Lua;
