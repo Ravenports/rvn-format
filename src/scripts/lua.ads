@@ -125,6 +125,12 @@ private
    custerr_readdir : IC.char_array := Archive.Unix.convert_to_char_array
      ("pkg.readdir takes exactly one argument");
 
+   custerr_os_exec : IC.char_array := Archive.Unix.convert_to_char_array
+     ("os.exec not available");
+
+   custerr_os_exit : IC.char_array := Archive.Unix.convert_to_char_array
+     ("os.exit not available");
+
    top_slot : constant Lua_Index := -1;
 
    --  Returns the nanosecond portion of the current time.
@@ -207,6 +213,12 @@ private
       narg     : Integer;
       extramsg : System.Address) return Integer;
    pragma Import (C, API_luaL_argerror, "luaL_argerror");
+
+   --  Raises an error; it never returns
+   function API_luaL_error
+     (State    : Lua_State;
+      fmt      : System.Address) return Integer;
+   pragma Import (C, API_luaL_error, "luaL_error");
 
    function API_luaL_checklstring
      (State : Lua_State;
@@ -480,5 +492,11 @@ private
 
    function custom_readdir (State : Lua_State) return Integer;
    pragma Convention (C, custom_readdir);
+
+   function override_os_execute (State : Lua_State) return Integer;
+   pragma Convention (C, override_os_execute);
+
+   function override_os_exit (State : Lua_State) return Integer;
+   pragma Convention (C, override_os_exit);
 
 end Lua;

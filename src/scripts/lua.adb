@@ -66,6 +66,11 @@ package body Lua is
       Register_Function (State, "pkg.exec", custom_exec'Access);
       Register_Function (State, "pkg.stat", custom_stat'Access);
 
+      --  Override / disable existing functions
+      Register_Function (State, "os.exec", override_os_execute'Access);
+      Register_Function (State, "os.exit", override_os_exit'Access);
+
+
       status := Protected_Call (state);
       case status is
          when LUA_OK =>
@@ -527,7 +532,7 @@ package body Lua is
          API_lua_pushvalue (State, Obj_Index);
          --  At least one dot has been found so create a hierarchy
          Set_Field (State, -2, Name (Start .. Name'Last),
-                    Override => False);
+                    Override => True);
 
          for J in 1 .. Set_Table_Times loop
             API_lua_settable (State, -3);
@@ -1051,6 +1056,24 @@ package body Lua is
          return 1;
       end;
    end custom_readdir;
+
+
+   ---------------------------
+   --  override_os_execute  --
+   ---------------------------
+   function override_os_execute (State : Lua_State) return Integer is
+   begin
+      return API_luaL_error (State, custerr_os_exec'Address);
+   end override_os_execute;
+
+
+   ------------------------
+   --  override_os_exit  --
+   ------------------------
+   function override_os_exit (State : Lua_State) return Integer is
+   begin
+      return API_luaL_error (State, custerr_os_exit'Address);
+   end override_os_exit;
 
 
 end Lua;
