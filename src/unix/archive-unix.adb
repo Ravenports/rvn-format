@@ -780,4 +780,73 @@ package body Archive.Unix is
    end convert_to_char_array;
 
 
+   ----------------------
+   --  file_connected  --
+   ----------------------
+   function file_connected (fd : File_Descriptor) return Boolean is
+   begin
+      return fd /= not_connected;
+   end file_connected;
+
+
+   -----------------
+   --  open_file  --
+   -----------------
+   function open_file (filename : String; flags : T_Open_Flags) return File_Descriptor
+   is
+      result         : File_Descriptor;
+      flag_wronly    : IC.int := IC.int (0);
+      flag_nonblock  : IC.int := IC.int (0);
+      flag_append    : IC.int := IC.int (0);
+      flag_rdonly    : IC.int := IC.int (0);
+      flag_directory : IC.int := IC.int (0);
+      flag_cloexec   : IC.int := IC.int (0);
+      flag_creat     : IC.int := IC.int (0);
+      flag_trunc     : IC.int := IC.int (0);
+      name           : IC.Strings.chars_ptr;
+   begin
+      if flags.WRONLY then
+         flag_wronly := IC.int (1);
+      end if;
+      if flags.NON_BLOCK then
+         flag_nonblock := IC.int (1);
+      end if;
+      if flags.RDONLY then
+         flag_rdonly := IC.int (1);
+      end if;
+      if flags.DIRECTORY then
+         flag_directory := IC.int (1);
+      end if;
+      if flags.CLOEXEC then
+         flag_cloexec := IC.int (1);
+      end if;
+      if flags.CREAT then
+         flag_creat := IC.int (1);
+      end if;
+      if flags.TRUNC then
+         flag_trunc := IC.int (1);
+      end if;
+      if flags.APPEND then
+         flag_append := IC.int (1);
+      end if;
+
+      name := IC.Strings.New_String (filename);
+      result := File_Descriptor (copen (path      => name,
+                                        rdonly    => flag_rdonly,
+                                        wronly    => flag_wronly,
+                                        append    => flag_append,
+                                        nonblock  => flag_nonblock,
+                                        directory => flag_directory,
+                                        cloexec   => flag_cloexec,
+                                        creat     => flag_creat,
+                                        trunc     => flag_trunc));
+      IC.Strings.Free (name);
+      --  DISABLE ERRNO CHECK (currently unused and it requires errno.c)
+      --  if not file_connected (result) then
+      --     last_errno := Integer (C_Errno);
+      --  end if;
+      return result;
+   end open_file;
+
+
 end Archive.Unix;

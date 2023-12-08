@@ -3,6 +3,7 @@
 
 private with System;
 private with interfaces.C.Strings;
+private with interfaces.C_Streams;
 private with Archive.Unix;
 
 package Lua is
@@ -46,6 +47,7 @@ package Lua is
 private
 
    package IC renames Interfaces.C;
+   package CS renames Interfaces.C_Streams;
 
    Lua_Error          : exception;
    Lua_Type_Error     : exception;
@@ -53,6 +55,8 @@ private
 
    --  Lua state is the structure containing the state of the interpreter.
    type Lua_State is new System.Address;
+
+   type Lua_User_Data is new System.Address;
 
    --  Callback
    type Lua_Function is access function (State : Lua_State) return Integer;
@@ -93,50 +97,59 @@ private
       LUA_TTHREAD        => 8);
    pragma Convention (C, Lua_Function);
 
+   type luaL_Stream is record
+      f : CS.FILEs;
+      closef : Lua_Function;
+   end record
+     with Convention => C_Pass_By_Copy;
+   type luaL_Stream_access is access luaL_Stream;
+
    subtype Lua_Index is Integer;
    subtype Lua_Integer is IC.ptrdiff_t;
 
 
 
-   custerr_print_msg : IC.char_array := Archive.Unix.convert_to_char_array
+   custerr_print_msg : constant IC.char_array := Archive.Unix.convert_to_char_array
      ("pkg.print_msg takes exactly one argument");
 
-   custerr_prefix_path : IC.char_array := Archive.Unix.convert_to_char_array
+   custerr_prefix_path : constant IC.char_array := Archive.Unix.convert_to_char_array
      ("pkg.prefix_path takes exactly one argument");
 
-   custerr_filecmp : IC.char_array := Archive.Unix.convert_to_char_array
+   custerr_filecmp : constant IC.char_array := Archive.Unix.convert_to_char_array
      ("pkg.filecmp takes exactly two arguments");
 
-   custerr_symlink : IC.char_array := Archive.Unix.convert_to_char_array
+   custerr_symlink : constant IC.char_array := Archive.Unix.convert_to_char_array
      ("pkg.symlink takes exactly two arguments");
 
-   custerr_filecopy : IC.char_array := Archive.Unix.convert_to_char_array
+   custerr_filecopy : constant IC.char_array := Archive.Unix.convert_to_char_array
      ("pkg.symlink takes exactly two arguments");
 
-   custerr_exec : IC.char_array := Archive.Unix.convert_to_char_array
+   custerr_exec : constant IC.char_array := Archive.Unix.convert_to_char_array
      ("pkg.exec takes exactly one argument");
 
-   custerr_exec_payload : IC.char_array := Archive.Unix.convert_to_char_array
+   custerr_exec_payload : constant IC.char_array := Archive.Unix.convert_to_char_array
      ("pkg.exec payload: expected array of strings");
 
-   custerr_stat : IC.char_array := Archive.Unix.convert_to_char_array
+   custerr_stat : constant IC.char_array := Archive.Unix.convert_to_char_array
      ("pkg.stat takes exactly one argument");
 
-   custerr_readdir : IC.char_array := Archive.Unix.convert_to_char_array
+   custerr_readdir : constant IC.char_array := Archive.Unix.convert_to_char_array
      ("pkg.readdir takes exactly one argument");
 
-   custerr_os_exec : IC.char_array := Archive.Unix.convert_to_char_array
+   custerr_os_exec : constant IC.char_array := Archive.Unix.convert_to_char_array
      ("os.exec not available");
 
-   custerr_os_exit : IC.char_array := Archive.Unix.convert_to_char_array
+   custerr_os_exit : constant IC.char_array := Archive.Unix.convert_to_char_array
      ("os.exit not available");
 
-   custerr_os_remove : IC.char_array := Archive.Unix.convert_to_char_array
+   custerr_os_remove : constant IC.char_array := Archive.Unix.convert_to_char_array
      ("os.remove takes exactly one argument");
 
-   custerr_os_rename : IC.char_array := Archive.Unix.convert_to_char_array
+   custerr_os_rename : constant IC.char_array := Archive.Unix.convert_to_char_array
      ("os.rename takes exactly two arguments");
 
+   custerr_io_open : constant IC.char_array := Archive.Unix.convert_to_char_array
+     ("io.open takes exactly two arguments");
 
    top_slot : constant Lua_Index := -1;
 
@@ -465,6 +478,50 @@ private
       Fun   : Lua_Function);
 
 
+   -----------------
+   --  MetaTables --
+   -----------------
+
+   function API_lua_newuserdatauv
+     (State : Lua_State;
+      Size  : IC.size_t;
+      nuvalue : Integer) return Lua_User_Data;
+   pragma Import (C, API_lua_newuserdatauv, "lua_newuserdatauv");
+
+   function API_luaL_checkudata
+     (State : Lua_State;
+      Index : Lua_Index;
+      Str   : IC.Strings.chars_ptr) return Lua_User_Data;
+   pragma Import (C, API_luaL_checkudata, "luaL_checkudata");
+
+   --  Check if object at position Index has a metatable and it is the same as
+   --  metatable stored at Name entry in the registry. In case the object has
+   --  not metatable or the metatables do not correspond then return null and
+   --  set an error in the current state. Otherwise return the address of the
+   --  user data of the object.
+   function Check_User_Data
+     (State : Lua_State;
+      Index : Lua_Index;
+      Name  : String) return Lua_User_Data;
+
+   function c_fdopen
+     (fildes : Archive.Unix.File_Descriptor;
+      mode   : IC.Strings.chars_ptr) return CS.FILEs;
+   pragma Import (C, c_fdopen, "fdopen");
+
+   function c_fclose (stream : CS.FILEs) return Integer;
+   pragma Import (C, c_fclose, "fclose");
+
+   procedure API_luaL_setmetatable
+     (State : Lua_State;
+      Str   : IC.Strings.chars_ptr);
+   pragma Import (C, API_luaL_setmetatable, "luaL_setmetatable");
+
+   procedure Set_Metatable
+     (State : Lua_State;
+      Name  : String);
+
+
    -----------------------------------------
    --  PKG custom functions and routines  --
    -----------------------------------------
@@ -511,5 +568,11 @@ private
 
    function override_rename (State : Lua_State) return Integer;
    pragma Convention (C, override_rename);
+
+   function override_open (State : Lua_State) return Integer;
+   pragma Convention (C, override_open);
+
+   function override_close (State : Lua_State) return Integer;
+   pragma Convention (C, override_close);
 
 end Lua;

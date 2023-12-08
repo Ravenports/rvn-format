@@ -71,6 +71,7 @@ package body Lua is
       Register_Function (State, "os.exit", override_os_exit'Access);
       Register_Function (State, "os.remove", override_remove'Access);
       Register_Function (State, "os.rename", override_rename'Access);
+      Register_Function (State, "io.open", override_open'Access);
 
 
       status := Protected_Call (state);
@@ -584,6 +585,36 @@ package body Lua is
          when others => return False;
       end case;
    end is_string;
+
+
+   -----------------------
+   --  Check_User_Data  --
+   -----------------------
+   function Check_User_Data
+     (State : Lua_State;
+      Index : Lua_Index;
+      Name  : String) return Lua_User_Data
+   is
+      Str_Ptr : IC.Strings.chars_ptr := IC.Strings.New_String (Name);
+      Result  : constant Lua_User_Data := API_luaL_checkudata (State, Index, Str_Ptr);
+   begin
+      IC.Strings.Free (Str_Ptr);
+      return Result;
+   end Check_User_Data;
+
+
+   ---------------------
+   --  Set_Metatable  --
+   ---------------------
+   procedure Set_Metatable
+     (State : Lua_State;
+      Name  : String)
+   is
+      Str_Ptr : IC.Strings.chars_ptr := IC.Strings.New_String (Name);
+   begin
+      API_luaL_setmetatable (State, Str_Ptr);
+      IC.Strings.Free (Str_Ptr);
+   end Set_Metatable;
 
 
    --------------------
@@ -1146,5 +1177,115 @@ package body Lua is
             return API_luaL_fileresult (State, 0, System.Null_Address);
       end;
    end override_rename;
+
+
+   ---------------------
+   --  override_open  --
+   ---------------------
+   function override_open (State : Lua_State) return Integer
+   is
+      n       : constant Lua_Index := API_lua_gettop (State);
+      valid   : Boolean;
+      narg    : Positive := n;
+   begin
+      valid := n = 2;
+      if n > 2 then
+         narg := 3;
+      elsif n = 1 then
+         narg := 2;
+      end if;
+      --  validate_argument will not return on failure
+      validate_argument (State, valid, narg, custerr_os_rename);
+
+      declare
+         package UNX renames Archive.Unix;
+
+         filename  : constant String := dynamic_path (State, retrieve_argument (State, 1));
+         mode      : constant String := retrieve_argument (State, 2);
+         bad_mode  : constant IC.char_array := UNX.convert_to_char_array ("invalid mode");
+         cfilename : constant IC.char_array := UNX.convert_to_char_array (filename);
+         flags     : UNX.T_Open_Flags;
+         fd        : UNX.File_Descriptor;
+     --    userdata  : Lua_User_Data;
+      begin
+         --  mode options are: r  (read), w (write), a (append), b (binary which is ignored),
+         --                    r+, w+, a+
+         if mode = "r" or else mode = "rb" then
+            flags.RDONLY := True;
+         elsif mode = "r+" or else mode = "rb+" then
+            flags.RDONLY := True;
+            flags.WRONLY := True;
+         elsif mode = "w" or else mode = "wb" then
+            flags.WRONLY := True;
+            flags.CREAT  := True;
+            flags.TRUNC  := True;
+         elsif mode = "w+" or else mode = "wb+" then
+            flags.WRONLY := True;
+            flags.RDONLY := True;
+            flags.CREAT  := True;
+            flags.TRUNC  := True;
+         elsif mode = "a" or else mode = "ab" then
+            flags.WRONLY := True;
+            flags.CREAT  := True;
+            flags.APPEND := True;
+         elsif mode = "a+" or else mode = "ab+" then
+            flags.WRONLY := True;
+            flags.RDONLY := True;
+            flags.CREAT  := True;
+            flags.APPEND := True;
+         else
+             validate_argument (State, False, 2, bad_mode);
+         end if;
+
+         fd := UNX.open_file (filename, flags);
+         if not UNX.file_connected (fd) then
+            return API_luaL_fileresult (State, 0, cfilename'Address);
+         end if;
+
+       --  userdata := API_lua_newuserdata (State, IC.size_t (luaL_Stream'Size));
+         declare
+            use type CS.FILEs;
+
+            cmode : IC.Strings.chars_ptr := IC.Strings.New_String (mode);
+            lsize : constant IC.size_t := IC.size_t (luaL_Stream'Size);
+            userdata : constant Lua_User_Data := API_lua_newuserdatauv (State, lsize, 1);
+            LStream  : luaL_Stream;
+            for LStream'Address use System.Address (userdata);
+            pragma Import (Ada, LStream);
+         begin
+            LStream.f := c_fdopen (fd, cmode);
+            LStream.closef := override_close'Access;
+            IC.Strings.Free (cmode);
+            Set_Metatable (State,  "FILE*" & ASCII.NUL);
+            if LStream.f = CS.NULL_Stream then
+               return API_luaL_fileresult (State, 0, cfilename'Address);
+            else
+               return 1;
+            end if;
+         end;
+      end;
+   end override_open;
+
+
+   ----------------------
+   --  override_close  --
+   ----------------------
+   function override_close (State : Lua_State) return Integer
+   is
+      res : Integer;
+      filehandle : IC.Strings.chars_ptr := IC.Strings.New_String ("FILE*" & ASCII.NUL);
+      userdata : constant Lua_User_Data := API_luaL_checkudata (State, 1, filehandle);
+
+      LStream  : luaL_Stream;
+      for LStream'Address use System.Address (userdata);
+      pragma Import (Ada, LStream);
+   begin
+      IC.Strings.Free (filehandle);
+      res := c_fclose (LStream.f);
+      if res = 0 then
+         return API_luaL_fileresult (State, 1, System.Null_Address);
+      end if;
+      return API_luaL_fileresult (State, 0, System.Null_Address);
+   end override_close;
 
 end Lua;

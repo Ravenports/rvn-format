@@ -22,7 +22,21 @@ package Archive.Unix is
          gid   : owngrp_id;
       end record;
 
+   --  Set both RDONLY and WRONLY to get RDRW flags
+   type T_Open_Flags is
+      record
+         RDONLY    : Boolean := False;
+         WRONLY    : Boolean := False;
+         APPEND    : Boolean := False;
+         NON_BLOCK : Boolean := False;
+         DIRECTORY : Boolean := False;
+         CLOEXEC   : Boolean := False;
+         CREAT     : Boolean := False;
+         TRUNC     : Boolean := False;
+      end record;
+
    type metadata_rc is mod 2 ** 5;
+   type File_Descriptor is new Integer;
 
    --  Return set of file characteristis given the path to a file or a directory
    function get_charactistics (path : String) return File_Characteristics;
@@ -92,6 +106,12 @@ package Archive.Unix is
    --  Converts a string to a null-terminals char array
    function convert_to_char_array (S : String) return IC.char_array;
 
+   --  Use libc's open function to retrieve file descriptor
+   function open_file (filename : String; flags : T_Open_Flags) return File_Descriptor;
+
+   --  Return True if fd /= -1
+   function file_connected (fd : File_Descriptor) return Boolean;
+
 private
 
    function success (rc : IC.int) return Boolean;
@@ -122,6 +142,9 @@ private
       tv_nsec  : IC.long;
    end record;
    pragma Convention (C, timespec);
+
+   --  last_errno : Integer;
+   not_connected : constant File_Descriptor := -1;
 
    function arc_stat
      (path : IC.Strings.chars_ptr;
@@ -247,6 +270,21 @@ private
       new_mtime_epoch   : time_t;
       new_mtime_nsecs   : IC.long) return IC.unsigned_char;
    pragma Import (C, set_fifo_metadata);
+
+   function copen
+     (path      : IC.Strings.chars_ptr;
+      rdonly    : IC.int;
+      wronly    : IC.int;
+      append    : IC.int;
+      nonblock  : IC.int;
+      directory : IC.int;
+      cloexec   : IC.int;
+      creat     : IC.int;
+      trunc     : IC.int) return IC.int;
+   pragma Import (C, copen, "try_open");
+
+   --  function C_Errno return IC.int;
+   --  pragma Import (C, C_Errno, "get_errno");
 
    function stat_ok (path : String; sb : struct_stat_Access) return Boolean;
 
