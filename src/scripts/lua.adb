@@ -57,11 +57,12 @@ package body Lua is
 
       set_panic (State, custom_panic'Access);
       Register_Function (State, "pkg.print_msg", custom_print_msg'Access);
-      Register_Function (State, "pkg.prefixed_path", custum_prefix_path'Access);
+      Register_Function (State, "pkg.prefixed_path", custom_prefix_path'Access);
       Register_Function (State, "pkg.filecmp", custom_filecmp'Access);
       Register_Function (State, "pkg.symlink", custom_symlink'Access);
       Register_Function (State, "pkg.copy", custom_filecopy'Access);
       Register_Function (State, "pkg.exec", custom_exec'Access);
+      Register_Function (State, "pkg.stat", custom_stat'Access);
 
       status := Protected_Call (state);
       case status is
@@ -626,10 +627,22 @@ package body Lua is
    end set_panic;
 
 
+   --------------------
+   --  dynamic_path  --
+   --------------------
+   function dynamic_path (State : Lua_State; given_path : String) return String is
+   begin
+      if given_path (given_path'First) = '/' then
+         return given_path;
+      end if;
+      return Get_Global_String (State, "pkg_rootdir") & '/' & given_path;
+   end dynamic_path;
+
+
    --------------------------
-   --  custum_prefix_path  --
+   --  custom_prefix_path  --
    --------------------------
-   function custum_prefix_path (State : Lua_State) return Integer
+   function custom_prefix_path (State : Lua_State) return Integer
    is
       n       : constant Lua_Index := API_lua_gettop (State);
       prefix  : constant String := Get_Global_String (State, "pkg_prefix");
@@ -652,7 +665,7 @@ package body Lua is
          end if;
       end;
       return 1;
-   end custum_prefix_path;
+   end custom_prefix_path;
 
 
    ----------------------
@@ -677,8 +690,8 @@ package body Lua is
          package UNX renames Archive.Unix;
          package B3 renames Blake_3;
 
-         file_1 : constant String := retrieve_argument (State, 1);
-         file_2 : constant String := retrieve_argument (State, 2);
+         file_1 : constant String := dynamic_path (State, retrieve_argument (State, 1));
+         file_2 : constant String := dynamic_path (State, retrieve_argument (State, 2));
          files_identical : constant Integer := 0;
          files_differ    : constant Integer := 1;
          file_not_found  : constant Integer := 2;
@@ -739,7 +752,7 @@ package body Lua is
       declare
          package UNX renames Archive.Unix;
 
-         source : constant String := retrieve_argument (State, 1);
+         source : constant String := dynamic_path (State, retrieve_argument (State, 1));
          destin : constant String := retrieve_argument (State, 2);
       begin
          if not UNX.create_symlink (source, destin) then
@@ -775,8 +788,8 @@ package body Lua is
       declare
          package UNX renames Archive.Unix;
 
-         source : constant String := retrieve_argument (State, 1);
-         destin : constant String := retrieve_argument (State, 2);
+         source : constant String := dynamic_path (State, retrieve_argument (State, 1));
+         destin : constant String := dynamic_path (State, retrieve_argument (State, 2));
          src_attributes : UNX.File_Characteristics;
 
          copy_success    : constant Integer := 0;
@@ -916,7 +929,65 @@ package body Lua is
             return 1;
          end if;
       end;
-
    end custom_exec;
+
+
+   -------------------
+   --  custom_stat  --
+   -------------------
+   function custom_stat (State : Lua_State) return Integer
+   is
+      n       : constant Lua_Index := API_lua_gettop (State);
+      valid   : Boolean;
+      narg    : Positive := n;
+   begin
+      valid := n = 1;
+      if n > 1 then
+         narg := 2;
+      end if;
+      --  validate_argument will not return on failure
+      validate_argument (State, valid, narg, custerr_stat);
+
+      declare
+         package UNX renames Archive.Unix;
+
+         inpath : constant String := retrieve_argument (State, 1);
+         attributes : UNX.File_Characteristics;
+      begin
+         attributes := UNX.get_charactistics (inpath);
+         case attributes.ftype is
+            when Archive.unsupported =>
+               Push (State);
+               return 1;
+            when others => null;
+         end case;
+
+         API_lua_settop (State, 2);
+         if not is_table (State, 2) then
+            API_lua_createtable (State);
+         end if;
+
+         Push (State, Integer (attributes.size));
+         Set_Field (State, -2, "size");
+
+         Push (State, Integer (attributes.uid));
+         Set_Field (State, -2, "uid");
+
+         Push (State, Integer (attributes.gid));
+         Set_Field (State, -2, "gid");
+
+         case attributes.ftype is
+            when Archive.unsupported => null;
+            when Archive.directory   => Push (State, "dir");
+            when Archive.regular     => Push (State, "reg");
+            when Archive.symlink     => Push (State, "lnk");
+            when Archive.fifo        => Push (State, "fifo");
+            when Archive.hardlink    => Push (State, "reg");
+         end case;
+         Set_Field (State, -2, "type");
+
+         return 1;
+      end;
+   end custom_stat;
 
 end Lua;

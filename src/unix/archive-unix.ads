@@ -18,6 +18,8 @@ package Archive.Unix is
          inode : inode_type;
          error : Boolean;
          size  : exabytes;
+         uid   : owngrp_id;
+         gid   : owngrp_id;
       end record;
 
    type metadata_rc is mod 2 ** 5;

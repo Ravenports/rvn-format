@@ -119,6 +119,9 @@ private
    custerr_exec_payload : IC.char_array := Archive.Unix.convert_to_char_array
      ("pkg.exec payload: expected array of strings");
 
+   custerr_stat : IC.char_array := Archive.Unix.convert_to_char_array
+     ("pkg.stat takes exactly one argument");
+
    top_slot : constant Lua_Index := -1;
 
    --  Returns the nanosecond portion of the current time.
@@ -444,6 +447,9 @@ private
    --  PKG custom functions and routines  --
    -----------------------------------------
 
+   --  Returns given_path if given_starts with "/"
+   --  Returns rootdir + / + given_path otherwise
+   function dynamic_path (State : Lua_State; given_path : String) return String;
 
    function custom_print_msg (State : Lua_State) return Integer;
    pragma Convention (C, custom_print_msg);
@@ -451,8 +457,8 @@ private
    function custom_panic (State : Lua_State) return Integer;
    pragma Convention (C, custom_panic);
 
-   function custum_prefix_path (State : Lua_State) return Integer;
-   pragma Convention (C, custum_prefix_path);
+   function custom_prefix_path (State : Lua_State) return Integer;
+   pragma Convention (C, custom_prefix_path);
 
    function custom_filecmp (State : Lua_State) return Integer;
    pragma Convention (C, custom_filecmp);
@@ -465,5 +471,8 @@ private
 
    function custom_exec (State : Lua_State) return Integer;
    pragma Convention (C, custom_exec);
+
+   function custom_stat (State : Lua_State) return Integer;
+   pragma Convention (C, custom_stat);
 
 end Lua;

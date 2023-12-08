@@ -72,6 +72,8 @@ package body Archive.Unix is
             result.perms := file_permissions (sb'Unchecked_Access);
             result.inode := inode_number (sb'Unchecked_Access);
             result.size  := File_Size (sb'Unchecked_Access);
+            result.uid   := owngrp_id (arc_get_owner_id (sb'Unchecked_Access));
+            result.gid   := owngrp_id (arc_get_group_id (sb'Unchecked_Access));
             result.error := False;
          else
             result.owner := str2owngrp ("xxx");
