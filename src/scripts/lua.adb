@@ -69,6 +69,7 @@ package body Lua is
       --  Override / disable existing functions
       Register_Function (State, "os.exec", override_os_execute'Access);
       Register_Function (State, "os.exit", override_os_exit'Access);
+      Register_Function (State, "os.remove", override_remove'Access);
 
 
       status := Protected_Call (state);
@@ -1074,6 +1075,45 @@ package body Lua is
    begin
       return API_luaL_error (State, custerr_os_exit'Address);
    end override_os_exit;
+
+
+   -----------------------
+   --  override_remove  --
+   -----------------------
+   function override_remove (State : Lua_State) return Integer
+   is
+      n       : constant Lua_Index := API_lua_gettop (State);
+      valid   : Boolean;
+      narg    : Positive := n;
+   begin
+      valid := n = 1;
+      if n > 1 then
+         narg := 2;
+      end if;
+      --  validate_argument will not return on failure
+      validate_argument (State, valid, narg, custerr_os_remove);
+      declare
+         package UNX renames Archive.Unix;
+
+         target_path : constant String := dynamic_path (State, retrieve_argument (State, 1));
+         attributes : UNX.File_Characteristics;
+      begin
+         attributes := UNX.get_charactistics (target_path);
+         case attributes.ftype is
+            when Archive.unsupported =>
+               return API_luaL_fileresult (State, 0, System.Null_Address);
+            when Archive.directory =>
+               DIR.Delete_Directory (target_path);
+               return API_luaL_fileresult (State, 1, System.Null_Address);
+            when Archive.regular | Archive.hardlink | Archive.symlink | Archive.fifo =>
+               DIR.Delete_File (target_path);
+               return API_luaL_fileresult (State, 1, System.Null_Address);
+         end case;
+      exception
+         when others =>
+            return API_luaL_fileresult (State, 0, System.Null_Address);
+      end;
+   end override_remove;
 
 
 end Lua;

@@ -131,6 +131,9 @@ private
    custerr_os_exit : IC.char_array := Archive.Unix.convert_to_char_array
      ("os.exit not available");
 
+   custerr_os_remove : IC.char_array := Archive.Unix.convert_to_char_array
+     ("os.remove takes exactly one argument");
+
    top_slot : constant Lua_Index := -1;
 
    --  Returns the nanosecond portion of the current time.
@@ -498,5 +501,8 @@ private
 
    function override_os_exit (State : Lua_State) return Integer;
    pragma Convention (C, override_os_exit);
+
+   function override_remove (State : Lua_State) return Integer;
+   pragma Convention (C, override_remove);
 
 end Lua;
