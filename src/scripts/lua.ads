@@ -122,6 +122,9 @@ private
    custerr_stat : IC.char_array := Archive.Unix.convert_to_char_array
      ("pkg.stat takes exactly one argument");
 
+   custerr_readdir : IC.char_array := Archive.Unix.convert_to_char_array
+     ("pkg.readdir takes exactly one argument");
+
    top_slot : constant Lua_Index := -1;
 
    --  Returns the nanosecond portion of the current time.
@@ -474,5 +477,8 @@ private
 
    function custom_stat (State : Lua_State) return Integer;
    pragma Convention (C, custom_stat);
+
+   function custom_readdir (State : Lua_State) return Integer;
+   pragma Convention (C, custom_readdir);
 
 end Lua;

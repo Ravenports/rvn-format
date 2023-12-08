@@ -7,6 +7,7 @@ with Ada.Real_Time;
 with Ada.Exceptions;
 with Ada.Directories;
 with Ada.Strings.Unbounded;
+with Archive.Dirent.Scan;
 with GNAT.OS_Lib;
 with Blake_3;
 
@@ -60,6 +61,7 @@ package body Lua is
       Register_Function (State, "pkg.prefixed_path", custom_prefix_path'Access);
       Register_Function (State, "pkg.filecmp", custom_filecmp'Access);
       Register_Function (State, "pkg.symlink", custom_symlink'Access);
+      Register_Function (State, "pkg.readdir", custom_readdir'Access);
       Register_Function (State, "pkg.copy", custom_filecopy'Access);
       Register_Function (State, "pkg.exec", custom_exec'Access);
       Register_Function (State, "pkg.stat", custom_stat'Access);
@@ -989,5 +991,66 @@ package body Lua is
          return 1;
       end;
    end custom_stat;
+
+
+   ----------------------
+   --  custom_readdir  --
+   ----------------------
+   function custom_readdir (State : Lua_State) return Integer
+   is
+      n       : constant Lua_Index := API_lua_gettop (State);
+      valid   : Boolean;
+      narg    : Positive := n;
+   begin
+      valid := n = 1;
+      if n > 1 then
+         narg := 2;
+      end if;
+      --  validate_argument will not return on failure
+      validate_argument (State, valid, narg, custerr_readdir);
+
+      declare
+         package UNX renames Archive.Unix;
+         package SCN renames Archive.Dirent.Scan;
+
+         inpath  : constant String := retrieve_argument (State, 1);
+         dynpath : constant String := dynamic_path(State, inpath);
+         fname   : IC.char_array := UNX.convert_to_char_array (inpath);
+         attributes : UNX.File_Characteristics;
+      begin
+         attributes := UNX.get_charactistics (dynpath);
+         case attributes.ftype is
+            when Archive.directory => null;
+            when others =>
+               return API_luaL_fileresult (State, 0, fname'Address);
+         end case;
+         declare
+            procedure walkdir (position : SCN.dscan_crate.Cursor);
+
+            crate : SCN.dscan_crate.Vector;
+            index : Integer := 0;
+
+            procedure walkdir (position : SCN.dscan_crate.Cursor)
+            is
+               item  : Archive.Dirent.Directory_Entity renames SCN.dscan_crate.Element (position);
+               filename  : constant String := item.simple_name;
+            begin
+               index := index + 1;
+               Push (State, index);
+               Push (State, filename);
+               API_lua_settable (State, -3);
+            end walkdir;
+         begin
+            SCN.scan_directory (dynpath, crate);
+            API_lua_createtable (State);
+            crate.Iterate (walkdir'Access);
+         exception
+            when others =>
+               return API_luaL_fileresult (State, 0, fname'Address);
+         end;
+         return 1;
+      end;
+   end custom_readdir;
+
 
 end Lua;
