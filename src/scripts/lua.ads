@@ -110,6 +110,15 @@ private
    custerr_symlink : IC.char_array := Archive.Unix.convert_to_char_array
      ("pkg.symlink takes exactly two arguments");
 
+   custerr_filecopy : IC.char_array := Archive.Unix.convert_to_char_array
+     ("pkg.symlink takes exactly two arguments");
+
+   custerr_exec : IC.char_array := Archive.Unix.convert_to_char_array
+     ("pkg.exec takes exactly one argument");
+
+   custerr_exec_payload : IC.char_array := Archive.Unix.convert_to_char_array
+     ("pkg.exec payload: expected array of strings");
+
    top_slot : constant Lua_Index := -1;
 
    --  Returns the nanosecond portion of the current time.
@@ -358,6 +367,21 @@ private
       Name  : IC.Strings.chars_ptr);
    pragma Import (C, API_lua_setfield, "lua_setfield");
 
+   --  Returns the raw "length" of the value at the given index: for strings, this is the
+   --  string length; for tables, this is the result of the length operator ('#') with no
+   --  metamethods; for userdata, this is the size of the block of memory allocated for the
+   --  userdata; for other values, it is 0.
+   function API_lua_rawlen (State : Lua_State; Index : Lua_Index) return IC.size_t;
+   pragma Import (C, API_lua_rawlen, "lua_rawlen");
+
+   --  Pushes onto the stack the value t[n], where t is the table at the given
+   --  index. The access is raw; that is, it does not invoke metamethods.
+   procedure Raw_Geti
+     (State : Lua_State;
+      Index : Lua_Index;
+      N     : Integer);
+   pragma Import (C, Raw_Geti, "lua_rawgeti");
+
    --  Does the equivalent to t[k] = v, where t is the value at the given
    --  index and v is the value at the top of the stack.
    --
@@ -368,6 +392,16 @@ private
       Index    : Lua_Index;
       Name     : String;
       Override : Boolean := True);
+
+   --  Returns true if the value at the given acceptable index is a table, and false otherwise.
+   function is_table
+     (State    : Lua_State;
+      Index    : Lua_Index) return Boolean;
+
+   --  Returns true if the value at the given acceptable index is a string, and false otherwise.
+   function is_string
+     (State    : Lua_State;
+      Index    : Lua_Index) return Boolean;
 
 
    --------------------------
@@ -425,5 +459,11 @@ private
 
    function custom_symlink (State : Lua_State) return Integer;
    pragma Convention (C, custom_symlink);
+
+   function custom_filecopy (State : Lua_State) return Integer;
+   pragma Convention (C, custom_filecopy);
+
+   function custom_exec (State : Lua_State) return Integer;
+   pragma Convention (C, custom_exec);
 
 end Lua;

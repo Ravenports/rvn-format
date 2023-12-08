@@ -7,6 +7,7 @@ with Ada.Real_Time;
 with Ada.Exceptions;
 with Ada.Directories;
 with Ada.Strings.Unbounded;
+with GNAT.OS_Lib;
 with Blake_3;
 
 
@@ -59,6 +60,8 @@ package body Lua is
       Register_Function (State, "pkg.prefixed_path", custum_prefix_path'Access);
       Register_Function (State, "pkg.filecmp", custom_filecmp'Access);
       Register_Function (State, "pkg.symlink", custom_symlink'Access);
+      Register_Function (State, "pkg.copy", custom_filecopy'Access);
+      Register_Function (State, "pkg.exec", custom_exec'Access);
 
       status := Protected_Call (state);
       case status is
@@ -541,6 +544,38 @@ package body Lua is
    end Register_Object;
 
 
+   ----------------
+   --  is_table  --
+   ----------------
+   function is_table
+     (State    : Lua_State;
+      Index    : Lua_Index) return Boolean
+   is
+      this_type : constant Lua_Type := API_lua_type (State, Index);
+   begin
+      case this_type is
+         when LUA_TTABLE => return True;
+         when others => return False;
+      end case;
+   end is_table;
+
+
+   -----------------
+   --  is_string  --
+   -----------------
+   function is_string
+     (State    : Lua_State;
+      Index    : Lua_Index) return Boolean
+   is
+      this_type : constant Lua_Type := API_lua_type (State, Index);
+   begin
+      case this_type is
+         when LUA_TSTRING=> return True;
+         when others => return False;
+      end case;
+   end is_string;
+
+
    --------------------
    --  custom_panic  --
    --------------------
@@ -717,5 +752,171 @@ package body Lua is
          return 1;
       end;
    end custom_symlink;
+
+
+   -----------------------
+   --  custom_filecopy  --
+   -----------------------
+   function custom_filecopy (State : Lua_State) return Integer
+   is
+      n       : constant Lua_Index := API_lua_gettop (State);
+      valid   : Boolean;
+      narg    : Positive := n;
+   begin
+      valid := n = 2;
+      if n > 2 then
+         narg := 3;
+      elsif n = 1 then
+         narg := 2;
+      end if;
+      --  validate_argument will not return on failure
+      validate_argument (State, valid, narg, custerr_filecopy);
+
+      declare
+         package UNX renames Archive.Unix;
+
+         source : constant String := retrieve_argument (State, 1);
+         destin : constant String := retrieve_argument (State, 2);
+         src_attributes : UNX.File_Characteristics;
+
+         copy_success    : constant Integer := 0;
+         copy_failure    : constant Integer := 1;
+         file_not_found  : constant Integer := 2;
+         wrong_file_type : constant Integer := 3;
+         missing_parent  : constant Integer := 4;
+      begin
+         src_attributes := UNX.get_charactistics (source);
+         case src_attributes.ftype is
+            when Archive.unsupported =>
+               Push (State, file_not_found);
+               return 1;
+            when Archive.directory | Archive.symlink | Archive.fifo =>
+               Push (State, wrong_file_type);
+               return 1;
+            when Archive.regular | Archive.hardlink =>
+               null;
+         end case;
+         declare
+            function head (S : String) return String
+            is
+               delimiter    : constant String  := "/";
+               dl_size      : constant Natural := delimiter'Length;
+               back_marker  : constant Natural := S'First;
+               front_marker : Natural := S'Last - dl_size + 1;
+            begin
+               loop
+                  if front_marker < back_marker then
+                     --  delimiter never found
+                     return "";
+                  end if;
+                  if S (front_marker .. front_marker + dl_size - 1) = delimiter then
+                     return S (back_marker .. front_marker - 1);
+                  end if;
+                  front_marker := front_marker - 1;
+               end loop;
+            end head;
+
+            destino_padre : constant String := head (destin);
+            dest_attributes : UNX.File_Characteristics;
+         begin
+            if destino_padre /= "" then
+               dest_attributes := UNX.get_charactistics (destino_padre);
+               case dest_attributes.ftype is
+                  when Archive.directory => null;
+                  when others =>
+                     Push (State, missing_parent);
+                     return 1;
+               end case;
+            end if;
+         end;
+         --  passed validation checks, attempt to copy
+         declare
+            Args : GNAT.OS_Lib.Argument_List :=
+              (1 => new String'("/bin/cp"),
+               2 => new String'("-RpP"),
+               3 => new String'(source),
+               4 => new String'(destin)
+              );
+            succeeded : Boolean;
+         begin
+            GNAT.OS_Lib.Spawn
+              (Program_Name => Args (Args'First).all,
+               Args         => Args (Args'First + 1 .. Args'Last),
+               Success      => succeeded);
+
+            --  Free memory
+            for Index in Args'Range loop
+               GNAT.OS_Lib.Free (Args (Index));
+            end loop;
+
+            if succeeded then
+               Push (State, copy_success);
+               return 0;
+            else
+               Push (State, copy_failure);
+               return 1;
+            end if;
+         end;
+      end;
+   end custom_filecopy;
+
+
+   -------------------
+   --  custum_exec  --
+   -------------------
+   function custom_exec (State : Lua_State) return Integer
+   is
+      n       : constant Lua_Index := API_lua_gettop (State);
+      valid   : Boolean;
+      narg    : Positive := n;
+      tablen  : Natural;
+   begin
+      valid := n = 1;
+      if n > 1 then
+         narg := 2;
+      end if;
+      --  validate_argument will not return on failure
+      validate_argument (State, valid, narg, custerr_exec);
+
+      if not is_table (State, top_slot) then
+         TIO.Put_Line ("error: exec argument was not a table");
+         return 1;
+      end if;
+
+      tablen := Natural (API_lua_rawlen (State, 1));
+      declare
+         Args : GNAT.OS_Lib.Argument_List (1 .. tablen);
+         succeeded : Boolean;
+         exec_success : constant Integer := 0;
+         exec_failure : constant Integer := 1;
+      begin
+         for index in 1 .. tablen loop
+            Raw_Geti (State, 1, index);
+            if not is_string (State, top_slot) then
+               validate_argument (State, False, index, custerr_exec_payload);
+            end if;
+            Args (index) := new String'(convert_to_string (State, top_slot));
+            Pop (State, 1);
+         end loop;
+
+         GNAT.OS_Lib.Spawn
+           (Program_Name => Args (Args'First).all,
+            Args         => Args (Args'First + 1 .. Args'Last),
+            Success      => succeeded);
+
+         for Index in Args'Range loop
+            GNAT.OS_Lib.Free (Args (Index));
+         end loop;
+
+         if succeeded then
+            Push (State, exec_success);
+            return 0;
+         else
+            Push (State, exec_failure);
+            return 1;
+         end if;
+      end;
+
+   end custom_exec;
 
 end Lua;
