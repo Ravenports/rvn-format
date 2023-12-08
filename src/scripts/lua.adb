@@ -70,6 +70,7 @@ package body Lua is
       Register_Function (State, "os.exec", override_os_execute'Access);
       Register_Function (State, "os.exit", override_os_exit'Access);
       Register_Function (State, "os.remove", override_remove'Access);
+      Register_Function (State, "os.rename", override_rename'Access);
 
 
       status := Protected_Call (state);
@@ -1115,5 +1116,35 @@ package body Lua is
       end;
    end override_remove;
 
+
+   -----------------------
+   --  override_rename  --
+   -----------------------
+   function override_rename (State : Lua_State) return Integer
+   is
+      n       : constant Lua_Index := API_lua_gettop (State);
+      valid   : Boolean;
+      narg    : Positive := n;
+   begin
+      valid := n = 2;
+      if n > 2 then
+         narg := 3;
+      elsif n = 1 then
+         narg := 2;
+      end if;
+      --  validate_argument will not return on failure
+      validate_argument (State, valid, narg, custerr_os_rename);
+
+      declare
+         old_name : constant String := dynamic_path (State, retrieve_argument (State, 1));
+         new_name : constant String := dynamic_path (State, retrieve_argument (State, 2));
+      begin
+         DIR.Rename (old_name, new_name);
+         return API_luaL_fileresult (State, 1, System.Null_Address);
+      exception
+         when others =>
+            return API_luaL_fileresult (State, 0, System.Null_Address);
+      end;
+   end override_rename;
 
 end Lua;
