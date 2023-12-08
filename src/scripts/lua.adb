@@ -670,12 +670,41 @@ package body Lua is
    --------------------
    --  dynamic_path  --
    --------------------
-   function dynamic_path (State : Lua_State; given_path : String) return String is
+   function dynamic_path (State : Lua_State; given_path : String) return String
+   is
+      --  This function was necessary for FreeBSD Pkg because it uses the "AT" functions
+      --  relative to rootfd file description, and the path couldn't start with a slash.
+      --  We are basically prepending the root to everything, so consecutive slashes are
+      --  only ugly but wouldn't have caused a problem.
+
+      function strip_slashes (raw : String) return String
+      is
+         --  basically this strips leading forward slashes, then prepends with "$rootdir/"
+         marker : Natural := 0;
+         slash_seen : Boolean := False;
+      begin
+         if raw'Length = 0 then
+            return "";
+         end if;
+         for index in raw'Range loop
+            case raw (index) is
+               when '/' =>
+                  slash_seen := True;  -- keep going
+               when others =>
+                  marker := index;
+                  exit;
+            end case;
+         end loop;
+         if slash_seen then
+            if marker = 0 then --- edge case: string only contained slashes!
+               return "";
+            end if;
+            return raw (marker .. raw'Last);
+         end if;
+         return raw;
+      end strip_slashes;
    begin
-      if given_path (given_path'First) = '/' then
-         return given_path;
-      end if;
-      return Get_Global_String (State, "pkg_rootdir") & '/' & given_path;
+      return Get_Global_String (State, "pkg_rootdir") & '/' & strip_slashes (given_path);
    end dynamic_path;
 
 
