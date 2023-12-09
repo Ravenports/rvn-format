@@ -79,10 +79,17 @@ package body Lua is
       --  The arguments are concatenated with null characters.
      insert_arguments (state, arg_chain);
 
-      status := Protected_Call (state);
+      status := Protected_Call (state, 0, MULTRET);
       case status is
          when LUA_OK =>
-            success := True;
+            declare
+               rc : Integer := convert_to_integer (state, top_slot);
+            begin
+               case rc is
+                  when 0      => success := True;
+                  when others => success := False;
+               end case;
+            end;
          when others =>
             success := False;
             TIO.Put_Line (TIO.Standard_Error, "Failed to execute Lua script:" & status'Img);

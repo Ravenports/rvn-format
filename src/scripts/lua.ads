@@ -156,6 +156,7 @@ private
      ("io.open takes exactly two arguments");
 
    top_slot : constant Lua_Index := -1;
+   MULTRET  : constant Integer := -1;
 
    --  Returns the nanosecond portion of the current time.
    --  This is used for a temporary file prefix.
