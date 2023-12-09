@@ -105,7 +105,11 @@ package body Archive.Whitelist is
          if line (line'First) = '/' then
             return real_top_directory & line;
          end if;
-         return real_top_directory & prefix_directory & "/" & line;
+         if prefix_directory (prefix_directory'Last) = '/' then
+            return real_top_directory & prefix_directory & line;
+         else
+            return real_top_directory & prefix_directory & "/" & line;
+         end if;
       end get_true_path;
 
       function categorize_line (line : String) return linecat
