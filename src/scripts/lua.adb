@@ -38,10 +38,12 @@ package body Lua is
       msg_outfile : constant String := unique_msgfile_path;
       state  : constant Lua_State := New_State;
       status : Lua_Return_Code;
+      top    : Lua_Index;
    begin
       Open_Libs (state);
 
       begin
+         top := API_lua_gettop (State);
          Load_String (state, script);
       exception
          when LE : Lua_Error =>
@@ -59,7 +61,7 @@ package body Lua is
       Set_Global_String (state, "msgfile_path",   msg_outfile);
       Set_Global_Boolean (state, "pkg_upgrade",   upgrading);
 
-      set_panic (state, custom_panic'Access);
+      --  set_panic (state, custom_panic'Access);
       Register_Function (state, "pkg.print_msg", custom_print_msg'Access);
       Register_Function (state, "pkg.prefixed_path", custom_prefix_path'Access);
       Register_Function (state, "pkg.filecmp", custom_filecmp'Access);
@@ -77,17 +79,26 @@ package body Lua is
       Register_Function (state, "io.open", override_open'Access);
 
       --  The arguments are concatenated with null characters.
-     insert_arguments (state, arg_chain);
+      insert_arguments (state, arg_chain);
 
       status := Protected_Call (state, 0, MULTRET);
       case status is
          when LUA_OK =>
             declare
-               rc : Integer := convert_to_integer (state, top_slot);
+               res_count : constant Integer := Integer (API_lua_gettop (State) - top);
             begin
-               case rc is
+               case res_count is
                   when 0      => success := True;
-                  when others => success := False;
+                  when others =>
+                     declare
+                        rc : constant String := convert_to_string (state, top_slot);
+                     begin
+                        if rc = "0" then
+                           success := True;
+                        else
+                           success := False;
+                        end if;
+                     end;
                end case;
             end;
          when others =>
@@ -731,12 +742,20 @@ package body Lua is
       nfields : Natural := 0;
       marker  : Natural;
       delim   : constant Character := Character'Val (0);
+      line    : String := argument_chain;
    begin
       if argument_chain'Length = 0 then
          API_lua_createtable (state, 0, 1);
          Set_Global (State, "arg");
+         Set_Global_String (state, "line", "");
          return;
       end if;
+
+      for x in line'Range loop
+         if line (x) = delim then
+            line (x) := ' ';
+         end if;
+      end loop;
 
       declare
          ac2 : String (1 .. argument_chain'Length + 1) := (others => delim);
@@ -749,8 +768,8 @@ package body Lua is
             end if;
          end loop;
 
-         nfields := 0;
          API_lua_createtable (state, nfields, 1);
+         nfields := 0;
          marker := ac2'First;
          for x in ac2'Range loop
             if ac2 (x) = delim then
@@ -768,7 +787,10 @@ package body Lua is
 
       end;
       Set_Global (State, "arg");
+      Set_Global_String (state, "line", line);
+
    end insert_arguments;
+
 
    --------------------------
    --  custom_prefix_path  --

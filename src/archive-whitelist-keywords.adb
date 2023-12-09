@@ -36,6 +36,7 @@ package body Archive.Whitelist.Keywords is
       keyword_obj : A_Keyword;
       result      : Boolean := True;
       act_count   : Natural := 0;
+      arg_count   : Natural := 0;
 
       KEY_PREPACK : constant String := "prepackaging";
       prepack_success : Boolean;
@@ -53,10 +54,14 @@ package body Archive.Whitelist.Keywords is
       is
          ka : keyword_argument renames arg_crate.Element (Position);
       begin
-         if ASU.Length (prepack_args) > 0 then
-            ASU.Append (prepack_args, Character'Val (0));
+         --  skip the first argument, it's "%0", the entire line.
+         if arg_count > 0 then
+            if ASU.Length (prepack_args) > 0 then
+               ASU.Append (prepack_args, Character'Val (0));
+            end if;
+            ASU.Append (prepack_args, ka.argument);
          end if;
-         ASU.Append (prepack_args, ka.argument);
+         arg_count := arg_count + 1;
       end process_arg;
 
       procedure process_action (Position : action_set.Cursor)
