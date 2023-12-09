@@ -2,8 +2,8 @@
 --  Reference: ../../License.txt
 
 private with System;
-private with interfaces.C.Strings;
-private with interfaces.C_Streams;
+private with Interfaces.C.Strings;
+private with Interfaces.C_Streams;
 private with Archive.Unix;
 
 package Lua is
@@ -167,7 +167,7 @@ private
 
    --  The argument chain is null-character delimited.  Push each chain link
    --  in as a separate argument.
-   procedure insert_arguments (State : Lua_State; argument_chain : String);
+   procedure insert_arguments (state : Lua_State; argument_chain : String);
 
    --  Create a new state using the default memory allocator.
    function New_State return Lua_State;
@@ -284,7 +284,7 @@ private
    function API_luaL_fileresult
       (State : Lua_State;
        stat  : Integer;
-       Fname : system.Address) return Integer;
+       Fname : System.Address) return Integer;
    pragma Import (C, API_luaL_fileresult, "luaL_fileresult");
 
 

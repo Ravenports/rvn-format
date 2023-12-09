@@ -10,8 +10,8 @@ with Ada.Unchecked_Deallocation;
 with Ada.Exceptions;
 with Ada.IO_Exceptions;
 with Ada.Strings.Fixed;
+with Archive.Communication;
 with Blake_3;
-with Archive.Unix;
 
 package body Archive.Unpack is
 
@@ -20,12 +20,14 @@ package body Archive.Unpack is
    package EX  renames Ada.Exceptions;
    package IOX renames Ada.IO_Exceptions;
    package ASF renames Ada.Strings.Fixed;
+   package SQW renames Archive.Communication;
    package ZST renames Zstandard;
 
    procedure open_rvn_archive
-     (DS          : in out DArc;
-      rvn_archive : String;
-      verbosity   : info_level)
+     (DS            : in out DArc;
+      rvn_archive   : String;
+      verbosity     : info_level;
+      optional_pipe : Unix.File_Descriptor := Unix.not_connected)
    is
       use type ZST.File_Size;
       use type SIO.Count;
@@ -143,11 +145,12 @@ package body Archive.Unpack is
       meets_criteria : constant Boolean := (msg_level <= DS.level);
    begin
       if meets_criteria then
-         if msg_level = debug then
-            TIO.Put_Line ("DEBUG: " & message);
-         else
-            TIO.Put_Line (message);
-         end if;
+         case msg_level is
+            when debug   => SQW.emit_debug (message);
+            when verbose => SQW.emit_notice (message);
+            when normal  => SQW.emit_message (message);
+            when silent  => null;
+         end case;
       end if;
    end print;
 

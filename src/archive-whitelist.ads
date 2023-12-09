@@ -271,7 +271,4 @@ private
    --  If it does contain a space, return the first word.
    function first_word (S : String) return String;
 
-   --  Prints message to standard error unconditionally
-   procedure std_error (message : String);
-
 end Archive.Whitelist;

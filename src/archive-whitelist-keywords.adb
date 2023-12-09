@@ -1,16 +1,16 @@
 --  This file is covered by the Internet Software Consortium (ISC) License
 --  Reference: ../License.txt
 
-with Ada.Text_IO;
 with Ada.Strings.Fixed;
 with ThickUCL.Files;
+with Archive.Communication;
 with Archive.Unix;
 with Lua;
 
 package body Archive.Whitelist.Keywords is
 
    package TUC renames ThickUCL;
-   package TIO renames Ada.Text_IO;
+   package SQW renames Archive.Communication;
    package AS  renames Ada.Strings;
 
    --------------------------------
@@ -48,7 +48,7 @@ package body Archive.Whitelist.Keywords is
             return real_top_path & line;
          end if;
          if prefix_dir (prefix_dir'Last) = '/' then
-             return real_top_path & prefix_dir & line;
+            return real_top_path & prefix_dir & line;
          else
             return real_top_path & prefix_dir & "/" & line;
          end if;
@@ -77,8 +77,8 @@ package body Archive.Whitelist.Keywords is
       begin
          act_count := act_count + 1;
          if act_count > num_args then
-            TIO.Put_Line (TIO.Standard_Error, "The " & keyword & " has" & num_act'Img
-                          & " actions, but only" & num_args'Img & " arguments.");
+            SQW.emit_error ("The " & keyword & " has" & num_act'Img & " actions, but only"
+                            & num_args'Img & " arguments.");
             result := False;
             return;
          end if;
@@ -90,10 +90,10 @@ package body Archive.Whitelist.Keywords is
          begin
             case action is
                when file_action =>
-                  if not UNIX.file_exists (true_path) then
+                  if not Unix.file_exists (true_path) then
                      if level >= normal then
-                        TIO.Put_Line (TIO.Standard_Error,
-                                      "Manifest file [" & act_path & "] does not exist, ignoring");
+                        SQW.emit_error
+                          ("Manifest file [" & act_path & "] does not exist, ignoring");
                      end if;
                      result := False;
                      return;
@@ -146,7 +146,7 @@ package body Archive.Whitelist.Keywords is
             success    => prepack_success);
          if not prepack_success then
             result := False;
-            TIO.Put_Line (TIO.Standard_Error, "Fail to apply keyword '" & keyword & "'");
+            SQW.emit_error ("Fail to apply keyword '" & keyword & "'");
          end if;
       end if;
 
@@ -156,12 +156,11 @@ package body Archive.Whitelist.Keywords is
 
       if keyword_obj.deprecated then
          if level >= normal then
-            TIO.Put (TIO.Standard_Error, "The use of '@" & keyword & "' is deprecated");
+            SQW.emit_error ("The use of '@" & keyword & "' is deprecated");
             if ASU.Length (keyword_obj.deprecated_message) > 0 then
-               TIO.Put_Line (TIO.Standard_Error, ": " &
-                               ASU.To_String (keyword_obj.deprecated_message));
+               SQW.emit_error (": " & ASU.To_String (keyword_obj.deprecated_message));
             else
-               TIO.Put_Line (TIO.Standard_Error, "");
+               SQW.emit_error ("");
             end if;
          end if;
       end if;
@@ -208,9 +207,9 @@ package body Archive.Whitelist.Keywords is
          begin
             if AS.Fixed.Index (Source => script, Pattern => tokarg) > 0 then
                if token > num_args then
-                  TIO.Put_Line (TIO.Standard_Error, "Requesting argument " & tokarg &
+                  SQW.emit_error ("Requesting argument " & tokarg &
                                   " while only" & num_args'Img & " arguments are available");
-                  TIO.Put_Line (TIO.Standard_Error, "Failed to apply keyword '" & keyword & "'");
+                  SQW.emit_error ("Failed to apply keyword '" & keyword & "'");
                   return False;
                end if;
             end if;
@@ -375,7 +374,7 @@ package body Archive.Whitelist.Keywords is
 
       if full_path = "" then
          --  level doesn't matter, show stderr even if silent
-         TIO.Put_Line (TIO.Standard_Error, filename & ": UCL keyword not found, fatal.");
+         SQW.emit_error (filename & ": UCL keyword not found, fatal.");
          return;
       end if;
 
@@ -397,11 +396,11 @@ package body Archive.Whitelist.Keywords is
                      keyword.actions.Append (directory_action);
                   else
                      keyword.scan_failed := True;
-                     TIO.Put_Line (TIO.Standard_Error,  tail (filename, "/") & ": action '"
-                                   & action & "' not recognized");
+                     SQW.emit_error
+                       (tail (filename, "/") & ": action '" & action & "' not recognized");
                   end if;
                   if level >= debug then
-                     TIO.Put_Line ("Action: " & action & "   " & full_path);
+                     SQW.emit_debug ("Action: " & action & "   " & full_path);
                   end if;
                end;
             end loop;
@@ -560,7 +559,7 @@ package body Archive.Whitelist.Keywords is
       begin
          tray_zero.argument := ASU.To_Unbounded_String (S);
          if keyword.level >= debug then
-            TIO.Put_Line ("First argument (%@): " & S);
+            SQW.emit_debug ("First argument (%@): " & S);
          end if;
          keyword.split_args.Append (tray_zero);
          for x in 1 .. num_spaces + 1 loop
@@ -576,8 +575,8 @@ package body Archive.Whitelist.Keywords is
                      declare
                         tcstr : constant String := true_count'Img;
                      begin
-                        TIO.Put_Line ("Push into arguments: " & arg & " (%"
-                                      & tcstr (tcstr'First + 1 .. tcstr'Last) & ")");
+                        SQW.emit_debug ("Push into arguments: " & arg
+                                        & " (%" & tcstr (tcstr'First + 1 .. tcstr'Last) & ")");
                      end;
                   end if;
                end if;
@@ -601,8 +600,8 @@ package body Archive.Whitelist.Keywords is
       US : ASU.Unbounded_String := ASU.To_Unbounded_String (S);
    begin
       if level >= debug then
-         TIO.Put_Line ("perform expansion of " & S);
-         TIO.Put_Line ("Expand any " & token & " with " & replacement);
+         SQW.emit_debug ("perform expansion of " & S);
+         SQW.emit_debug ("Expand any " & token & " with " & replacement);
       end if;
       loop
          exit when ASU.Index (Source => US, Pattern => token) = 0;

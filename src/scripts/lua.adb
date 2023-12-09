@@ -43,7 +43,7 @@ package body Lua is
       Open_Libs (state);
 
       begin
-         top := API_lua_gettop (State);
+         top := API_lua_gettop (state);
          Load_String (state, script);
       exception
          when LE : Lua_Error =>
@@ -85,7 +85,7 @@ package body Lua is
       case status is
          when LUA_OK =>
             declare
-               res_count : constant Integer := Integer (API_lua_gettop (State) - top);
+               res_count : constant Integer := Integer (API_lua_gettop (state) - top);
             begin
                case res_count is
                   when 0      => success := True;
@@ -124,7 +124,7 @@ package body Lua is
          DIR.Delete_File (msg_outfile);
       end if;
 
-      Close (State);
+      Close (state);
 
    end run_lua_script;
 
@@ -355,7 +355,7 @@ package body Lua is
    begin
       API_lua_getglobal (State, Name_Ptr);
       IC.Strings.Free (Name_Ptr);
-      return convert_to_string (state, top_slot);
+      return convert_to_string (State, top_slot);
    end Get_Global_String;
 
 
@@ -607,7 +607,7 @@ package body Lua is
       this_type : constant Lua_Type := API_lua_type (State, Index);
    begin
       case this_type is
-         when LUA_TSTRING=> return True;
+         when LUA_TSTRING => return True;
          when others => return False;
       end case;
    end is_string;
@@ -671,7 +671,7 @@ package body Lua is
             when LUA_TNUMBER  =>
                ASU.Append (stack, "Number:  " & convert_to_integer (State, index)'Img & LF);
             when others =>
-               ASU.Append (Stack, "Other:   " & convert_to_type_name (State, index) & LF);
+               ASU.Append (stack, "Other:   " & convert_to_type_name (State, index) & LF);
          end case;
       end loop;
 
@@ -746,7 +746,7 @@ package body Lua is
    begin
       if argument_chain'Length = 0 then
          API_lua_createtable (state, 0, 1);
-         Set_Global (State, "arg");
+         Set_Global (state, "arg");
          Set_Global_String (state, "line", "");
          return;
       end if;
@@ -786,7 +786,7 @@ package body Lua is
          end loop;
 
       end;
-      Set_Global (State, "arg");
+      Set_Global (state, "arg");
       Set_Global_String (state, "line", line);
 
    end insert_arguments;
@@ -812,9 +812,9 @@ package body Lua is
          inpath : constant String := retrieve_argument (State, 1);
       begin
          if inpath (inpath'First) = '/' then
-            push (state, inpath);
+            Push (State, inpath);
          else
-            push (state, prefix & '/' & inpath);
+            Push (State, prefix & '/' & inpath);
          end if;
       end;
       return 1;
@@ -1165,7 +1165,7 @@ package body Lua is
          package SCN renames Archive.Dirent.Scan;
 
          inpath  : constant String := retrieve_argument (State, 1);
-         dynpath : constant String := dynamic_path(State, inpath);
+         dynpath : constant String := dynamic_path (State, inpath);
          fname   : IC.char_array := UNX.convert_to_char_array (inpath);
          attributes : UNX.File_Characteristics;
       begin
@@ -1319,7 +1319,6 @@ package body Lua is
          cfilename : constant IC.char_array := UNX.convert_to_char_array (filename);
          flags     : UNX.T_Open_Flags;
          fd        : UNX.File_Descriptor;
-     --    userdata  : Lua_User_Data;
       begin
          --  mode options are: r  (read), w (write), a (append), b (binary which is ignored),
          --                    r+, w+, a+
@@ -1347,7 +1346,7 @@ package body Lua is
             flags.CREAT  := True;
             flags.APPEND := True;
          else
-             validate_argument (State, False, 2, bad_mode);
+            validate_argument (State, False, 2, bad_mode);
          end if;
 
          fd := UNX.open_file (filename, flags);
@@ -1355,7 +1354,6 @@ package body Lua is
             return API_luaL_fileresult (State, 0, cfilename'Address);
          end if;
 
-       --  userdata := API_lua_newuserdata (State, IC.size_t (luaL_Stream'Size));
          declare
             use type CS.FILEs;
 

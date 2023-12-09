@@ -5,6 +5,7 @@
 with Ada.Containers.Vectors;
 with Ada.Streams.Stream_IO;
 with Archive.Whitelist;
+with Archive.Unix;
 with Zstandard;
 with ThickUCL;
 
@@ -27,7 +28,9 @@ package Archive.Pack is
       keyword_dir         : String;
       output_file         : String;
       fixed_timestamp     : filetime;
-      verbosity           : info_level) return Boolean;
+      verbosity           : info_level;
+      optional_pipe       : Unix.File_Descriptor := Unix.not_connected)
+      return Boolean;
 
 private
 

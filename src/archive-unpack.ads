@@ -6,6 +6,7 @@ with Ada.Containers.Vectors;
 with Ada.Streams.Stream_IO;
 with Ada.Strings.Unbounded;
 with Zstandard.Streaming_Decompression;
+with Archive.Unix;
 
 package Archive.Unpack is
 
@@ -17,9 +18,10 @@ package Archive.Unpack is
 
    --  This procedure attempts to open an RVN archive.
    procedure open_rvn_archive
-     (DS          : in out DArc;
-      rvn_archive : String;
-      verbosity   : info_level);
+     (DS            : in out DArc;
+      rvn_archive   : String;
+      verbosity     : info_level;
+      optional_pipe : Unix.File_Descriptor := Unix.not_connected);
 
    --  This procedure attempts to close an RVN archive
    procedure close_rvn_archive (DS : in out DArc);

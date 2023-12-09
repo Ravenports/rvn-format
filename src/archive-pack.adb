@@ -1,13 +1,12 @@
 --  This file is covered by the Internet Software Consortium (ISC) License
 --  Reference: ../License.txt
 
-with Ada.Text_IO;
 with Ada.Exceptions;
 with Ada.IO_Exceptions;
 with Ada.Directories;
 with Ada.Direct_IO;
-with Archive.Unix;
 with Archive.Dirent.Scan;
+with Archive.Communication;
 with ThickUCL.Files;
 with ThickUCL.Emitter;
 with Blake_3;
@@ -15,12 +14,12 @@ with Ucl;
 
 package body Archive.Pack is
 
-   package TIO renames Ada.Text_IO;
    package DIR renames Ada.Directories;
    package EX  renames Ada.Exceptions;
    package IOX renames Ada.IO_Exceptions;
    package UNX renames Archive.Unix;
    package SCN renames Archive.Dirent.Scan;
+   package SQW renames Archive.Communication;
    package TUC renames ThickUCL;
    package ZST renames Zstandard;
 
@@ -36,11 +35,14 @@ package body Archive.Pack is
       keyword_dir         : String;
       output_file         : String;
       fixed_timestamp     : filetime;
-      verbosity           : info_level) return Boolean
+      verbosity           : info_level;
+      optional_pipe       : Unix.File_Descriptor := Unix.not_connected)
+      return Boolean
    is
       metadata : Arc_Structure;
       metadata_tree : ThickUCL.UclTree;
    begin
+      SQW.initialize (verbosity, optional_pipe);
       metadata.set_verbosity (verbosity);
       metadata.record_directory (top_level_directory);
 
@@ -161,11 +163,12 @@ package body Archive.Pack is
       meets_criteria : constant Boolean := (msg_level <= AS.level);
    begin
       if meets_criteria then
-         if msg_level = debug then
-            TIO.Put_Line ("DEBUG: " & message);
-         else
-            TIO.Put_Line (message);
-         end if;
+         case msg_level is
+            when debug   => SQW.emit_debug (message);
+            when verbose => SQW.emit_notice (message);
+            when normal  => SQW.emit_message (message);
+            when silent  => null;
+         end case;
       end if;
    end print;
 

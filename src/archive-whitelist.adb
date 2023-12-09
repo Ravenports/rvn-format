@@ -6,6 +6,7 @@ with Ada.Strings.Hash;
 with Ada.Strings.Fixed;
 with Ada.Text_IO;
 with Archive.Unix;
+with Archive.Communication;
 with Archive.Whitelist.Keywords;
 with GNAT.Regpat;
 
@@ -15,6 +16,7 @@ package body Archive.Whitelist is
    package ASF renames Ada.Strings.Fixed;
    package REX renames GNAT.Regpat;
    package KWD renames Archive.Whitelist.Keywords;
+   package SQW renames Archive.Communication;
 
    -----------------------
    --  whiteist_in_use  --
@@ -147,7 +149,7 @@ package body Archive.Whitelist is
       begin
          if not Unix.file_exists (true_path) then
             if level >= normal then
-               std_error ("Manifest entity [" & line & "] does not exist");
+               SQW.emit_error ("Manifest entity [" & line & "] does not exist");
             end if;
             succeeded := False;
          else
@@ -169,7 +171,7 @@ package body Archive.Whitelist is
          then
             succeeded := False;
             if level >= normal then
-               std_error ("Manifest entity [" & line & "] mode keyword has no path argument");
+               SQW.emit_error ("Manifest entity [" & line & "] mode keyword has no path argument");
             end if;
             return;
          end if;
@@ -184,7 +186,7 @@ package body Archive.Whitelist is
          begin
             if not Unix.file_exists (true_path) then
                if level >= normal then
-                  std_error ("Manifest entity [" & grp_path & "] does not exist");
+                  SQW.emit_error ("Manifest entity [" & grp_path & "] does not exist");
                   succeeded := False;
                end if;
             else
@@ -210,7 +212,7 @@ package body Archive.Whitelist is
          REX.Match (Self => keymech, Data => line, Matches => key_jar);
          if key_jar (0) = REX.No_Match then
             if level >= normal then
-               std_error ("Manifest entity [" & line & "] keyword line failed to parse");
+               SQW.emit_error ("Manifest entity [" & line & "] keyword line failed to parse");
                return;
             end if;
             succeeded := False;
@@ -269,15 +271,16 @@ package body Archive.Whitelist is
    begin
       if real_top_directory = "" then
          if level >= normal then
-            TIO.Put_Line ("The top directory [" & stage_directory &
-                            "] does not resolve to a real path.");
+            SQW.emit_message ("The top directory [" & stage_directory &
+                                "] does not resolve to a real path.");
          end if;
          return False;
       end if;
       features := Unix.get_charactistics (real_top_directory);
       if features.ftype /= directory then
          if level >= normal then
-            TIO.Put_Line ("The top directory [" & stage_directory & "] is not really a directory.");
+            SQW.emit_message ("The top directory [" & stage_directory
+                              & "] is not really a directory.");
          end if;
          return False;
       end if;
@@ -285,12 +288,12 @@ package body Archive.Whitelist is
       features := Unix.get_charactistics (manifest_file);
       if features.error then
          if level >= normal then
-            TIO.Put_Line ("The indicated manifest (" & manifest_file & ") does not exist.");
+            SQW.emit_message ("The indicated manifest (" & manifest_file & ") does not exist.");
          end if;
          return False;
       elsif features.ftype /= regular then
          if level >= normal then
-            TIO.Put_Line ("The indicated manifest is not a regular file.");
+            SQW.emit_message ("The indicated manifest is not a regular file.");
          end if;
          return False;
       end if;
@@ -308,7 +311,7 @@ package body Archive.Whitelist is
                   null;
                when key_error =>
                   if level >= normal then
-                     std_error ("Manifest entity [" & line & "] has invalid keyword");
+                     SQW.emit_error ("Manifest entity [" & line & "] has invalid keyword");
                   end if;
                   succeeded := False;
                when external_keyword =>
@@ -345,27 +348,27 @@ package body Archive.Whitelist is
       features := Unix.get_charactistics (full_path);
       if features.error then
          if level >= normal then
-            TIO.Put_Line ("The whitelisted file '" & full_path & "' does not exist.");
+            SQW.emit_message ("The whitelisted file '" & full_path & "' does not exist.");
          end if;
          return False;
       end if;
 
       if features.ftype = directory then
          if level >= normal then
-            TIO.Put_Line ("The whitelisted file '" & full_path & "' is of type directory.");
+            SQW.emit_message ("The whitelisted file '" & full_path & "' is of type directory.");
          end if;
          return False;
       end if;
 
       if whitelist.file_on_whitelist (full_path) then
          if level >= normal then
-            TIO.Put_Line ("Duplicate line discovered: " & full_path);
+            SQW.emit_message ("Duplicate line discovered: " & full_path);
          end if;
          return False;
       end if;
 
       if level >= verbose then
-         TIO.Put_Line ("Adding to whitelist: " & full_path);
+         SQW.emit_notice ("Adding to whitelist: " & full_path);
       end if;
       file_hash := Blake_3.digest (full_path);
       props.is_directory := False;
@@ -397,7 +400,7 @@ package body Archive.Whitelist is
       end if;
       if not whitelist.directory_on_whitelist (dir_path) then
          if level >= debug then
-            TIO.Put_Line ("Adding directory to whitelist: " & dir_path);
+            SQW.emit_debug ("Adding directory to whitelist: " & dir_path);
          end if;
          file_hash := Blake_3.digest (dir_path);
          props.is_directory := True;
@@ -427,12 +430,12 @@ package body Archive.Whitelist is
       file_hash := Blake_3.digest (true_path);
       if whitelist.temp_dirs.Contains (file_hash) then
          if level >= normal then
-            TIO.Put_Line ("Ignoring duplicate @dir " & dir_path);
+            SQW.emit_message ("Ignoring duplicate @dir " & dir_path);
          end if;
          return;
       end if;
       if level >= debug then
-         TIO.Put_Line ("Adding directory to temporary heap: " & dir_path);
+         SQW.emit_debug ("Adding directory to temporary heap: " & dir_path);
       end if;
       props.is_directory := True;
       props.path := ASU.To_Unbounded_String (dir_path);
@@ -460,13 +463,13 @@ package body Archive.Whitelist is
       file_hash := Blake_3.digest (true_path);
       if whitelist.temp_dirs.Contains (file_hash) then
          if level >= normal then
-            TIO.Put_Line ("Ignoring duplicate @dir " & dir_path);
+            SQW.emit_message ("Ignoring duplicate @dir " & dir_path);
          end if;
          return;
       end if;
       if level >= debug then
-         TIO.Put_Line ("Adding directory to temporary heap: " & dir_path & " (" &
-                      attr_owner & "," & attr_group & "," & attr_perms & ")");
+         SQW.emit_debug ("Adding directory to temporary heap: " & dir_path & " (" &
+                           attr_owner & "," & attr_group & "," & attr_perms & ")");
       end if;
       props.is_directory := True;
       props.path := ASU.To_Unbounded_String (dir_path);
@@ -492,8 +495,8 @@ package body Archive.Whitelist is
                props.perms_spec := octal_perms;
             else
                if level >= verbose then
-                  TIO.Put_Line ("failed to convert " & attr_perms &
-                               " to an octal value, so mode change request ignored.");
+                  SQW.emit_notice ("failed to convert " & attr_perms &
+                                     " to an octal value, so mode change request ignored.");
                end if;
             end if;
          end;
@@ -521,27 +524,27 @@ package body Archive.Whitelist is
       features := Unix.get_charactistics (full_path);
       if features.error then
          if level >= normal then
-            TIO.Put_Line ("The whitelisted file '" & full_path & "' does not exist.");
+            SQW.emit_message ("The whitelisted file '" & full_path & "' does not exist.");
          end if;
          return False;
       end if;
 
       if features.ftype = directory then
          if level >= normal then
-            TIO.Put_Line ("The whitelisted file '" & full_path & "' is of type directory.");
+            SQW.emit_message ("The whitelisted file '" & full_path & "' is of type directory.");
          end if;
          return False;
       end if;
 
       if whitelist.file_on_whitelist (full_path) then
          if level >= normal then
-            TIO.Put_Line ("Duplicate line discovered: " & full_path);
+            SQW.emit_message ("Duplicate line discovered: " & full_path);
          end if;
          return False;
       end if;
 
       if level >= verbose then
-         TIO.Put_Line ("Adding to whitelist: " & full_path & " (" & new_owner & "," &
+         SQW.emit_notice ("Adding to whitelist: " & full_path & " (" & new_owner & "," &
                          new_group & "," & new_perms & ")");
       end if;
       file_hash := Blake_3.digest (full_path);
@@ -568,8 +571,8 @@ package body Archive.Whitelist is
                props.perms_spec := octal_perms;
             else
                if level >= verbose then
-                  TIO.Put_Line ("failed to convert " & new_perms &
-                               " to an octal value, so mode change request ignored.");
+                  SQW.emit_notice ("failed to convert " & new_perms &
+                                     " to an octal value, so mode change request ignored.");
                end if;
             end if;
          end;
@@ -617,8 +620,8 @@ package body Archive.Whitelist is
             old_props := whitelist.files.Element (file_hash);
             if not old_props.is_directory then
                if level >= normal then
-                  TIO.Put_Line ("whitelist error: @dir " & ASU.To_String (props.path) &
-                                  " matches a listed file, ignoring");
+                  SQW.emit_message ("whitelist error: @dir " & ASU.To_String (props.path) &
+                                      " matches a listed file, ignoring");
                end if;
             else
                --  old_props ALWAYS have overrides set to false
@@ -628,14 +631,15 @@ package body Archive.Whitelist is
                  not props.override_perms
                then
                   if level >= normal then
-                     TIO.Put_Line ("whitelist notice: @dir " & ASU.To_String (props.path) &
-                                     " is unnecessary; the directory is already being created.");
+                     SQW.emit_message
+                       ("whitelist notice: @dir " & ASU.To_String (props.path)
+                        & " is unnecessary; the directory is already being created.");
                   end if;
                else
                   --  The POG attributes don't match, so reset the files version of them.
                   if level >= debug then
-                     TIO.Put_Line ("Adjust perms/owner/group of auto-created directory " &
-                                     ASU.To_String (props.path));
+                     SQW.emit_debug ("Adjust perms/owner/group of auto-created directory " &
+                                       ASU.To_String (props.path));
                   end if;
                   whitelist.files.Update_Element
                     (Position => whitelist.files.Find (file_hash),
@@ -644,7 +648,7 @@ package body Archive.Whitelist is
             end if;
          else
             if level >= debug then
-               TIO.Put_Line ("just_dirs += " & ASU.To_String (props.path));
+               SQW.emit_debug ("just_dirs += " & ASU.To_String (props.path));
             end if;
             whitelist.just_dirs.Insert (file_hash, props);
             whitelist.dirs_keys.Append (file_hash);
@@ -947,15 +951,6 @@ package body Archive.Whitelist is
    begin
       return ASU.To_String (whitelist.messages (msg_type).Element (index));
    end get_message;
-
-
-   -----------------
-   --  std_error  --
-   -----------------
-   procedure std_error (message : String) is
-   begin
-      TIO.Put_Line (TIO.Standard_Error, message);
-   end std_error;
 
 
    -----------------------

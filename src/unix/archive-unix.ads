@@ -37,6 +37,7 @@ package Archive.Unix is
 
    type metadata_rc is mod 2 ** 5;
    type File_Descriptor is new Integer;
+   not_connected : constant File_Descriptor := -1;
 
    --  Return set of file characteristis given the path to a file or a directory
    function get_charactistics (path : String) return File_Characteristics;
@@ -112,6 +113,9 @@ package Archive.Unix is
    --  Return True if fd /= -1
    function file_connected (fd : File_Descriptor) return Boolean;
 
+   --  Send log down file descriptor of event pipe
+   procedure push_to_event_pipe (fd : File_Descriptor; message : String);
+
 private
 
    function success (rc : IC.int) return Boolean;
@@ -142,9 +146,6 @@ private
       tv_nsec  : IC.long;
    end record;
    pragma Convention (C, timespec);
-
-   --  last_errno : Integer;
-   not_connected : constant File_Descriptor := -1;
 
    function arc_stat
      (path : IC.Strings.chars_ptr;
@@ -203,6 +204,9 @@ private
      (path : IC.char_array;
       resolvedname : out IC.char_array) return IC.Strings.chars_ptr;
    pragma Import (C, realpath);
+
+   function C_dprint2 (fd : IC.int; msg : IC.Strings.chars_ptr) return IC.int;
+   pragma Import (C, C_dprint2, "dprint2");
 
    function geteuid return uid_t;
    pragma Import (C, geteuid);
@@ -318,5 +322,6 @@ private
 
    --  Tail (keep only last field)
    function tail (S : String; delimiter : String) return String;
+
 
 end Archive.Unix;

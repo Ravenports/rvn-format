@@ -71,7 +71,7 @@ package body Archive.Unix is
             result.mnsec := tspec.nsecs;
             result.perms := file_permissions (sb'Unchecked_Access);
             result.inode := inode_number (sb'Unchecked_Access);
-            result.size  := File_Size (sb'Unchecked_Access);
+            result.size  := file_size (sb'Unchecked_Access);
             result.uid   := owngrp_id (arc_get_owner_id (sb'Unchecked_Access));
             result.gid   := owngrp_id (arc_get_group_id (sb'Unchecked_Access));
             result.error := False;
@@ -848,5 +848,20 @@ package body Archive.Unix is
       return result;
    end open_file;
 
+
+   --------------------------
+   --  push_to_event_pipe  --
+   --------------------------
+   procedure push_to_event_pipe (fd : File_Descriptor; message : String)
+   is
+      msg    : IC.Strings.chars_ptr;
+      result : IC.int;
+
+      pragma Unreferenced (result);
+   begin
+      msg := IC.Strings.New_String (message & LAT.LF);
+      result := C_dprint2 (IC.int (fd), msg);  -- returns #chars printed
+      IC.Strings.Free (msg);
+   end push_to_event_pipe;
 
 end Archive.Unix;
