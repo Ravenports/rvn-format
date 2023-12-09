@@ -11,6 +11,7 @@ package Lua is
    --  This procedure executes the given script with the internal Lua 5.4 interpreter.
    --  The interpreter has been modified as follows:
    --  * os.execute() has been removed
+   --  * os.exit()    has been removed
    --  * os.open()    has been modified to assume filenames relative to rootdir
    --  * os.remove()  has been modified to assume filenames relative to rootdir
    --  * os.rename()  has been modified to assume filenames relative to rootdir
@@ -35,6 +36,7 @@ package Lua is
    --  pkg.print_msg (msg)                  (sends messages to user shown at end of process)
    --  pkg.exec (arguments)                 (executes a command)
 
+
    procedure run_lua_script
      (namebase    : String;
       subpackage  : String;
@@ -42,7 +44,9 @@ package Lua is
       prefix      : String;
       root_dir    : String;
       upgrading   : Boolean;
-      script      : String);
+      script      : String;
+      arg_chain   : String;
+      success     : out Boolean);
 
 private
 
@@ -159,6 +163,10 @@ private
 
    --  Return a randomly-named msgfile path that isn't currently being used.
    function unique_msgfile_path return String;
+
+   --  The argument chain is null-character delimited.  Push each chain link
+   --  in as a separate argument.
+   procedure insert_arguments (State : Lua_State; argument_chain : String);
 
    --  Create a new state using the default memory allocator.
    function New_State return Lua_State;
@@ -419,6 +427,16 @@ private
       Index : Lua_Index;
       N     : Integer);
    pragma Import (C, Raw_Geti, "lua_rawgeti");
+
+   --  Does the equivalent of t[n] = v, where t is the table at the given
+   --  index and v is the value at the top of the stack.
+   --  This function pops the value from the stack. The assignment is raw;
+   --  that is, it does not invoke metamethods.
+   procedure Raw_Seti
+     (State : Lua_State;
+      Index : Lua_Index;
+      N     : Integer);
+   pragma Import (C, Raw_Seti, "lua_rawseti");
 
    --  Does the equivalent to t[k] = v, where t is the value at the given
    --  index and v is the value at the top of the stack.

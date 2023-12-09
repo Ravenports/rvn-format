@@ -31,7 +31,9 @@ package body Lua is
       prefix      : String;
       root_dir    : String;
       upgrading   : Boolean;
-      script      : String)
+      script      : String;
+      arg_chain   : String;
+      success     : out Boolean)
    is
       msg_outfile : constant String := unique_msgfile_path;
       state  : constant Lua_State := New_State;
@@ -45,6 +47,7 @@ package body Lua is
          when LE : Lua_Error =>
             TIO.Put_Line (TIO.Standard_Error,
                           "Failed to load Lua script> " &  EX.Exception_Message (LE));
+            success := False;
             return;
       end;
 
@@ -54,33 +57,36 @@ package body Lua is
       Set_Global_String (state, "pkg_prefix",     prefix);
       Set_Global_String (state, "pkg_rootdir",    root_dir);
       Set_Global_String (state, "msgfile_path",   msg_outfile);
-      Set_Global_Boolean (State, "pkg_upgrade",   upgrading);
+      Set_Global_Boolean (state, "pkg_upgrade",   upgrading);
 
-      set_panic (State, custom_panic'Access);
-      Register_Function (State, "pkg.print_msg", custom_print_msg'Access);
-      Register_Function (State, "pkg.prefixed_path", custom_prefix_path'Access);
-      Register_Function (State, "pkg.filecmp", custom_filecmp'Access);
-      Register_Function (State, "pkg.symlink", custom_symlink'Access);
-      Register_Function (State, "pkg.readdir", custom_readdir'Access);
-      Register_Function (State, "pkg.copy", custom_filecopy'Access);
-      Register_Function (State, "pkg.exec", custom_exec'Access);
-      Register_Function (State, "pkg.stat", custom_stat'Access);
+      set_panic (state, custom_panic'Access);
+      Register_Function (state, "pkg.print_msg", custom_print_msg'Access);
+      Register_Function (state, "pkg.prefixed_path", custom_prefix_path'Access);
+      Register_Function (state, "pkg.filecmp", custom_filecmp'Access);
+      Register_Function (state, "pkg.symlink", custom_symlink'Access);
+      Register_Function (state, "pkg.readdir", custom_readdir'Access);
+      Register_Function (state, "pkg.copy", custom_filecopy'Access);
+      Register_Function (state, "pkg.exec", custom_exec'Access);
+      Register_Function (state, "pkg.stat", custom_stat'Access);
 
       --  Override / disable existing functions
-      Register_Function (State, "os.exec", override_os_execute'Access);
-      Register_Function (State, "os.exit", override_os_exit'Access);
-      Register_Function (State, "os.remove", override_remove'Access);
-      Register_Function (State, "os.rename", override_rename'Access);
-      Register_Function (State, "io.open", override_open'Access);
+      Register_Function (state, "os.exec", override_os_execute'Access);
+      Register_Function (state, "os.exit", override_os_exit'Access);
+      Register_Function (state, "os.remove", override_remove'Access);
+      Register_Function (state, "os.rename", override_rename'Access);
+      Register_Function (state, "io.open", override_open'Access);
 
+      --  The arguments are concatenated with null characters.
+     insert_arguments (state, arg_chain);
 
       status := Protected_Call (state);
       case status is
          when LUA_OK =>
-            null;
+            success := True;
          when others =>
+            success := False;
             TIO.Put_Line (TIO.Standard_Error, "Failed to execute Lua script:" & status'Img);
-            TIO.Put_Line (TIO.Standard_Error, convert_to_string (State, top_slot));
+            TIO.Put_Line (TIO.Standard_Error, convert_to_string (state, top_slot));
       end case;
 
       --  Provide delayed message text if it exists
@@ -707,6 +713,53 @@ package body Lua is
       return Get_Global_String (State, "pkg_rootdir") & '/' & strip_slashes (given_path);
    end dynamic_path;
 
+
+   ------------------------
+   --  insert_arguments  --
+   ------------------------
+   procedure insert_arguments (state : Lua_State; argument_chain : String)
+   is
+      nfields : Natural := 0;
+      marker  : Natural;
+      delim   : constant Character := Character'Val (0);
+   begin
+      if argument_chain'Length = 0 then
+         API_lua_createtable (state, 0, 1);
+         Set_Global (State, "arg");
+         return;
+      end if;
+
+      declare
+         ac2 : String (1 .. argument_chain'Length + 1) := (others => delim);
+      begin
+         ac2 (ac2'First .. ac2'Last - 1) := argument_chain;
+
+         for x in ac2'Range loop
+            if ac2 (x) = delim then
+               nfields := nfields + 1;
+            end if;
+         end loop;
+
+         nfields := 0;
+         API_lua_createtable (state, nfields, 1);
+         marker := ac2'First;
+         for x in ac2'Range loop
+            if ac2 (x) = delim then
+               if marker = x then
+                  --  rare case of zero-length argument
+                  Push (state, "");
+               else
+                  Push (state, ac2 (marker .. x - 1));
+               end if;
+               nfields := nfields + 1;
+               Raw_Seti (state, -2, nfields);
+               marker := x + 1;
+            end if;
+         end loop;
+
+      end;
+      Set_Global (State, "arg");
+   end insert_arguments;
 
    --------------------------
    --  custom_prefix_path  --
