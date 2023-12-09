@@ -47,7 +47,11 @@ package body Archive.Whitelist.Keywords is
          if line (line'First) = '/' then
             return real_top_path & line;
          end if;
-         return real_top_path & prefix_dir & "/" & line;
+         if prefix_dir (prefix_dir'Last) = '/' then
+             return real_top_path & prefix_dir & line;
+         else
+            return real_top_path & prefix_dir & "/" & line;
+         end if;
       end get_true_path;
 
       procedure process_arg (Position : arg_crate.Cursor)
@@ -83,11 +87,10 @@ package body Archive.Whitelist.Keywords is
             act_path : constant String :=
               ASU.To_String (keyword_obj.split_args.Element (act_count).argument);
             true_path : constant String := get_true_path (act_path);
-            full_path : constant String := Unix.real_path (true_path);
          begin
             case action is
                when file_action =>
-                  if full_path = "" then
+                  if not UNIX.file_exists (true_path) then
                      if level >= normal then
                         TIO.Put_Line (TIO.Standard_Error,
                                       "Manifest file [" & act_path & "] does not exist, ignoring");
@@ -96,7 +99,7 @@ package body Archive.Whitelist.Keywords is
                      return;
                   end if;
                   if not whitelist.ingest_manifest_with_mode_override
-                    (full_path     => full_path,
+                    (full_path     => true_path,
                      real_top_path => real_top_path,
                      new_owner     => keyword_obj.get_owner,
                      new_group     => keyword_obj.get_group,
@@ -128,34 +131,6 @@ package body Archive.Whitelist.Keywords is
          last_file => last_file,
          stagedir  => real_top_path);
 
-      keyword_obj.actions.Iterate (process_action'Access);
-
-      if keyword_obj.deprecated then
-         if level >= normal then
-            TIO.Put (TIO.Standard_Error, "The use of '@" & keyword & "' is deprecated");
-            if ASU.Length (keyword_obj.deprecated_message) > 0 then
-               TIO.Put_Line (TIO.Standard_Error, ": " &
-                               ASU.To_String (keyword_obj.deprecated_message));
-            else
-               TIO.Put_Line (TIO.Standard_Error, "");
-            end if;
-         end if;
-      end if;
-      for phase in package_phase'Range loop
-         if keyword_obj.phase_script_defined (phase) then
-            declare
-               bourne : phase_script;
-               script : constant String := keyword_obj.retrieve_script (phase);
-            begin
-               if keyword_obj.valid_template (keyword, script) then
-                  bourne.script := keyword_obj.populate_template (script);
-                  whitelist.scripts (phase).Append (bourne);
-               else
-                  return False;
-               end if;
-            end;
-         end if;
-      end loop;
       --  handle prepackaging now
       keyword_obj.split_args.Iterate (process_arg'Access);
       if keyword_obj.tree.string_field_exists (KEY_PREPACK) then
@@ -175,6 +150,37 @@ package body Archive.Whitelist.Keywords is
          end if;
       end if;
 
+      if result then
+         keyword_obj.actions.Iterate (process_action'Access);
+      end if;
+
+      if keyword_obj.deprecated then
+         if level >= normal then
+            TIO.Put (TIO.Standard_Error, "The use of '@" & keyword & "' is deprecated");
+            if ASU.Length (keyword_obj.deprecated_message) > 0 then
+               TIO.Put_Line (TIO.Standard_Error, ": " &
+                               ASU.To_String (keyword_obj.deprecated_message));
+            else
+               TIO.Put_Line (TIO.Standard_Error, "");
+            end if;
+         end if;
+      end if;
+
+      for phase in package_phase'Range loop
+         if keyword_obj.phase_script_defined (phase) then
+            declare
+               bourne : phase_script;
+               script : constant String := keyword_obj.retrieve_script (phase);
+            begin
+               if keyword_obj.valid_template (keyword, script) then
+                  bourne.script := keyword_obj.populate_template (script);
+                  whitelist.scripts (phase).Append (bourne);
+               else
+                  return False;
+               end if;
+            end;
+         end if;
+      end loop;
 
       for mtype in Message_Type'Range loop
          if ASU.Length (keyword_obj.messages (mtype)) > 0 then
