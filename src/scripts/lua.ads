@@ -172,6 +172,16 @@ private
    function New_State return Lua_State;
    pragma Import (C, New_State, "luaL_newstate");
 
+   --  Destroys all objects in the given Lua state (calling the corresponding
+   --  garbage - collection metamethods, if any) and frees all dynamic memory
+   --  used by this state. On several platforms, you may not need to call this
+   --  function, because all resources are naturally released when the host
+   --  program ends. On the other hand, long - running programs that create
+   --  multiple states, such as daemons or web servers, might need to close
+   --  states as soon as they are not needed.
+   procedure Close (State : Lua_State);
+   pragma Import (C, Close, "lua_close");
+
    --  Load a string and raise Lua_Error in case of error
    procedure Load_String
      (State : Lua_State;

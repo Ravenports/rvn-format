@@ -164,7 +164,12 @@ package body Archive.Whitelist.Keywords is
             script     => keyword_obj.tree.get_base_value (KEY_PREPACK),
             arg_chain  => ASU.To_String (prepack_args),
             success    => prepack_success);
+         if not prepack_success then
+            result := False;
+            TIO.Put_Line (TIO.Standard_Error, "Fail to apply keyword '" & keyword & "'");
+         end if;
       end if;
+
 
       for mtype in Message_Type'Range loop
          if ASU.Length (keyword_obj.messages (mtype)) > 0 then

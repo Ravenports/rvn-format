@@ -106,6 +106,8 @@ package body Lua is
          DIR.Delete_File (msg_outfile);
       end if;
 
+      Close (State);
+
    end run_lua_script;
 
 
