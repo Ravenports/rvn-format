@@ -15,6 +15,9 @@ package Archive.Whitelist.Keywords is
       real_top_path : String;
       prefix_dir    : String;
       last_file     : String;
+      namebase      : String;
+      subpackage    : String;
+      variant       : String;
       level         : info_level) return Boolean;
 
 private

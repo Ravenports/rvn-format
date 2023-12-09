@@ -72,6 +72,9 @@ package body Archive.Whitelist is
       stage_directory    : String;
       prefix_directory   : String;
       keywords_directory : String;
+      namebase           : String;
+      subpackage         : String;
+      variant            : String;
       level              : info_level) return Boolean
    is
       type linecat is (jump, external_keyword, file_path, mode_override, key_error);
@@ -249,6 +252,9 @@ package body Archive.Whitelist is
                real_top_path => real_top_directory,
                prefix_dir    => prefix_directory,
                last_file     => last_file,
+               namebase      => namebase,
+               subpackage    => subpackage,
+               variant       => variant,
                level         => level)
             then
                succeeded := False;
@@ -887,7 +893,6 @@ package body Archive.Whitelist is
          when post_install_lua   => return "post-install-lua";
          when post_deinstall     => return "post-deinstall";
          when post_deinstall_lua => return "post-deinstall-lua";
-         when prepackaging       => return "prepackaging";
       end case;
    end convert_phase;
 

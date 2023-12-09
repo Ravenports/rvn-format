@@ -5,6 +5,7 @@ with Ada.Text_IO;
 with Ada.Strings.Fixed;
 with ThickUCL.Files;
 with Archive.Unix;
+with Lua;
 
 package body Archive.Whitelist.Keywords is
 
@@ -23,14 +24,22 @@ package body Archive.Whitelist.Keywords is
       real_top_path : String;
       prefix_dir    : String;
       last_file     : String;
+      namebase      : String;
+      subpackage    : String;
+      variant       : String;
       level         : info_level) return Boolean
    is
       procedure process_action (Position : action_set.Cursor);
+      procedure process_arg (Position : arg_crate.Cursor);
       function get_true_path (line : String) return String;
 
       keyword_obj : A_Keyword;
       result      : Boolean := True;
       act_count   : Natural := 0;
+
+      KEY_PREPACK : constant String := "prepackaging";
+      prepack_success : Boolean;
+      prepack_args    : ASU.Unbounded_String;
 
       function get_true_path (line : String) return String is
       begin
@@ -39,6 +48,16 @@ package body Archive.Whitelist.Keywords is
          end if;
          return real_top_path & prefix_dir & "/" & line;
       end get_true_path;
+
+      procedure process_arg (Position : arg_crate.Cursor)
+      is
+         ka : keyword_argument renames arg_crate.Element (Position);
+      begin
+         if ASU.Length (prepack_args) > 0 then
+            ASU.Append (prepack_args, Character'Val (0));
+         end if;
+         ASU.Append (prepack_args, ka.argument);
+      end process_arg;
 
       procedure process_action (Position : action_set.Cursor)
       is
@@ -132,6 +151,21 @@ package body Archive.Whitelist.Keywords is
             end;
          end if;
       end loop;
+      --  handle prepackaging now
+      keyword_obj.split_args.Iterate (process_arg'Access);
+      if keyword_obj.tree.string_field_exists (KEY_PREPACK) then
+         Lua.run_lua_script
+           (namebase   => namebase,
+            subpackage => subpackage,
+            variant    => variant,
+            prefix     => prefix_dir,
+            root_dir   => real_top_path,
+            upgrading  => False,
+            script     => keyword_obj.tree.get_base_value (KEY_PREPACK),
+            arg_chain  => ASU.To_String (prepack_args),
+            success    => prepack_success);
+      end if;
+
       for mtype in Message_Type'Range loop
          if ASU.Length (keyword_obj.messages (mtype)) > 0 then
             whitelist.messages (mtype).Append (keyword_obj.messages (mtype));

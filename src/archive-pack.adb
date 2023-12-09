@@ -39,6 +39,7 @@ package body Archive.Pack is
       verbosity           : info_level) return Boolean
    is
       metadata : Arc_Structure;
+      metadata_tree : ThickUCL.UclTree;
    begin
       metadata.set_verbosity (verbosity);
       metadata.record_directory (top_level_directory);
@@ -47,17 +48,28 @@ package body Archive.Pack is
          return False;
       end if;
 
+      metadata.scan_metadata_file
+        (metadata_path => metadata_file,
+         prefix        => prefix,
+         abi           => abi,
+         tree          => metadata_tree);
+
       if manifest_file /= "" then
          if not metadata.white_list.ingest_file_manifest
            (manifest_file      => manifest_file,
             stage_directory    => top_level_directory,
-            prefix_directory   => prefix,
+            prefix_directory   => metadata_tree.get_base_value ("prefix"),
             keywords_directory => keyword_dir,
+            namebase           => metadata_tree.get_base_value ("namebase"),
+            subpackage         => metadata_tree.get_base_value ("subpackage"),
+            variant            => metadata_tree.get_base_value ("variant"),
             level              => verbosity)
          then
             return False;
          end if;
       end if;
+
+      --  metadata.run_prepacking_actions;
 
       metadata.initialize_archive_file (output_file);
       metadata.scan_directory (top_level_directory, 0, fixed_timestamp);
@@ -78,8 +90,7 @@ package body Archive.Pack is
       metadata.write_blank_header (output_file);     --  block 1
       metadata.write_metadata_block (output_file,
                                      metadata_file,
-                                     prefix,
-                                     abi);           --  block 2
+                                     metadata_tree); --  block 2
       metadata.write_file_index_block (output_file); --  block 3
       metadata.write_archive_block (output_file);    --  block 4
       metadata.overwrite_header (output_file);
@@ -865,31 +876,27 @@ package body Archive.Pack is
 
 
    ------------------------------------------------------------------------------------------
-   --  write_metadata_block
+   --  scan_metadata_file
    ------------------------------------------------------------------------------------------
-   procedure write_metadata_block
-     (AS               : in out Arc_Structure;
-      output_file_path : String;
+   procedure scan_metadata_file
+     (AS : in out Arc_Structure;
       metadata_path    : String;
       prefix           : String;
-      abi              : String)
+      abi              : String;
+      tree             : in out ThickUCL.UclTree)
    is
       use type ZST.File_Size;
 
       attempt_read : Boolean := False;
       dossier_size : ZST.File_Size;
-      tree         : ThickUCL.UclTree;
-      flat_archive : constant String := output_file_path & ".archive";
-      archive_size : constant Ucl.ucl_integer := Ucl.ucl_integer (DIR.Size (flat_archive));
-      KEY_FLATSIZE : constant String := "flatsize";
       KEY_PREFIX   : constant String := "prefix";
-      KEY_DIRS     : constant String := "directories";
-      KEY_SCRIPTS  : constant String := "scripts";
-      KEY_DESCR    : constant String := "desc";
       KEY_ABI      : constant String := "abi";
+      KEY_DESCR    : constant String := "desc";
+      KEY_NAMEBASE : constant String := "namebase";
+      KEY_SUBPKG   : constant String := "subpackage";
+      KEY_VARIANT  : constant String := "variant";
+      VAL_UNSET    : constant String := "unset";
    begin
-      AS.meta_size := 0;
-      AS.flat_meta := 0;
       if metadata_path = "" then
          AS.print (debug, "No metadata file has been provided.");
       else
@@ -926,13 +933,6 @@ package body Archive.Pack is
          end;
       end if;
 
-      --  augment with flatsize
-      if tree.key_exists (KEY_FLATSIZE) then
-         AS.print (verbose, "Metadata unexpectedly contains flatsize field; not overwriting.");
-      else
-         tree.insert (KEY_FLATSIZE, archive_size);
-      end if;
-
       --  augment with prefix
       if tree.key_exists (KEY_PREFIX) then
          declare
@@ -957,6 +957,43 @@ package body Archive.Pack is
          end if;
       end if;
 
+      if not tree.key_exists (KEY_NAMEBASE) then
+         tree.insert (KEY_NAMEBASE, VAL_UNSET);
+      end if;
+      if not tree.key_exists (KEY_SUBPKG) then
+         tree.insert (KEY_SUBPKG, VAL_UNSET);
+      end if;
+      if not tree.key_exists (KEY_VARIANT) then
+         tree.insert (KEY_VARIANT, VAL_UNSET);
+      end if;
+
+   end scan_metadata_file;
+
+
+   ------------------------------------------------------------------------------------------
+   --  write_metadata_block
+   ------------------------------------------------------------------------------------------
+   procedure write_metadata_block
+     (AS               : in out Arc_Structure;
+      output_file_path : String;
+      metadata_path    : String;
+      tree             : in out ThickUCL.UclTree)
+   is
+      flat_archive : constant String := output_file_path & ".archive";
+      archive_size : constant Ucl.ucl_integer := Ucl.ucl_integer (DIR.Size (flat_archive));
+      KEY_FLATSIZE : constant String := "flatsize";
+      KEY_DIRS     : constant String := "directories";
+      KEY_SCRIPTS  : constant String := "scripts";
+   begin
+      AS.meta_size := 0;
+      AS.flat_meta := 0;
+
+      --  augment with flatsize
+      if tree.key_exists (KEY_FLATSIZE) then
+         AS.print (verbose, "Metadata unexpectedly contains flatsize field; not overwriting.");
+      else
+         tree.insert (KEY_FLATSIZE, archive_size);
+      end if;
 
       --  augment directories
       if tree.key_exists (KEY_DIRS) then

@@ -25,8 +25,7 @@ package Archive.Whitelist is
       post_install,
       post_install_lua,
       post_deinstall,
-      post_deinstall_lua,
-      prepackaging);
+      post_deinstall_lua);
 
    type Message_Type is (always, install, deinstall, upgrade);
 
@@ -48,6 +47,9 @@ package Archive.Whitelist is
       stage_directory    : String;
       prefix_directory   : String;
       keywords_directory : String;
+      namebase           : String;
+      subpackage         : String;
+      variant            : String;
       level              : info_level) return Boolean;
 
 

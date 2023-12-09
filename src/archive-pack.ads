@@ -6,6 +6,8 @@ with Ada.Containers.Vectors;
 with Ada.Streams.Stream_IO;
 with Archive.Whitelist;
 with Zstandard;
+with ThickUCL;
+
 
 package Archive.Pack is
 
@@ -178,8 +180,7 @@ private
      (AS : in out Arc_Structure;
       output_file_path : String;
       metadata_path    : String;
-      prefix           : String;
-      abi              : String);
+      tree             : in out ThickUCL.UclTree);
 
    --  Write block 3 (the compressed concatentation of blocks FA .. FE)
    procedure write_file_index_block (AS : in out Arc_Structure; output_file_path : String);
@@ -191,5 +192,16 @@ private
    function able_to_write_rvn_archive
      (AS : Arc_Structure;
       output_file_path : String) return Boolean;
+
+   --  Read the metadata file into a UCL tree.
+   --  Set the prefix from the command line if the metadata file doesn't contain it.
+   --  Set the ABI to the given value (unless it is blank) if the metadata file doesn't
+   --  already contain it, as it should.
+   procedure scan_metadata_file
+     (AS : in out Arc_Structure;
+      metadata_path    : String;
+      prefix           : String;
+      abi              : String;
+      tree             : in out ThickUCL.UclTree);
 
 end Archive.Pack;
