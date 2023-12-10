@@ -648,7 +648,6 @@ package body Archive.Unpack is
    ------------------------------------------------------------------------------------------
    function extract_manifest
      (DS           : in out DArc;
-      archive_path : String;
       file_list    : in out file_records.Vector) return Boolean
    is
       error_encountered : Boolean := False;

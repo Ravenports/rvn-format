@@ -70,7 +70,6 @@ package Archive.Unpack is
    --  Returns true if no error was encounted (meaning the manifest is accurate)
    function extract_manifest
      (DS            : in out DArc;
-      archive_path  : String;
       file_list     : in out file_records.Vector) return Boolean;
 
    --  This function extracts the archive and returns true if successful.
