@@ -11,7 +11,6 @@ with Ada.Exceptions;
 with Ada.IO_Exceptions;
 with Ada.Strings.Fixed;
 with Archive.Communication;
-with Blake_3;
 
 package body Archive.Unpack is
 
@@ -645,6 +644,55 @@ package body Archive.Unpack is
 
 
    ------------------------------------------------------------------------------------------
+   --  extract_manifest
+   ------------------------------------------------------------------------------------------
+   function extract_manifest
+     (DS           : in out DArc;
+      archive_path : String;
+      file_list    : in out file_records.Vector) return Boolean
+   is
+      error_encountered : Boolean := False;
+
+      procedure scan (position : file_block_crate.Cursor)
+      is
+         block : Scanned_File_Block renames file_block_crate.Element (position);
+
+         function get_fullpath (index_parent : index_type; filename : String) return String
+         is
+            parent : constant Natural := Natural (index_parent);
+         begin
+            if parent = 0 then
+               return filename;
+            end if;
+            return ASU.To_String (DS.folders.Element (parent).directory) & "/" & filename;
+         end get_fullpath;
+      begin
+         if block.type_of_file /= directory then
+            declare
+               filename : constant String := extract_filename (block);
+               fullpath : constant String := get_fullpath (block.index_parent, filename);
+               tray     : file_record;
+            begin
+               tray.path := ASU.To_Unbounded_String (fullpath);
+               tray.digest := Blake_3.hex (block.blake_sum);
+               file_list.Append (tray);
+            end;
+         end if;
+      exception
+         when Constraint_Error =>
+            error_encountered := True;
+      end scan;
+   begin
+      file_list.Clear;
+      if not DS.processed then
+         DS.retrieve_file_index;
+      end if;
+      DS.files.Iterate (scan'Access);
+      return not error_encountered;
+   end extract_manifest;
+
+
+   ------------------------------------------------------------------------------------------
    --  print_manifest
    ------------------------------------------------------------------------------------------
    procedure print_manifest
@@ -653,14 +701,10 @@ package body Archive.Unpack is
       show_attr  : Boolean := False;
       indent     : Natural)
    is
-      procedure print (position : file_block_crate.Cursor);
-
       spacer : constant String (1 .. indent) := (others => ' ');
 
       procedure print (position : file_block_crate.Cursor)
       is
-         function get_fullpath (index_parent : index_type; filename : String) return String;
-
          block : Scanned_File_Block renames file_block_crate.Element (position);
 
          function get_fullpath (index_parent : index_type; filename : String) return String
@@ -719,8 +763,6 @@ package body Archive.Unpack is
       show_attr  : Boolean := False;
       filepath   : String)
    is
-      procedure print (position : file_block_crate.Cursor);
-
       output_handle : TIO.File_Type;
 
       procedure print (position : file_block_crate.Cursor)

@@ -7,6 +7,7 @@ with Ada.Streams.Stream_IO;
 with Ada.Strings.Unbounded;
 with Zstandard.Streaming_Decompression;
 with Archive.Unix;
+with Blake_3;
 
 package Archive.Unpack is
 
@@ -15,6 +16,16 @@ package Archive.Unpack is
    package ASU renames Ada.Strings.Unbounded;
 
    type DArc is tagged limited private;
+
+   type file_record is
+      record
+         digest : Blake_3.blake3_hash_hex;
+         path   : ASU.Unbounded_String;
+      end record;
+
+   package file_records is new CON.Vectors
+     (Element_Type => file_record,
+      Index_Type   => Natural);
 
    --  This procedure attempts to open an RVN archive.
    procedure open_rvn_archive
@@ -54,6 +65,13 @@ package Archive.Unpack is
       show_b3sum : Boolean := False;
       show_attr  : Boolean := False;
       filepath   : String);
+
+   --  Provides the manifest as a container which provides the digest and path of each file.
+   --  Returns true if no error was encounted (meaning the manifest is accurate)
+   function extract_manifest
+     (DS            : in out DArc;
+      archive_path  : String;
+      file_list     : in out file_records.Vector) return Boolean;
 
    --  This function extracts the archive and returns true if successful.
    function extract_archive
