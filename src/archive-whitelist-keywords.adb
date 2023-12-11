@@ -159,12 +159,16 @@ package body Archive.Whitelist.Keywords is
 
       if keyword_obj.deprecated then
          if level >= normal then
-            SQW.emit_error ("The use of '@" & keyword & "' is deprecated");
-            if ASU.Length (keyword_obj.deprecated_message) > 0 then
-               SQW.emit_error (": " & ASU.To_String (keyword_obj.deprecated_message));
-            else
-               SQW.emit_error ("");
-            end if;
+            declare
+               err_part1 : constant String := "The use of '@" & keyword & "' is deprecated";
+               deprecmsg : constant String := ASU.To_String (keyword_obj.deprecated_message);
+            begin
+               if deprecmsg /= "" then
+                  SQW.emit_error (err_part1 & ": " & deprecmsg);
+               else
+                  SQW.emit_error (err_part1);
+               end if;
+            end;
          end if;
       end if;
 
