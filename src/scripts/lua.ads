@@ -148,7 +148,7 @@ private
      ("pkg.readdir takes exactly one argument");
 
    custerr_os_exec : constant IC.char_array := Archive.Unix.convert_to_char_array
-     ("os.exec not available");
+     ("os.execute not available");
 
    custerr_os_exit : constant IC.char_array := Archive.Unix.convert_to_char_array
      ("os.exit not available");
