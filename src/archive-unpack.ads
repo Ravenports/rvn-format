@@ -87,6 +87,9 @@ package Archive.Unpack is
    --  This function sends some of the values of the uncompressed block 1 to standard out.
    procedure print_magic_block (DS : DArc);
 
+   --  Extracts the raw metadata and parses the string into the tree structure
+   procedure populate_metadata_tree (DS : in out DArc; tree : in out ThickUCL.UclTree);
+
 private
 
    fblk_size    : constant Natural := File_Block'Size / 8;
@@ -223,9 +226,6 @@ private
    --  This procedure checks if file exists.  If it does, it checks if it's writable by
    --  the current user.  If it's not, it attempts to change mode to make it so.
    procedure prepare_for_overwrite (DS : DArc; file_path : String);
-
-   --  Extracts the raw metadata and parses the string into the tree structure
-   procedure populate_metadata_tree (DS : in out DArc; tree : in out ThickUCL.UclTree);
 
    --  Returns true if the "scripts" key exists and it points to an object.
    --  The object_index of the object is returned to avoid unnecessary re-lookups

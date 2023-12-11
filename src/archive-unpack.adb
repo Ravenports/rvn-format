@@ -1085,6 +1085,7 @@ package body Archive.Unpack is
       end if;
 
       if not skip_scripts then
+         DS.populate_metadata_tree (metadata_tree);
          meta_scripts := scripts_key_exists (metadata_tree, scripts_index);
          if meta_scripts then
             if phase_scripts_exists (metadata_tree, scripts_index, "pre-install") then
