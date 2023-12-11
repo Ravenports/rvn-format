@@ -1427,6 +1427,7 @@ package body Archive.Unpack is
             when ThickUCL.data_string =>
                declare
                   script : constant String := tree.get_array_element_value (vndx, index);
+                  success : Boolean;
                begin
                   Bourne.run_shell_script
                     (namebase    => get_meta_string (tree, "namebase"),
@@ -1436,7 +1437,12 @@ package body Archive.Unpack is
                      root_dir    => root_dir,
                      upgrading   => upgrading,
                      interpreter => interpreter,
-                     script      => script);
+                     script      => script,
+                     success     => success);
+                  if not success then
+                     SQW.emit_notice
+                       (phase_key & " Bourne shell script number" & index'Img & " failed");
+                  end if;
                end;
             when others => null;
          end case;

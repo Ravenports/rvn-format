@@ -83,12 +83,10 @@ package body Bourne is
       root_dir    : String;
       upgrading   : Boolean;
       interpreter : String;
-      script      : String)
+      script      : String;
+      success     : out Boolean)
    is
       msg_outfile : constant String := unique_msgfile_path;
-      exit_status : Integer;
-
-      pragma Unreferenced  (exit_status);
    begin
       if not DIR.Exists (interpreter) then
          raise interpreter_missing;
@@ -122,9 +120,10 @@ package body Bourne is
                   2 => new String'(script_file)
                  );
             begin
-               exit_status := GNAT.OS_Lib.Spawn
+               GNAT.OS_Lib.Spawn
                  (Program_Name => Args (Args'First).all,
-                  Args         => Args (Args'First + 1 .. Args'Last));
+                  Args         => Args (Args'First + 1 .. Args'Last),
+                  Success      => success);
 
                --  Free memory
                for Index in Args'Range loop
@@ -142,9 +141,10 @@ package body Bourne is
                3 => new String'(script)
               );
          begin
-            exit_status := GNAT.OS_Lib.Spawn
+            GNAT.OS_Lib.Spawn
               (Program_Name => Args (Args'First).all,
-               Args         => Args (Args'First + 1 .. Args'Last));
+               Args         => Args (Args'First + 1 .. Args'Last),
+               Success      => success);
 
             --  Free memory
             for Index in Args'Range loop

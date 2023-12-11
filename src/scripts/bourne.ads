@@ -26,7 +26,8 @@ package Bourne is
       root_dir    : String;
       upgrading   : Boolean;
       interpreter : String;
-      script      : String);
+      script      : String;
+      success     : out Boolean);
 
    interpreter_missing : exception;
    ginormous_script    : exception;
