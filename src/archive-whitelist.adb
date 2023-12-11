@@ -107,10 +107,16 @@ package body Archive.Whitelist is
          if line (line'First) = '/' then
             return real_top_directory & line;
          end if;
-         if prefix_directory (prefix_directory'Last) = '/' then
-            return real_top_directory & prefix_directory & line;
-         else
+
+         if prefix_directory = "" then
+            --  Should not happen, but handle zero-length prefix_directory.
             return real_top_directory & prefix_directory & "/" & line;
+         else
+            if prefix_directory (prefix_directory'Last) = '/' then
+               return real_top_directory & prefix_directory & line;
+            else
+               return real_top_directory & prefix_directory & "/" & line;
+            end if;
          end if;
       end get_true_path;
 
