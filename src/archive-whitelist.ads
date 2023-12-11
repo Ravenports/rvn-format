@@ -111,6 +111,13 @@ package Archive.Whitelist is
       index         : Natural) return String;
 
 
+   --  Returns the arguments mapped to a given phase and index
+   function get_arguments
+     (whitelist     : A_Whitelist;
+      phase         : package_phase;
+      index         : Natural) return String;
+
+
    --  Returns the number of messages defined for this message type
    function message_count
      (whitelist     : A_Whitelist;
@@ -154,7 +161,8 @@ private
 
    type phase_script is
       record
-         script : ASU.Unbounded_String;
+         code : ASU.Unbounded_String;
+         args : ASU.Unbounded_String;
       end record;
 
    package phase_crate is new CON.Vectors

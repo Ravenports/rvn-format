@@ -1066,7 +1066,10 @@ package body Archive.Pack is
                      tree.start_array (Whitelist.convert_phase (phase));
                   end if;
                   for z in 0 .. AS.white_list.script_count (phase) - 1 loop
-                     tree.insert ("", AS.white_list.get_script (phase, z));
+                     tree.start_object ("");
+                     tree.insert ("code", AS.white_list.get_script (phase, z));
+                     tree.insert ("args", AS.white_list.get_arguments (phase, z));
+                     tree.close_object;
                   end loop;
                   tree.close_array;
                end if;

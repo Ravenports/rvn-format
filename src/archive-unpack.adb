@@ -1421,31 +1421,36 @@ package body Archive.Unpack is
       upgrading     : Boolean)
    is
       vndx : constant ThickUCL.array_index := tree.get_object_array (scripts_index, phase_key);
-      num_scripts : constant Natural := tree.get_object_array (scripts_index, phase_key);
+      num_scripts  : constant Natural := tree.get_object_array (scripts_index, phase_key);
+      error_prefix : constant String := phase_key & " Bourne shell script number";
+      vndx2        : ThickUCL.object_index;
+      success      : Boolean;
    begin
       for index in 0 .. num_scripts - 1 loop
          case tree.get_array_element_type (vndx, index) is
-            when ThickUCL.data_string =>
-               declare
-                  script : constant String := tree.get_array_element_value (vndx, index);
-                  success : Boolean;
-               begin
-                  Bourne.run_shell_script
-                    (namebase    => get_meta_string (tree, "namebase"),
-                     subpackage  => get_meta_string (tree, "subpackage"),
-                     variant     => get_meta_string (tree, "variant"),
-                     prefix      => get_meta_string (tree, "prefix"),
-                     root_dir    => root_dir,
-                     upgrading   => upgrading,
-                     interpreter => interpreter,
-                     script      => script,
-                     success     => success);
-                  if not success then
-                     SQW.emit_notice
-                       (phase_key & " Bourne shell script number" & index'Img & " failed");
-                  end if;
-               end;
-            when others => null;
+            when ThickUCL.data_object =>
+               vndx2 := tree.get_array_element_object (vndx, index);
+               case tree.get_object_data_type (vndx2, "code") is
+                  when ThickUCL.data_string =>
+                     Bourne.run_shell_script
+                       (namebase    => get_meta_string (tree, "namebase"),
+                        subpackage  => get_meta_string (tree, "subpackage"),
+                        variant     => get_meta_string (tree, "variant"),
+                        prefix      => get_meta_string (tree, "prefix"),
+                        root_dir    => root_dir,
+                        upgrading   => upgrading,
+                        interpreter => interpreter,
+                        script      => tree.get_object_value (vndx2, "code"),
+                        success     => success);
+                     if not success then
+                        SQW.emit_notice (error_prefix & index'Img & " failed");
+                     end if;
+                  when ThickUCL.data_not_present =>
+                     SQW.emit_error (error_prefix & index'Img & " code missing");
+                  when others =>
+                     SQW.emit_error (error_prefix & index'Img & " code not a string");
+               end case;
+            when others => SQW.emit_error (error_prefix & index'Img & " not of type object");
          end case;
       end loop;
    end execute_bourne_scripts;
@@ -1462,30 +1467,77 @@ package body Archive.Unpack is
       upgrading     : Boolean)
    is
       vndx : constant ThickUCL.array_index := tree.get_object_array (scripts_index, phase_key);
-      num_scripts : constant Natural := tree.get_object_array (scripts_index, phase_key);
+      num_scripts  : constant Natural := tree.get_object_array (scripts_index, phase_key);
+      error_prefix : constant String := phase_key & " Lua script number";
+      vndx2        : ThickUCL.object_index;
+      script_good  : Boolean;
+
+      function get_script (vndx2 : ThickUCL.object_index; index : Natural) return String is
+      begin
+         case tree.get_object_data_type (vndx2, "code") is
+            when ThickUCL.data_string =>
+               return tree.get_object_value (vndx2, "code");
+            when ThickUCL.data_not_present =>
+               script_good := False;
+               SQW.emit_error (error_prefix & index'Img & " code missing");
+            when others =>
+               script_good := False;
+               SQW.emit_error (error_prefix & index'Img & " code not a string");
+         end case;
+         return "";
+      end get_script;
+
+      function get_arguments (vndx2 : ThickUCL.object_index; index : Natural) return String is
+      begin
+         case tree.get_object_data_type (vndx2, "args") is
+            when ThickUCL.data_string =>
+               declare
+                  args : String := tree.get_object_value (vndx2, "args");
+               begin
+                  for x in args'Range loop
+                     if args (x) = ' ' then
+                        args (x) := Character'Val (0);
+                     end if;
+                  end loop;
+                  return args;
+               end;
+            when ThickUCL.data_not_present =>
+               script_good := False;
+               SQW.emit_error (error_prefix & index'Img & " args missing");
+            when others =>
+               script_good := False;
+               SQW.emit_error (error_prefix & index'Img & " args not a string");
+         end case;
+         return "";
+      end get_arguments;
    begin
       for index in 0 .. num_scripts - 1 loop
          case tree.get_array_element_type (vndx, index) is
-            when ThickUCL.data_string =>
+            when ThickUCL.data_object =>
+               vndx2 := tree.get_array_element_object (vndx, index);
+               script_good := True;
                declare
-                  script : constant String := tree.get_array_element_value (vndx, index);
+                  script  : constant String := get_script (vndx2, index);
+                  args    : constant String := get_arguments (vndx2, index);
                   success : Boolean;
                begin
-                  Lua.run_lua_script
-                    (namebase   => get_meta_string (tree, "namebase"),
-                     subpackage => get_meta_string (tree, "subpackage"),
-                     variant    => get_meta_string (tree, "variant"),
-                     prefix     => get_meta_string (tree, "prefix"),
-                     root_dir   => root_dir,
-                     upgrading  => upgrading,
-                     script     => script,
-                     arg_chain  => "",
-                     success    => success);
-                  if not success then
-                     SQW.emit_notice (phase_key & " Lua script number" & index'Img & " failed");
+                  if script_good then
+                     Lua.run_lua_script
+                       (namebase   => get_meta_string (tree, "namebase"),
+                        subpackage => get_meta_string (tree, "subpackage"),
+                        variant    => get_meta_string (tree, "variant"),
+                        prefix     => get_meta_string (tree, "prefix"),
+                        root_dir   => root_dir,
+                        upgrading  => upgrading,
+                        script     => script,
+                        arg_chain  => args,
+                        success    => success);
+                     if not success then
+                        SQW.emit_notice (error_prefix & index'Img & " failed");
+                     end if;
                   end if;
                end;
-            when others => null;
+            when others => SQW.emit_error (error_prefix & index'Img & " not of type object");
          end case;
       end loop;
    end execute_lua_scripts;

@@ -923,11 +923,22 @@ package body Archive.Whitelist is
    function get_script
      (whitelist     : A_Whitelist;
       phase         : package_phase;
-      index         : Natural) return String
-   is
+      index         : Natural) return String is
    begin
-      return ASU.To_String (whitelist.scripts (phase).Element (index).script);
+      return ASU.To_String (whitelist.scripts (phase).Element (index).code);
    end get_script;
+
+
+   ---------------------
+   --  get_arguments  --
+   ---------------------
+   function get_arguments
+     (whitelist     : A_Whitelist;
+      phase         : package_phase;
+      index         : Natural) return String is
+   begin
+      return ASU.To_String (whitelist.scripts (phase).Element (index).args);
+   end get_arguments;
 
 
    ---------------------

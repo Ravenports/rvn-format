@@ -40,7 +40,8 @@ package body Archive.Whitelist.Keywords is
 
       KEY_PREPACK : constant String := "prepackaging";
       prepack_success : Boolean;
-      prepack_args    : ASU.Unbounded_String;
+      script_args     : ASU.Unbounded_String;
+      script_args_spc : ASU.Unbounded_String;
 
       function get_true_path (line : String) return String is
       begin
@@ -60,10 +61,12 @@ package body Archive.Whitelist.Keywords is
       begin
          --  skip the first argument, it's "%0", the entire line.
          if arg_count > 0 then
-            if ASU.Length (prepack_args) > 0 then
-               ASU.Append (prepack_args, Character'Val (0));
+            if ASU.Length (script_args) > 0 then
+               ASU.Append (script_args, Character'Val (0));
+               ASU.Append (script_args_spc, ' ');
             end if;
-            ASU.Append (prepack_args, ka.argument);
+            ASU.Append (script_args, ka.argument);
+            ASU.Append (script_args_spc, ka.argument);
          end if;
          arg_count := arg_count + 1;
       end process_arg;
@@ -142,7 +145,7 @@ package body Archive.Whitelist.Keywords is
             root_dir   => real_top_path,
             upgrading  => False,
             script     => keyword_obj.tree.get_base_value (KEY_PREPACK),
-            arg_chain  => ASU.To_String (prepack_args),
+            arg_chain  => ASU.To_String (script_args),
             success    => prepack_success);
          if not prepack_success then
             result := False;
@@ -165,18 +168,38 @@ package body Archive.Whitelist.Keywords is
          end if;
       end if;
 
+      --  Lua scripts remember the arguments while bourne scripts do not.
+      --  Bourne scripts replace %0, %1, .. tokens with arguments while Lua scripts do not
+      --  Change storage from array of strings to array of objects with keys "code" and "args"
+      --  For shell scripts, args will always be empty.
       for phase in package_phase'Range loop
          if keyword_obj.phase_script_defined (phase) then
             declare
-               bourne : phase_script;
-               script : constant String := keyword_obj.retrieve_script (phase);
+               script : phase_script;
+               code   : constant String := keyword_obj.retrieve_script (phase);
             begin
-               if keyword_obj.valid_template (keyword, script) then
-                  bourne.script := keyword_obj.populate_template (script);
-                  whitelist.scripts (phase).Append (bourne);
-               else
-                  return False;
-               end if;
+               case phase is
+                  when pre_install    |
+                       pre_deinstall  |
+                       post_install   |
+                       post_deinstall =>
+
+                     if keyword_obj.valid_template (keyword, code) then
+                        script.code := keyword_obj.populate_template (code);
+                        script.args := ASU.Null_Unbounded_String;
+                     else
+                        return False;
+                     end if;
+                  when
+                       pre_install_lua    |
+                       pre_deinstall_lua  |
+                       post_install_lua   |
+                       post_deinstall_lua =>
+
+                     script.code := ASU.To_Unbounded_String (code);
+                     script.args := script_args_spc;
+               end case;
+               whitelist.scripts (phase).Append (script);
             end;
          end if;
       end loop;
