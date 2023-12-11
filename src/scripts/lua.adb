@@ -821,7 +821,13 @@ package body Lua is
          if inpath (inpath'First) = '/' then
             Push (State, inpath);
          else
-            Push (State, prefix & '/' & inpath);
+            if prefix = "" then
+               Push (State, '/' & inpath);
+            elsif prefix (prefix'Last) = '/' then
+               Push (State, prefix & inpath);
+            else
+               Push (State, prefix & '/' & inpath);
+            end if;
          end if;
       end;
       return 1;
