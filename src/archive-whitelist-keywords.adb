@@ -39,6 +39,7 @@ package body Archive.Whitelist.Keywords is
       arg_count   : Natural := 0;
 
       KEY_PREPACK : constant String := "prepackaging";
+      msg_outfile : constant String := Lua.unique_msgfile_path;
       prepack_success : Boolean;
       script_args     : ASU.Unbounded_String;
       script_args_spc : ASU.Unbounded_String;
@@ -138,19 +139,21 @@ package body Archive.Whitelist.Keywords is
       keyword_obj.split_args.Iterate (process_arg'Access);
       if keyword_obj.tree.string_field_exists (KEY_PREPACK) then
          Lua.run_lua_script
-           (namebase   => namebase,
-            subpackage => subpackage,
-            variant    => variant,
-            prefix     => prefix_dir,
-            root_dir   => real_top_path,
-            upgrading  => False,
-            script     => keyword_obj.tree.get_base_value (KEY_PREPACK),
-            arg_chain  => ASU.To_String (script_args),
-            success    => prepack_success);
+           (namebase    => namebase,
+            subpackage  => subpackage,
+            variant     => variant,
+            prefix      => prefix_dir,
+            root_dir    => real_top_path,
+            upgrading   => False,
+            script      => keyword_obj.tree.get_base_value (KEY_PREPACK),
+            arg_chain   => ASU.To_String (script_args),
+            msg_outfile => msg_outfile,
+            success     => prepack_success);
          if not prepack_success then
             result := False;
             SQW.emit_error ("Fail to apply keyword '" & keyword & "'");
          end if;
+         Lua.show_post_run_messages (msg_outfile);
       end if;
 
       if result then
