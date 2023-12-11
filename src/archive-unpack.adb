@@ -11,6 +11,9 @@ with Ada.Exceptions;
 with Ada.IO_Exceptions;
 with Ada.Strings.Fixed;
 with Archive.Communication;
+with ThickUCL.Files;
+with Bourne;
+with Lua;
 
 package body Archive.Unpack is
 
@@ -838,7 +841,10 @@ package body Archive.Unpack is
       top_directory : String;
       set_owners    : Boolean;
       set_perms     : Boolean;
-      set_modtime   : Boolean) return Boolean
+      set_modtime   : Boolean;
+      skip_scripts  : Boolean;
+      upgrading     : Boolean;
+      interpreter   : String) return Boolean
    is
       procedure extract (position : file_block_crate.Cursor);
       procedure second_pass (position : file_block_crate.Cursor);
@@ -850,6 +856,10 @@ package body Archive.Unpack is
 
 
       good_extraction : Boolean := True;
+      metadata_tree   : ThickUCL.UclTree;
+      scripts_index   : ThickUCL.object_index := 0;
+      meta_scripts    : Boolean := False;
+
 
       procedure extract (position : file_block_crate.Cursor)
       is
@@ -1074,6 +1084,29 @@ package body Archive.Unpack is
          return False;
       end if;
 
+      if not skip_scripts then
+         meta_scripts := scripts_key_exists (metadata_tree, scripts_index);
+         if meta_scripts then
+            if phase_scripts_exists (metadata_tree, scripts_index, "pre-install") then
+               execute_bourne_scripts
+                 (tree          => metadata_tree,
+                  scripts_index => scripts_index,
+                  phase_key     => "pre-install",
+                  root_dir      => top_directory,
+                  interpreter   => interpreter,
+                  upgrading     => upgrading);
+            end if;
+            if phase_scripts_exists (metadata_tree, scripts_index, "pre-install-lua") then
+               execute_lua_scripts
+                 (tree          => metadata_tree,
+                  scripts_index => scripts_index,
+                  phase_key     => "pre-install-lua",
+                  root_dir      => top_directory,
+                  upgrading     => upgrading);
+            end if;
+         end if;
+      end if;
+
       if not DS.processed then
          DS.retrieve_file_index;
       end if;
@@ -1084,6 +1117,27 @@ package body Archive.Unpack is
       end if;
       DS.files.Iterate (extract'Access);
       DS.files.Iterate (second_pass'Access);
+
+      if meta_scripts then
+         if phase_scripts_exists (metadata_tree, scripts_index, "post-install") then
+            execute_bourne_scripts
+              (tree          => metadata_tree,
+               scripts_index => scripts_index,
+               phase_key     => "post-install",
+               root_dir      => top_directory,
+               interpreter   => interpreter,
+               upgrading     => upgrading);
+         end if;
+         if phase_scripts_exists (metadata_tree, scripts_index, "post-install-lua") then
+            execute_lua_scripts
+              (tree          => metadata_tree,
+               scripts_index => scripts_index,
+               phase_key     => "post-install-lua",
+               root_dir      => top_directory,
+               upgrading     => upgrading);
+         end if;
+      end if;
+
       return good_extraction;
    end extract_archive;
 
@@ -1279,6 +1333,155 @@ package body Archive.Unpack is
          end if;
       end if;
    end prepare_for_overwrite;
+
+
+   ------------------------------
+   --  populate_metadata_tree  --
+   ------------------------------
+   procedure populate_metadata_tree (DS : in out DArc; tree : in out ThickUCL.UclTree)
+   is
+      metadata : constant String := DS.extract_metadata;
+   begin
+      begin
+         ThickUCL.Files.parse_ucl_string (tree, metadata, "");
+      exception
+         when ThickUCL.Files.ucl_data_unparseable =>
+            return;
+      end;
+   end populate_metadata_tree;
+
+
+   --------------------------
+   --  scripts_key_exists  --
+   --------------------------
+   function scripts_key_exists
+     (tree : ThickUCL.UclTree;
+      scripts_index : in out ThickUCL.object_index) return Boolean
+   is
+      scripts_key : constant String := "scripts";
+   begin
+      case tree.get_data_type (scripts_key) is
+         when ThickUCL.data_object =>
+            scripts_index := tree.get_index_of_base_ucl_object (scripts_key);
+            return True;
+         when others =>
+            return False;
+      end case;
+   end scripts_key_exists;
+
+
+   ----------------------------
+   --  phase_scripts_exists  --
+   ----------------------------
+   function phase_scripts_exists
+     (tree          : ThickUCL.UclTree;
+      scripts_index : ThickUCL.object_index;
+      phase_key     : String) return Boolean
+   is
+      vndx : ThickUCL.array_index;
+      num_scripts : Natural;
+   begin
+      case tree.get_object_data_type (scripts_index, phase_key) is
+         when ThickUCL.data_array =>
+            vndx := tree.get_object_array (scripts_index, phase_key);
+            num_scripts := tree.get_number_of_array_elements (vndx);
+            if num_scripts > 0 then
+               return True;
+            end if;
+         when others => null;
+      end case;
+      return False;
+   end phase_scripts_exists;
+
+
+   -----------------------
+   --  get_meta_string  --
+   -----------------------
+   function get_meta_string (tree : ThickUCL.UclTree; data_key : String) return String is
+   begin
+      case tree.get_data_type (data_key) is
+         when ThickUCL.data_string =>
+            return tree.get_base_value (data_key);
+         when others =>
+            return data_key & "-not-found";
+      end case;
+   end get_meta_string;
+
+
+   ------------------------------
+   --  execute_bourne_scripts  --
+   ------------------------------
+   procedure execute_bourne_scripts
+     (tree          : ThickUCL.UclTree;
+      scripts_index : ThickUCL.object_index;
+      phase_key     : String;
+      root_dir      : String;
+      interpreter   : String;
+      upgrading     : Boolean)
+   is
+      vndx : constant ThickUCL.array_index := tree.get_object_array (scripts_index, phase_key);
+      num_scripts : constant Natural := tree.get_object_array (scripts_index, phase_key);
+   begin
+      for index in 0 .. num_scripts - 1 loop
+         case tree.get_array_element_type (vndx, index) is
+            when ThickUCL.data_string =>
+               declare
+                  script : constant String := tree.get_array_element_value (vndx, index);
+               begin
+                  Bourne.run_shell_script
+                    (namebase    => get_meta_string (tree, "namebase"),
+                     subpackage  => get_meta_string (tree, "subpackage"),
+                     variant     => get_meta_string (tree, "variant"),
+                     prefix      => get_meta_string (tree, "prefix"),
+                     root_dir    => root_dir,
+                     upgrading   => upgrading,
+                     interpreter => interpreter,
+                     script      => script);
+               end;
+            when others => null;
+         end case;
+      end loop;
+   end execute_bourne_scripts;
+
+
+   ---------------------------
+   --  execute_lua_scripts  --
+   ---------------------------
+   procedure execute_lua_scripts
+     (tree          : ThickUCL.UclTree;
+      scripts_index : ThickUCL.object_index;
+      phase_key     : String;
+      root_dir      : String;
+      upgrading     : Boolean)
+   is
+      vndx : constant ThickUCL.array_index := tree.get_object_array (scripts_index, phase_key);
+      num_scripts : constant Natural := tree.get_object_array (scripts_index, phase_key);
+   begin
+      for index in 0 .. num_scripts - 1 loop
+         case tree.get_array_element_type (vndx, index) is
+            when ThickUCL.data_string =>
+               declare
+                  script : constant String := tree.get_array_element_value (vndx, index);
+                  success : Boolean;
+               begin
+                  Lua.run_lua_script
+                    (namebase   => get_meta_string (tree, "namebase"),
+                     subpackage => get_meta_string (tree, "subpackage"),
+                     variant    => get_meta_string (tree, "variant"),
+                     prefix     => get_meta_string (tree, "prefix"),
+                     root_dir   => root_dir,
+                     upgrading  => upgrading,
+                     script     => script,
+                     arg_chain  => "",
+                     success    => success);
+                  if not success then
+                     SQW.emit_notice (phase_key & " Lua script number" & index'Img & " failed");
+                  end if;
+               end;
+            when others => null;
+         end case;
+      end loop;
+   end execute_lua_scripts;
 
 
    ------------------------------------------------------------------------------------------

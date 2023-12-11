@@ -7,6 +7,7 @@ with Ada.Streams.Stream_IO;
 with Ada.Strings.Unbounded;
 with Zstandard.Streaming_Decompression;
 with Archive.Unix;
+with ThickUCL;
 with Blake_3;
 
 package Archive.Unpack is
@@ -78,7 +79,10 @@ package Archive.Unpack is
       top_directory : String;
       set_owners    : Boolean;
       set_perms     : Boolean;
-      set_modtime   : Boolean) return Boolean;
+      set_modtime   : Boolean;
+      skip_scripts  : Boolean;
+      upgrading     : Boolean;
+      interpreter   : String) return Boolean;
 
    --  This function sends some of the values of the uncompressed block 1 to standard out.
    procedure print_magic_block (DS : DArc);
@@ -219,5 +223,41 @@ private
    --  This procedure checks if file exists.  If it does, it checks if it's writable by
    --  the current user.  If it's not, it attempts to change mode to make it so.
    procedure prepare_for_overwrite (DS : DArc; file_path : String);
+
+   --  Extracts the raw metadata and parses the string into the tree structure
+   procedure populate_metadata_tree (DS : in out DArc; tree : in out ThickUCL.UclTree);
+
+   --  Returns true if the "scripts" key exists and it points to an object.
+   --  The object_index of the object is returned to avoid unnecessary re-lookups
+   function scripts_key_exists
+     (tree : ThickUCL.UclTree;
+      scripts_index : in out ThickUCL.object_index) return Boolean;
+
+   --  Returns tree if the phase script key exists and points to an array with at
+   --  least one script in it.
+   function phase_scripts_exists
+     (tree          : ThickUCL.UclTree;
+      scripts_index : ThickUCL.object_index;
+      phase_key     : String) return Boolean;
+
+   --  Return string value of given data-key (or default to avoid crash)
+   function get_meta_string (tree : ThickUCL.UclTree; data_key : String) return String;
+
+   --  Executes bourne scripts of the given phase_key.  There could be more than one.
+   procedure execute_bourne_scripts
+     (tree          : ThickUCL.UclTree;
+      scripts_index : ThickUCL.object_index;
+      phase_key     : String;
+      root_dir      : String;
+      interpreter   : String;
+      upgrading     : Boolean);
+
+   --  Executes Lua scripts of the given phase_key.  There could be more than one.
+   procedure execute_lua_scripts
+     (tree          : ThickUCL.UclTree;
+      scripts_index : ThickUCL.object_index;
+      phase_key     : String;
+      root_dir      : String;
+      upgrading     : Boolean);
 
 end Archive.Unpack;
