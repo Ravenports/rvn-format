@@ -33,9 +33,9 @@ package body Lua is
       upgrading   : Boolean;
       script      : String;
       arg_chain   : String;
+      msg_outfile : String;
       success     : out Boolean)
    is
-      msg_outfile : constant String := unique_msgfile_path;
       state  : constant Lua_State := New_State;
       status : Lua_Return_Code;
       top    : Lua_Index;
@@ -107,6 +107,16 @@ package body Lua is
             TIO.Put_Line (TIO.Standard_Error, convert_to_string (state, top_slot));
       end case;
 
+      Close (state);
+
+   end run_lua_script;
+
+
+   ------------------------------
+   --  show_post_run_messages  --
+   ------------------------------
+   procedure show_post_run_messages (msg_outfile : String) is
+   begin
       --  Provide delayed message text if it exists
       if DIR.Exists (msg_outfile) then
          declare
@@ -123,10 +133,7 @@ package body Lua is
          end;
          DIR.Delete_File (msg_outfile);
       end if;
-
-      Close (state);
-
-   end run_lua_script;
+   end show_post_run_messages;
 
 
    ------------------------

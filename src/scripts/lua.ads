@@ -46,7 +46,14 @@ package Lua is
       upgrading   : Boolean;
       script      : String;
       arg_chain   : String;
+      msg_outfile : String;
       success     : out Boolean);
+
+   --  Return a randomly-named msgfile path that isn't currently being used.
+   function unique_msgfile_path return String;
+
+   --  Disable any postrun messages and remove the temporary file
+   procedure show_post_run_messages (msg_outfile : String);
 
 private
 
@@ -161,9 +168,6 @@ private
    --  Returns the nanosecond portion of the current time.
    --  This is used for a temporary file prefix.
    function random_extension return String;
-
-   --  Return a randomly-named msgfile path that isn't currently being used.
-   function unique_msgfile_path return String;
 
    --  The argument chain is null-character delimited.  Push each chain link
    --  in as a separate argument.
