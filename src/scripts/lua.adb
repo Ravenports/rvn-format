@@ -969,10 +969,10 @@ package body Lua is
             when Archive.unsupported =>
                Push (State, file_not_found);
                return 1;
-            when Archive.directory | Archive.symlink | Archive.fifo =>
+            when Archive.directory | Archive.fifo =>
                Push (State, wrong_file_type);
                return 1;
-            when Archive.regular | Archive.hardlink =>
+            when Archive.regular | Archive.hardlink | Archive.symlink =>
                null;
          end case;
          declare
