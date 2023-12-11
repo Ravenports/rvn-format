@@ -1421,7 +1421,7 @@ package body Archive.Unpack is
       upgrading     : Boolean)
    is
       vndx : constant ThickUCL.array_index := tree.get_object_array (scripts_index, phase_key);
-      num_scripts  : constant Natural := tree.get_object_array (scripts_index, phase_key);
+      num_scripts  : constant Natural := tree.get_number_of_array_elements (vndx);
       error_prefix : constant String := phase_key & " Bourne shell script number";
       vndx2        : ThickUCL.object_index;
       success      : Boolean;
@@ -1467,7 +1467,7 @@ package body Archive.Unpack is
       upgrading     : Boolean)
    is
       vndx : constant ThickUCL.array_index := tree.get_object_array (scripts_index, phase_key);
-      num_scripts  : constant Natural := tree.get_object_array (scripts_index, phase_key);
+      num_scripts  : constant Natural := tree.get_number_of_array_elements (vndx);
       error_prefix : constant String := phase_key & " Lua script number";
       vndx2        : ThickUCL.object_index;
       script_good  : Boolean;
