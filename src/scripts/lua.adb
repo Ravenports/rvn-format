@@ -72,7 +72,7 @@ package body Lua is
       Register_Function (state, "pkg.stat", custom_stat'Access);
 
       --  Override / disable existing functions
-      Register_Function (state, "os.exec", override_os_execute'Access);
+      Register_Function (state, "os.execute", override_os_execute'Access);
       Register_Function (state, "os.exit", override_os_exit'Access);
       Register_Function (state, "os.remove", override_remove'Access);
       Register_Function (state, "os.rename", override_rename'Access);
