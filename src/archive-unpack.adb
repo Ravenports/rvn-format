@@ -1538,7 +1538,7 @@ package body Archive.Unpack is
                         msg_outfile => msg_outfile,
                         success     => success);
                      if not success then
-                        SQW.emit_notice (error_prefix & index'Img & " failed");
+                        SQW.emit_error (error_prefix & index'Img & " failed");
                      end if;
                   end if;
                end;
