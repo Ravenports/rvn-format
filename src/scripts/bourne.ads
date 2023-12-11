@@ -27,7 +27,14 @@ package Bourne is
       upgrading   : Boolean;
       interpreter : String;
       script      : String;
+      msg_outfile : String;
       success     : out Boolean);
+
+   --  Return a randomly-named msgfile path that isn't currently being used.
+   function unique_msgfile_path return String;
+
+   --  Disable any postrun messages and remove the temporary file
+   procedure show_post_run_messages (msg_outfile : String);
 
    interpreter_missing : exception;
    ginormous_script    : exception;
@@ -39,8 +46,6 @@ private
    --  This is used for a temporary file prefix.
    function random_extension return String;
 
-   --  Return a randomly-named msgfile path that isn't currently being used.
-   function unique_msgfile_path return String;
 
    --  Transfers the contents of a string to a file in one pass.
    procedure dump_contents_to_file (contents : String; dossier : String);

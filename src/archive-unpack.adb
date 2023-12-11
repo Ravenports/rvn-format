@@ -1423,6 +1423,7 @@ package body Archive.Unpack is
       vndx : constant ThickUCL.array_index := tree.get_object_array (scripts_index, phase_key);
       num_scripts  : constant Natural := tree.get_number_of_array_elements (vndx);
       error_prefix : constant String := phase_key & " Bourne shell script number";
+      msg_outfile  : constant String := Bourne.unique_msgfile_path;
       vndx2        : ThickUCL.object_index;
       success      : Boolean;
    begin
@@ -1441,6 +1442,7 @@ package body Archive.Unpack is
                         upgrading   => upgrading,
                         interpreter => interpreter,
                         script      => tree.get_object_value (vndx2, "code"),
+                        msg_outfile => msg_outfile,
                         success     => success);
                      if not success then
                         SQW.emit_notice (error_prefix & index'Img & " failed");
@@ -1453,6 +1455,7 @@ package body Archive.Unpack is
             when others => SQW.emit_error (error_prefix & index'Img & " not of type object");
          end case;
       end loop;
+      Bourne.show_post_run_messages (msg_outfile);
    end execute_bourne_scripts;
 
 

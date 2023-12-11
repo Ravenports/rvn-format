@@ -84,9 +84,9 @@ package body Bourne is
       upgrading   : Boolean;
       interpreter : String;
       script      : String;
+      msg_outfile : String;
       success     : out Boolean)
    is
-      msg_outfile : constant String := unique_msgfile_path;
    begin
       if not DIR.Exists (interpreter) then
          raise interpreter_missing;
@@ -153,6 +153,21 @@ package body Bourne is
          end;
       end if;
 
+      ENV.Clear ("PKG_NAMEBASE");
+      ENV.Clear ("PKG_SUBPACKAGE");
+      ENV.Clear ("PKG_VARIANT");
+      ENV.Clear ("PKG_PREFIX");
+      ENV.Clear ("PKG_ROOTDIR");
+      ENV.Clear ("PKG_OUTFILE");
+      ENV.Clear ("PKG_UPGRADE");
+   end run_shell_script;
+
+
+   ------------------------------
+   --  show_post_run_messages  --
+   ------------------------------
+   procedure show_post_run_messages (msg_outfile : String) is
+   begin
       --  Provide delayed message text if it exists
       if DIR.Exists (msg_outfile) then
          declare
@@ -169,15 +184,7 @@ package body Bourne is
          end;
          DIR.Delete_File (msg_outfile);
       end if;
-
-      ENV.Clear ("PKG_NAMEBASE");
-      ENV.Clear ("PKG_SUBPACKAGE");
-      ENV.Clear ("PKG_VARIANT");
-      ENV.Clear ("PKG_PREFIX");
-      ENV.Clear ("PKG_ROOTDIR");
-      ENV.Clear ("PKG_OUTFILE");
-      ENV.Clear ("PKG_UPGRADE");
-   end run_shell_script;
+   end show_post_run_messages;
 
 
    -----------------------------
