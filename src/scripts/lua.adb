@@ -1117,7 +1117,7 @@ package body Lua is
       declare
          package UNX renames Archive.Unix;
 
-         inpath : constant String := retrieve_argument (State, 1);
+         inpath : constant String := dynamic_path (state, retrieve_argument (State, 1));
          attributes : UNX.File_Characteristics;
       begin
          attributes := UNX.get_charactistics (inpath);
