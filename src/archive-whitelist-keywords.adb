@@ -72,7 +72,7 @@ package body Archive.Whitelist.Keywords is
       is
          --  split_args are zero-indexed
          action   : Action_Type renames action_set.Element (Position);
-         num_args : constant Natural := Natural (keyword_obj.split_args.Length) - 1;
+         num_args : constant Natural := Natural (keyword_obj.split_args.Length);
          num_act  : constant Natural := Natural (keyword_obj.actions.Length);
       begin
          act_count := act_count + 1;
@@ -85,7 +85,7 @@ package body Archive.Whitelist.Keywords is
 
          declare
             act_path : constant String :=
-              ASU.To_String (keyword_obj.split_args.Element (act_count).argument);
+              ASU.To_String (keyword_obj.split_args.Element (act_count - 1).argument);
             true_path : constant String := get_true_path (act_path);
          begin
             case action is
@@ -407,7 +407,7 @@ package body Archive.Whitelist.Keywords is
       keyword.file_found := True;
       TUC.Files.parse_ucl_file (keyword.tree, full_path, "");
       if keyword.tree.array_field_exists (action_key) then
-         --  valid (only) is "[]", "[file]", "[dir]"
+         --  valid is "[]",  or "[list]" where list is contains elements of "file" or "dir"
          declare
             ai : constant TUC.array_index := keyword.tree.get_index_of_base_array (action_key);
             num_elements : constant Natural := keyword.tree.get_number_of_array_elements (ai);
