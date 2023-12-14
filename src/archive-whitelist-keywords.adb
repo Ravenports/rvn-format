@@ -223,9 +223,9 @@ package body Archive.Whitelist.Keywords is
       keyword     : String;
       script      : String) return Boolean
    is
-      num_args : constant Natural := Natural (keyword_obj.split_args.Length) - 1;
+      num_args : constant Natural := Natural (keyword_obj.split_args.Length);
    begin
-      for token in 0 .. 9 loop
+      for token in 1 .. 9 loop
          declare
             tokarg : constant String := "$" & Misc.int2str (token);
          begin
