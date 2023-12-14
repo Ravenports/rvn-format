@@ -35,7 +35,6 @@ private
       record
          scan_failed        : Boolean;
          file_found         : Boolean;
-         preformat          : Boolean;
          deprecated         : Boolean;
          deprecated_message : ASU.Unbounded_String;
          messages           : Message_Set;
@@ -66,10 +65,8 @@ private
       keyword     : String;
       script      : String) return Boolean;
 
-   --  Replaces %0, %1, %2 tokens with the arguments and returns as unbounded string
-   function populate_template
-     (keyword_obj : A_Keyword;
-      script      : String) return ASU.Unbounded_String;
+   --  Replaces %0, %1, %2, %@ tokens with $0, $1, $2, $@ and return as unbounded strings
+   function populate_template (script : String) return ASU.Unbounded_String;
 
    --  Read the keyword UCL files and set some internal variables from it
    procedure scan_file
@@ -88,13 +85,5 @@ private
 
    --  Replaces every occurrance of "token" with "replacement" and returns the result
    function token_expansion (S, token, replacement : String; level : info_level) return String;
-
-   --  Evaluates the tokenized argument line and return the result
-   function perform_expansion
-     (original  : String;
-      prefix    : String;
-      last_file : String;
-      level     : info_level) return String;
-
 
 end Archive.Whitelist.Keywords;

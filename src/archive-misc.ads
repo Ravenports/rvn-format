@@ -15,6 +15,9 @@ package Archive.Misc is
    --  Tail (keep only last field)
    function tail (S : String; delimiter : String) return String;
 
+   --  unpadded numeric image
+   function int2str (A : Integer) return String;
+
    --  Returns number of instances of a given character in a given string
    function count_char (S : String; focus : Character) return Natural;
 

@@ -116,4 +116,18 @@ package body Archive.Misc is
    end head;
 
 
+   ---------------
+   --  int2str  --
+   ---------------
+   function int2str (A : Integer) return String
+   is
+      raw : constant String := A'Img;
+   begin
+      if A < 0 then
+         return raw;
+      else
+         return raw (raw'First + 1 .. raw'Last);
+      end if;
+   end int2str;
+
 end Archive.Misc;

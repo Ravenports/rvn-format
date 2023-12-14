@@ -37,7 +37,6 @@ package body Archive.Whitelist.Keywords is
       keyword_obj : A_Keyword;
       result      : Boolean := True;
       act_count   : Natural := 0;
-      arg_count   : Natural := 0;
 
       KEY_PREPACK : constant String := "prepackaging";
       msg_outfile : constant String := Lua.unique_msgfile_path;
@@ -61,16 +60,12 @@ package body Archive.Whitelist.Keywords is
       is
          ka : keyword_argument renames arg_crate.Element (Position);
       begin
-         --  skip the first argument, it's "%0", the entire line.
-         if arg_count > 0 then
-            if ASU.Length (script_args) > 0 then
-               ASU.Append (script_args, Character'Val (0));
-               ASU.Append (script_args_spc, ' ');
-            end if;
-            ASU.Append (script_args, ka.argument);
-            ASU.Append (script_args_spc, ka.argument);
+         if ASU.Length (script_args) > 0 then
+            ASU.Append (script_args, Character'Val (0));
+            ASU.Append (script_args_spc, ' ');
          end if;
-         arg_count := arg_count + 1;
+         ASU.Append (script_args, ka.argument);
+         ASU.Append (script_args_spc, ka.argument);
       end process_arg;
 
       procedure process_action (Position : action_set.Cursor)
@@ -176,8 +171,7 @@ package body Archive.Whitelist.Keywords is
          end if;
       end if;
 
-      --  Lua scripts remember the arguments while bourne scripts do not.
-      --  Bourne scripts replace %0, %1, .. tokens with arguments while Lua scripts do not
+      --  Now both Lua scripts and Bourne scripts store arguments separately
       --  Change storage from array of strings to array of objects with keys "code" and "args"
       --  For shell scripts, args will always be empty.
       for phase in package_phase'Range loop
@@ -192,10 +186,9 @@ package body Archive.Whitelist.Keywords is
                        post_install   |
                        post_deinstall =>
 
-                     if keyword_obj.valid_template (keyword, code) then
-                        script.code := keyword_obj.populate_template (code);
-                        script.args := ASU.Null_Unbounded_String;
-                     else
+                     script.code := populate_template (code);
+                     script.args := script_args_spc;
+                     if not keyword_obj.valid_template (keyword, ASU.To_String (script.code)) then
                         return False;
                      end if;
                   when
@@ -221,7 +214,8 @@ package body Archive.Whitelist.Keywords is
       return result;
    end process_external_keyword;
 
-   ----------------------
+
+   ----------------------'
    --  valid_template  --
    ----------------------
    function valid_template
@@ -233,8 +227,7 @@ package body Archive.Whitelist.Keywords is
    begin
       for token in 0 .. 9 loop
          declare
-            timage : constant String := token'Img;
-            tokarg : constant String := "%" & timage (timage'First + 1 .. timage'Last);
+            tokarg : constant String := "$" & Misc.int2str (token);
          begin
             if AS.Fixed.Index (Source => script, Pattern => tokarg) > 0 then
                if token > num_args then
@@ -253,23 +246,27 @@ package body Archive.Whitelist.Keywords is
    -------------------------
    --  populate_template  --
    -------------------------
-   function populate_template
-     (keyword_obj : A_Keyword;
-      script      : String) return ASU.Unbounded_String
+   function populate_template (script : String) return ASU.Unbounded_String
    is
-      result : ASU.Unbounded_String := ASU.To_Unbounded_String (script);
-      num_args : constant Natural := Natural (keyword_obj.split_args.Length) - 1;
+      result : String := script;
+      start  : Natural;
+      token  : String (1 .. 2) := "%%";
    begin
-      for token in 0 .. num_args loop
-         declare
-            timage : constant String := token'Img;
-            tokarg : constant String := "%" & timage (timage'First + 1 .. timage'Last);
-            newstr : constant String := ASU.To_String (keyword_obj.split_args (token).argument);
-         begin
-            result := Misc.replace_substring (result, tokarg, newstr);
-         end;
+      for arg in 0 .. 9 loop
+         token (2) := Character'Val (48 + arg);
+         loop
+            start := AS.Fixed.Index (Source => result, Pattern => token);
+            exit when start = 0;
+            result (start) := '$';
+         end loop;
       end loop;
-      return result;
+      token (2) := '@';
+      loop
+         start := AS.Fixed.Index (Source => result, Pattern => token);
+         exit when start = 0;
+         result (start) := '$';
+      end loop;
+      return ASU.To_Unbounded_String (result);
    end populate_template;
 
 
@@ -389,12 +386,10 @@ package body Archive.Whitelist.Keywords is
       action_key : constant String := "actions";
       deprec_key : constant String := "deprecated";
       dmsg_key   : constant String := "deprecation_message";
-      prefmt_key : constant String := "preformat_arguments";
 
    begin
       keyword.scan_failed := False;
       keyword.file_found := False;
-      keyword.preformat := False;
       keyword.deprecated := False;
       keyword.deprecated_message   := ASU.Null_Unbounded_String;
       keyword.messages (always)    := ASU.Null_Unbounded_String;
@@ -443,9 +438,6 @@ package body Archive.Whitelist.Keywords is
       if keyword.tree.string_field_exists (dmsg_key) then
          keyword.deprecated_message :=
            ASU.To_Unbounded_String (keyword.tree.get_base_value (dmsg_key));
-      end if;
-      if keyword.tree.boolean_field_exists (prefmt_key) then
-         keyword.preformat := keyword.tree.get_base_value (prefmt_key);
       end if;
       if keyword.tree.key_exists (msgset_key) then
          --  messages are an array of objects
@@ -520,14 +512,14 @@ package body Archive.Whitelist.Keywords is
       procedure split_formatted_string (S : String)
       is
          num_spaces : constant Natural := Misc.count_char (S, ' ');
-         tray_zero  : keyword_argument;
          true_count : Natural := 0;
       begin
-         tray_zero.argument := ASU.To_Unbounded_String (S);
          if keyword.level >= debug then
-            SQW.emit_debug ("First argument (%@): " & S);
+            SQW.emit_debug ("Argument set (%@): " & S);
          end if;
-         keyword.split_args.Append (tray_zero);
+         if S = "" then
+            return;
+         end if;
          for x in 1 .. num_spaces + 1 loop
             declare
                arg : constant String := Misc.specific_field (S, x);
@@ -538,23 +530,15 @@ package body Archive.Whitelist.Keywords is
                   tray.argument := ASU.To_Unbounded_String (arg);
                   keyword.split_args.Append (tray);
                   if keyword.level >= debug then
-                     declare
-                        tcstr : constant String := true_count'Img;
-                     begin
-                        SQW.emit_debug ("Push into arguments: " & arg
-                                        & " (%" & tcstr (tcstr'First + 1 .. tcstr'Last) & ")");
-                     end;
+                     SQW.emit_debug ("Push into arguments: " & arg &
+                                       " (%" & Misc.int2str (true_count) & ")");
                   end if;
                end if;
             end;
          end loop;
       end split_formatted_string;
    begin
-      if keyword.preformat then
-         split_formatted_string (perform_expansion (arguments, prefix, last_file, keyword.level));
-      else
-         split_formatted_string (arguments);
-      end if;
+      split_formatted_string (arguments);
    end process_arguments;
 
 
@@ -575,41 +559,6 @@ package body Archive.Whitelist.Keywords is
       end loop;
       return ASU.To_String (US);
    end token_expansion;
-
-
-   -------------------------
-   --  perform_expansion  --
-   -------------------------
-   function perform_expansion
-     (original  : String;
-      prefix    : String;
-      last_file : String;
-      level     : info_level) return String
-   is
-      --  %D expands to prefix
-      --  %F expands to $last_file
-      --  %f expands to basename ($last_file)
-      --  %B expands to dirname ($last_file)
-
-      postD : constant String := token_expansion (original, "%D", prefix, level);
-   begin
-      declare
-         postF : constant String := token_expansion (postD, "%F", last_file, level);
-      begin
-         declare
-            post_f : constant String := token_expansion (postF, "%f",
-                                                         Misc.tail (last_file, "/"), level);
-            fchar  : constant Character := last_file (last_file'First);
-         begin
-            if fchar = '/' then
-               return token_expansion (post_f, "%B", Misc.head (last_file, "/"), level);
-            else
-               return token_expansion (post_f, "%B",
-                                       Misc.head (prefix & "/" & last_file, "/"), level);
-            end if;
-         end;
-      end;
-   end perform_expansion;
 
 
 end Archive.Whitelist.Keywords;
