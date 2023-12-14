@@ -90,7 +90,7 @@ package body Bourne is
       msg_outfile : String;
       success     : out Boolean)
    is
-      num_args : constant Natural := MSC.count_char (arguments, ' ') + 1;
+      num_args : Natural;
    begin
       if not DIR.Exists (interpreter) then
          raise interpreter_missing;
@@ -105,6 +105,11 @@ package body Bourne is
          ENV.Set ("PKG_UPGRADE", "TRUE");
       else
          ENV.Clear ("PKG_UPGRADE");
+      end if;
+      if arguments = "" then
+         num_args := 0;
+      else
+         num_args := MSC.count_char (arguments, ' ') + 1;
       end if;
 
       if script'Length > 4000 then
@@ -147,17 +152,18 @@ package body Bourne is
          end;
       else
          declare
-            last_arg : constant Natural := 3 + num_args;
+            last_arg : constant Natural := 4 + num_args;
             Args : GNAT.OS_Lib.Argument_List (1 .. last_arg);
          begin
             Args (1) := new String'(interpreter);
             Args (2) := new String'("-c");
             Args (3) := new String'(script);
+            Args (4) := new String'("inline");
             for x in 1 .. num_args loop
                declare
                   new_arg : constant String := MSC.specific_field (arguments, x);
                begin
-                  Args (3 + x) := new String'(new_arg);
+                  Args (4 + x) := new String'(new_arg);
                end;
             end loop;
 
