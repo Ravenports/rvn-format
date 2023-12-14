@@ -1425,14 +1425,49 @@ package body Archive.Unpack is
       error_prefix : constant String := phase_key & " Bourne shell script number";
       msg_outfile  : constant String := Bourne.unique_msgfile_path;
       vndx2        : ThickUCL.object_index;
-      success      : Boolean;
+      script_good  : Boolean;
+
+      function get_script (vndx2 : ThickUCL.object_index; index : Natural) return String is
+      begin
+         case tree.get_object_data_type (vndx2, "code") is
+            when ThickUCL.data_string =>
+               return tree.get_object_value (vndx2, "code");
+            when ThickUCL.data_not_present =>
+               script_good := False;
+               SQW.emit_error (error_prefix & index'Img & " code missing");
+            when others =>
+               script_good := False;
+               SQW.emit_error (error_prefix & index'Img & " code not a string");
+         end case;
+         return "";
+      end get_script;
+
+      function get_arguments (vndx2 : ThickUCL.object_index; index : Natural) return String is
+      begin
+         case tree.get_object_data_type (vndx2, "args") is
+            when ThickUCL.data_string =>
+               return tree.get_object_value (vndx2, "args");
+            when ThickUCL.data_not_present =>
+               script_good := False;
+               SQW.emit_error (error_prefix & index'Img & " args missing");
+            when others =>
+               script_good := False;
+               SQW.emit_error (error_prefix & index'Img & " args not a string");
+         end case;
+         return "";
+      end get_arguments;
    begin
       for index in 0 .. num_scripts - 1 loop
          case tree.get_array_element_type (vndx, index) is
             when ThickUCL.data_object =>
                vndx2 := tree.get_array_element_object (vndx, index);
-               case tree.get_object_data_type (vndx2, "code") is
-                  when ThickUCL.data_string =>
+               script_good := True;
+               declare
+                  script  : constant String := get_script (vndx2, index);
+                  args    : constant String := get_arguments (vndx2, index);
+                  success : Boolean;
+               begin
+                  if script_good then
                      Bourne.run_shell_script
                        (namebase    => get_meta_string (tree, "namebase"),
                         subpackage  => get_meta_string (tree, "subpackage"),
@@ -1441,17 +1476,15 @@ package body Archive.Unpack is
                         root_dir    => root_dir,
                         upgrading   => upgrading,
                         interpreter => interpreter,
-                        script      => tree.get_object_value (vndx2, "code"),
+                        script      => script,
+                        arguments   => args,
                         msg_outfile => msg_outfile,
                         success     => success);
                      if not success then
                         SQW.emit_notice (error_prefix & index'Img & " failed");
                      end if;
-                  when ThickUCL.data_not_present =>
-                     SQW.emit_error (error_prefix & index'Img & " code missing");
-                  when others =>
-                     SQW.emit_error (error_prefix & index'Img & " code not a string");
-               end case;
+                  end if;
+               end;
             when others => SQW.emit_error (error_prefix & index'Img & " not of type object");
          end case;
       end loop;

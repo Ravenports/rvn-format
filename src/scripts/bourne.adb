@@ -8,6 +8,7 @@ with Ada.Real_Time;
 with Ada.Direct_IO;
 with Ada.Text_IO;
 with GNAT.OS_Lib;
+with Archive.Misc;
 
 package body Bourne is
 
@@ -15,6 +16,7 @@ package body Bourne is
    package DIR renames Ada.Directories;
    package ENV renames Ada.Environment_Variables;
    package TIO renames Ada.Text_IO;
+   package MSC renames Archive.Misc;
 
 
    ------------------------
@@ -84,9 +86,11 @@ package body Bourne is
       upgrading   : Boolean;
       interpreter : String;
       script      : String;
+      arguments   : String;
       msg_outfile : String;
       success     : out Boolean)
    is
+      num_args : constant Natural := MSC.count_char (arguments, ' ') + 1;
    begin
       if not DIR.Exists (interpreter) then
          raise interpreter_missing;
@@ -115,11 +119,19 @@ package body Bourne is
             dump_contents_to_file (script, script_file);
 
             declare
-               Args : GNAT.OS_Lib.Argument_List :=
-                 (1 => new String'(interpreter),
-                  2 => new String'(script_file)
-                 );
+               last_arg : constant Natural := 2 + num_args;
+               Args : GNAT.OS_Lib.Argument_List (1 .. last_arg);
             begin
+               Args (1) := new String'(interpreter);
+               Args (2) := new String'(script_file);
+               for x in 1 .. num_args loop
+                  declare
+                     new_arg : constant String := MSC.specific_field (arguments, x);
+                  begin
+                     Args (2 + x) := new String'(new_arg);
+                  end;
+               end loop;
+
                GNAT.OS_Lib.Spawn
                  (Program_Name => Args (Args'First).all,
                   Args         => Args (Args'First + 1 .. Args'Last),
@@ -135,12 +147,20 @@ package body Bourne is
          end;
       else
          declare
-            Args : GNAT.OS_Lib.Argument_List :=
-              (1 => new String'(interpreter),
-               2 => new String'("-c"),
-               3 => new String'(script)
-              );
+            last_arg : constant Natural := 3 + num_args;
+            Args : GNAT.OS_Lib.Argument_List (1 .. last_arg);
          begin
+            Args (1) := new String'(interpreter);
+            Args (2) := new String'("-c");
+            Args (3) := new String'(script);
+            for x in 1 .. num_args loop
+               declare
+                  new_arg : constant String := MSC.specific_field (arguments, x);
+               begin
+                  Args (3 + x) := new String'(new_arg);
+               end;
+            end loop;
+
             GNAT.OS_Lib.Spawn
               (Program_Name => Args (Args'First).all,
                Args         => Args (Args'First + 1 .. Args'Last),

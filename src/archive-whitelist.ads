@@ -265,11 +265,7 @@ private
      (whitelist : in out A_Whitelist;
       level     : info_level);
 
-   --  Head (keep all but last delimiter and field)
-   function head (S : String; delimiter : String) return String;
 
-   --  Tail (keep only last field)
-   function tail (S : String; delimiter : String) return String;
 
    --  Takes a single like "4555" and returns the equivalent as permissions type.
    --  Must be 3 or 4 characters long, consisting of only '0' .. '7' characters

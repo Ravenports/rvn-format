@@ -8,6 +8,7 @@ with Ada.Text_IO;
 with Archive.Unix;
 with Archive.Communication;
 with Archive.Whitelist.Keywords;
+with Archive.Misc;
 with GNAT.Regpat;
 
 package body Archive.Whitelist is
@@ -381,7 +382,7 @@ package body Archive.Whitelist is
       whitelist.files.Insert (file_hash, props);
 
       --  Now insert the file's directory tree
-      whitelist.insert_directory_into_whitelist (dir_path      => head (full_path, "/"),
+      whitelist.insert_directory_into_whitelist (dir_path      => Misc.head (full_path, "/"),
                                                  real_top_path => real_top_path,
                                                  level         => level);
       return True;
@@ -413,7 +414,7 @@ package body Archive.Whitelist is
          whitelist.files.Insert (file_hash, props);
       end if;
       insert_directory_into_whitelist (whitelist     => whitelist,
-                                       dir_path      => head (dir_path, "/"),
+                                       dir_path      => Misc.head (dir_path, "/"),
                                        real_top_path => real_top_path,
                                        level         => level);
    end insert_directory_into_whitelist;
@@ -587,7 +588,7 @@ package body Archive.Whitelist is
       whitelist.files.Insert (file_hash, props);
 
       --  Now insert the file's directory tree
-      whitelist.insert_directory_into_whitelist (dir_path      => head (full_path, "/"),
+      whitelist.insert_directory_into_whitelist (dir_path      => Misc.head (full_path, "/"),
                                                  real_top_path => real_top_path,
                                                  level         => level);
       return True;
@@ -684,50 +685,6 @@ package body Archive.Whitelist is
    begin
       return key1 = key2;
    end digest_equivalent;
-
-
-   ------------
-   --  head  --
-   ------------
-   function head (S : String; delimiter : String) return String
-   is
-      dl_size      : constant Natural := delimiter'Length;
-      back_marker  : constant Natural := S'First;
-      front_marker : Natural := S'Last - dl_size + 1;
-   begin
-      loop
-         if front_marker < back_marker then
-            --  delimiter never found
-            return "";
-         end if;
-         if S (front_marker .. front_marker + dl_size - 1) = delimiter then
-            return S (back_marker .. front_marker - 1);
-         end if;
-         front_marker := front_marker - 1;
-      end loop;
-   end head;
-
-
-   ------------
-   --  tail  --
-   ------------
-   function tail (S : String; delimiter : String) return String
-   is
-      dl_size      : constant Natural := delimiter'Length;
-      back_marker  : constant Natural := S'First;
-      front_marker : Natural := S'Last - dl_size + 1;
-   begin
-      loop
-         if front_marker < back_marker then
-            --  delimiter never found
-            return S;
-         end if;
-         if S (front_marker .. front_marker + dl_size - 1) = delimiter then
-            return S (front_marker + dl_size .. S'Last);
-         end if;
-         front_marker := front_marker - 1;
-      end loop;
-   end tail;
 
 
    ------------------

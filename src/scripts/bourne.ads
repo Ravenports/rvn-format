@@ -27,6 +27,7 @@ package Bourne is
       upgrading   : Boolean;
       interpreter : String;
       script      : String;
+      arguments   : String;
       msg_outfile : String;
       success     : out Boolean);
 
@@ -45,7 +46,6 @@ private
    --  Returns the nanosecond portion of the current time.
    --  This is used for a temporary file prefix.
    function random_extension return String;
-
 
    --  Transfers the contents of a string to a file in one pass.
    procedure dump_contents_to_file (contents : String; dossier : String);

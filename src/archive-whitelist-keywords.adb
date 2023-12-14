@@ -5,6 +5,7 @@ with Ada.Strings.Fixed;
 with ThickUCL.Files;
 with Archive.Communication;
 with Archive.Unix;
+with Archive.Misc;
 with Lua;
 
 package body Archive.Whitelist.Keywords is
@@ -265,7 +266,7 @@ package body Archive.Whitelist.Keywords is
             tokarg : constant String := "%" & timage (timage'First + 1 .. timage'Last);
             newstr : constant String := ASU.To_String (keyword_obj.split_args (token).argument);
          begin
-            result := replace_substring (result, tokarg, newstr);
+            result := Misc.replace_substring (result, tokarg, newstr);
          end;
       end loop;
       return result;
@@ -427,7 +428,7 @@ package body Archive.Whitelist.Keywords is
                   else
                      keyword.scan_failed := True;
                      SQW.emit_error
-                       (tail (filename, "/") & ": action '" & action & "' not recognized");
+                       (Misc.tail (filename, "/") & ": action '" & action & "' not recognized");
                   end if;
                   if level >= debug then
                      SQW.emit_debug ("Action: " & action & "   " & full_path);
@@ -505,71 +506,6 @@ package body Archive.Whitelist.Keywords is
    end scan_file;
 
 
-   ------------------
-   --  count_char  --
-   ------------------
-   function count_char (S : String; focus : Character) return Natural
-   is
-      result : Natural := 0;
-   begin
-      for x in S'Range loop
-         if S (x) = focus then
-            result := result + 1;
-         end if;
-      end loop;
-      return result;
-   end count_char;
-
-
-   ----------------------
-   --  specific_field  --
-   ----------------------
-   function specific_field
-     (S            : String;
-      field_number : Positive;
-      delimiter    : String := " ") return String
-   is
-      back  : Integer;
-      dsize : constant Natural := delimiter'Length;
-      front : Integer := S'First;
-   begin
-      for field in 1 .. field_number - 1 loop
-         back := AS.Fixed.Index (Source => S, Pattern => delimiter, From => front);
-         if back <= 0 then
-            return "";
-         end if;
-         front := back + dsize;
-      end loop;
-      back := AS.Fixed.Index (Source => S, Pattern => delimiter, From => front);
-      if back > 0 then
-         return S (front .. back - 1);
-      else
-         return S (front .. S'Last);
-      end if;
-   end specific_field;
-
-
-   -------------------------
-   --  replace_substring  --
-   -------------------------
-   function replace_substring
-     (US : ASU.Unbounded_String;
-      old_string : String;
-      new_string : String) return ASU.Unbounded_String
-   is
-      back_marker  : constant Natural := ASU.Index (Source => US, Pattern => old_string);
-      front_marker : constant Natural := back_marker + old_string'Length - 1;
-   begin
-      if back_marker = 0 then
-         return US;
-      end if;
-      return ASU.Replace_Slice (Source => US,
-                                Low    => back_marker,
-                                High   => front_marker,
-                                By     => new_string);
-   end replace_substring;
-
-
    -------------------------
    --  process_arguments  --
    -------------------------
@@ -583,7 +519,7 @@ package body Archive.Whitelist.Keywords is
       procedure split_formatted_string (S : String);
       procedure split_formatted_string (S : String)
       is
-         num_spaces : constant Natural := count_char (S, ' ');
+         num_spaces : constant Natural := Misc.count_char (S, ' ');
          tray_zero  : keyword_argument;
          true_count : Natural := 0;
       begin
@@ -594,7 +530,7 @@ package body Archive.Whitelist.Keywords is
          keyword.split_args.Append (tray_zero);
          for x in 1 .. num_spaces + 1 loop
             declare
-               arg : constant String := specific_field (S, x);
+               arg : constant String := Misc.specific_field (S, x);
                tray : keyword_argument;
             begin
                if arg /= "" then
@@ -635,7 +571,7 @@ package body Archive.Whitelist.Keywords is
       end if;
       loop
          exit when ASU.Index (Source => US, Pattern => token) = 0;
-         US := replace_substring (US, token, replacement);
+         US := Misc.replace_substring (US, token, replacement);
       end loop;
       return ASU.To_String (US);
    end token_expansion;
@@ -661,13 +597,15 @@ package body Archive.Whitelist.Keywords is
          postF : constant String := token_expansion (postD, "%F", last_file, level);
       begin
          declare
-            post_f : constant String := token_expansion (postF, "%f", tail (last_file, "/"), level);
+            post_f : constant String := token_expansion (postF, "%f",
+                                                         Misc.tail (last_file, "/"), level);
             fchar  : constant Character := last_file (last_file'First);
          begin
             if fchar = '/' then
-               return token_expansion (post_f, "%B", head (last_file, "/"), level);
+               return token_expansion (post_f, "%B", Misc.head (last_file, "/"), level);
             else
-               return token_expansion (post_f, "%B", head (prefix & "/" & last_file, "/"), level);
+               return token_expansion (post_f, "%B",
+                                       Misc.head (prefix & "/" & last_file, "/"), level);
             end if;
          end;
       end;

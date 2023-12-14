@@ -317,11 +317,5 @@ private
    --  Returns true if the sticky bit is set
    function sticky_bit_set (perms : permissions) return Boolean;
 
-   --  Head (keep all but last delimiter and field)
-   function head (S : String; delimiter : String) return String;
-
-   --  Tail (keep only last field)
-   function tail (S : String; delimiter : String) return String;
-
 
 end Archive.Unix;

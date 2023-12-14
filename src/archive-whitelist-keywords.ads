@@ -86,22 +86,6 @@ private
       last_file : String;
       stagedir  : String);
 
-   --  Returns number of instances of a given character in a given string
-   function count_char (S : String; focus : Character) return Natural;
-
-   --  Given a single line (presumably no line feeds) with data separated by <delimited>,
-   --  return the field given by field_number (starts counting at 1).
-   function specific_field
-     (S            : String;
-      field_number : Positive;
-      delimiter    : String := " ") return String;
-
-   --  Replace substring with another string
-   function replace_substring
-     (US : ASU.Unbounded_String;
-      old_string : String;
-      new_string : String) return ASU.Unbounded_String;
-
    --  Replaces every occurrance of "token" with "replacement" and returns the result
    function token_expansion (S, token, replacement : String; level : info_level) return String;
 
