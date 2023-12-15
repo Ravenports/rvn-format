@@ -1,5 +1,5 @@
---  This file is covered by the Internet Software Consortium (ISC) License
---  Reference: ../License.txt
+--  SPDX-License-Identifier: ISC
+--  Reference: /License.txt
 
 with Blake_3;
 private with Ada.Containers.Hashed_Maps;
