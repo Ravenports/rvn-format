@@ -68,9 +68,11 @@ package Archive.Unpack is
 
    --  Provides the manifest as a container which provides the digest and path of each file.
    --  Returns true if no error was encounted (meaning the manifest is accurate)
+   --  The install root is expected to be a valid directory (no trailing '/') or blank
    function extract_manifest
      (DS            : in out DArc;
-      file_list     : in out file_records.Vector) return Boolean;
+      file_list     : in out file_records.Vector;
+      install_root  : String) return Boolean;
 
    --  This function extracts the archive and returns true if successful.
    function extract_archive

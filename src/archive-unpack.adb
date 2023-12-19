@@ -650,9 +650,26 @@ package body Archive.Unpack is
    ------------------------------------------------------------------------------------------
    function extract_manifest
      (DS           : in out DArc;
-      file_list    : in out file_records.Vector) return Boolean
+      file_list    : in out file_records.Vector;
+      install_root : String) return Boolean
    is
+      function set_root return String is
+      begin
+         if install_root = "" then
+            return "/";
+         end if;
+         declare
+            testdir : constant String := Unix.real_path (install_root);
+         begin
+            if testdir = "" then
+               return "/";
+            end if;
+            return testdir & "/";
+         end;
+      end set_root;
+
       error_encountered : Boolean := False;
+      install_prefix    : constant String := set_root;
 
       procedure scan (position : file_block_crate.Cursor)
       is
@@ -674,7 +691,7 @@ package body Archive.Unpack is
                fullpath : constant String := get_fullpath (block.index_parent, filename);
                tray     : file_record;
             begin
-               tray.path := ASU.To_Unbounded_String (fullpath);
+               tray.path := ASU.To_Unbounded_String (install_prefix & fullpath);
                tray.digest := Blake_3.hex (block.blake_sum);
                file_list.Append (tray);
             end;
