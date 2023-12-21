@@ -469,10 +469,11 @@ package body Elf is
                when others            => name_index := esx + 56;   --  This should be impossible
             end case;
             if desc_size_nat > 1 then
+               --  Unlike name, description is not necessarily null-terminated.
                declare
-                  desc_string : String (1 .. desc_size_nat - 1) := (others => ' ');
+                  desc_string : String (1 .. desc_size_nat) := (others => ' ');
                begin
-                  for x in 0 .. desc_size_nat - 2 loop
+                  for x in 0 .. desc_size_nat - 1 loop
                      ds_index := name_index + x;
                      desc_string (x + 1) := Character'Val (Integer (DataString (ds_index)));
                   end loop;
