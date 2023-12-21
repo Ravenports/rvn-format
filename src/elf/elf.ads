@@ -79,6 +79,12 @@ private
    type an_important_section is (dynamic, note);
    subtype hexrep is String (1 .. 2);
 
+   DT_NULL     : constant Natural := 0;
+   DT_NEEDED   : constant Natural := 1;
+   DT_SONAME   : constant Natural := 14;
+   DT_RPATH    : constant Natural := 15;
+   DT_RUNPANTH : constant Natural := 29;
+
    type ELF_Header is
       record
          magic    : magic_string;

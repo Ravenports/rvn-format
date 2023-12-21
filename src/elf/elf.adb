@@ -25,8 +25,8 @@ package body Elf is
          mytype : constant String  := note_crate.Element (Position).note_type'Img;
          myname : constant String  := ASU.To_String (note_crate.Element (Position).name);
          mydesc : constant String  := ASU.To_String (note_crate.Element (Position).description);
-         tray   : String (1 .. 5)  := (others => ' ');
-         tray2  : String (1 .. 30) := (others => ' ');
+         tray   : String (1 .. 11)  := (others => ' ');
+         tray2  : String (1 .. 20) := (others => ' ');
          tray3  : String (1 .. mydesc'Length * 2) := (others => ' ');
          index  : Positive := 1;
       begin
@@ -34,7 +34,7 @@ package body Elf is
             tray3 (index .. index + 1) := char2hex (mydesc (x));
             index := index + 2;
          end loop;
-         tray (tray'Last - mytype'Length + 1 .. tray'Last) := mytype;
+         tray (tray'Last + 1 - mytype'Length .. tray'Last) := mytype;
          if myname'Length > 30 then
             TIO.Put_Line (tray & " " & myname & " " & tray3);
          else
@@ -334,8 +334,7 @@ package body Elf is
       file_data  : ELF_File;
       sections   : in out Extracted_Sections)
    is
-      SH_start : constant offset_64 := file_data.section_header_offset +
-        offset_64 (file_data.header_size) + 1;
+      SH_start : constant offset_64 := file_data.section_header_offset + 1;
    begin
       SIO.Set_Index (elf_handle, SIO.Positive_Count (SH_start));
       for x in 1 .. file_data.SHT_nument loop
