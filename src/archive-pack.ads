@@ -36,6 +36,7 @@ private
    type owngrp_count is range 0 .. 2 ** 8 - 1;
    type File_Count is range 0 .. 2 ** 31 - 1;
    subtype A_Path is String (1 .. 1024);
+   subtype A_Filename is String (1 .. 256);
 
    package owngrp_crate is new CON.Vectors
      (Index_Type   => owngrp_count,
@@ -68,6 +69,10 @@ private
      (Index_Type   => Natural,
       Element_Type => Character);
 
+   package libraries_crate is new CON.Vectors
+     (Index_Type   => Natural,
+      Element_Type => A_Filename);
+
    type Arc_Structure is tagged limited
       record
          owners : owngrp_crate.Vector;
@@ -95,6 +100,9 @@ private
          flat_arc   : size_type := 0;
          white_list : Whitelist.A_Whitelist;
          serror     : Boolean := False;
+         lib_prov   : libraries_crate.Vector;
+         lib_need   : libraries_crate.Vector;
+         lib_adj    : libraries_crate.Vector;
       end record;
 
    --  Given the string representation of the owner, return the index on the list.
@@ -135,7 +143,8 @@ private
      (AS        : in out Arc_Structure;
       dir_path  : String;
       dir_index : index_type;
-      timestamp : filetime);
+      timestamp : filetime;
+      adjacent  : Boolean);
 
    --  Keep track of the compression directory
    procedure record_directory (AS : in out Arc_Structure; top_directory : String);

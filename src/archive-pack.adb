@@ -7,10 +7,12 @@ with Ada.Directories;
 with Ada.Direct_IO;
 with Archive.Dirent.Scan;
 with Archive.Communication;
+with Archive.Misc;
 with ThickUCL.Files;
 with ThickUCL.Emitter;
 with Blake_3;
 with Ucl;
+with Elf;
 
 package body Archive.Pack is
 
@@ -41,6 +43,7 @@ package body Archive.Pack is
    is
       metadata : Arc_Structure;
       metadata_tree : ThickUCL.UclTree;
+      set_adjacent  : Boolean := False;
    begin
       SQW.initialize (verbosity, optional_pipe);
       metadata.set_verbosity (verbosity);
@@ -55,6 +58,25 @@ package body Archive.Pack is
          prefix        => prefix,
          abi           => abi,
          tree          => metadata_tree);
+
+      if metadata_tree.key_exists ("subpackage") then
+         declare
+            subpackage : constant String := metadata_tree.get_base_value ("subpackage");
+         begin
+            --  skip adjacent on complete, single, dev, docs, nls, lang, examples, man
+            if subpackage /= "complete" and then
+              subpackage /= "single" and then
+              subpackage /= "dev" and then
+              subpackage /= "man" and then
+              subpackage /= "nls" and then
+              subpackage /= "docs" and then
+              subpackage /= "lang" and then
+              subpackage /= "examples"
+            then
+               set_adjacent := True;
+            end if;
+         end;
+      end if;
 
       if manifest_file /= "" then
          if not metadata.white_list.ingest_file_manifest
@@ -74,7 +96,7 @@ package body Archive.Pack is
       --  metadata.run_prepacking_actions;
 
       metadata.initialize_archive_file (output_file);
-      metadata.scan_directory (top_level_directory, 0, fixed_timestamp);
+      metadata.scan_directory (top_level_directory, 0, fixed_timestamp, set_adjacent);
       metadata.finalize_archive_file;
 
       if metadata.serror then
@@ -180,13 +202,24 @@ package body Archive.Pack is
      (AS        : in out Arc_Structure;
       dir_path  : String;
       dir_index : index_type;
-      timestamp : filetime)
+      timestamp : filetime;
+      adjacent  : Boolean)
    is
-      procedure walkdir   (position : SCN.dscan_crate.Cursor);
-      procedure walkfiles (position : SCN.dscan_crate.Cursor);
-
       dirfiles  : SCN.dscan_crate.Vector;
       override_mtime : constant Boolean := timestamp > 0;
+
+      procedure add_to_needed_libraries (Position : Elf.library_crate.Cursor)
+      is
+         library : Elf.ASU.Unbounded_String renames Elf.library_crate.Element (Position);
+         len2    : Natural;
+         ftray2  : A_Filename := (others => Character'Val (0));
+      begin
+         len2 := Elf.ASU.Length (library);
+         ftray2 (1 .. len2) := Elf.ASU.To_String (library);
+         if not AS.lib_need.Contains (ftray2) then
+            AS.lib_need.Append (ftray2);
+         end if;
+      end add_to_needed_libraries;
 
       procedure walkdir (position : SCN.dscan_crate.Cursor)
       is
@@ -196,6 +229,9 @@ package body Archive.Pack is
          features  : constant UNX.File_Characteristics := UNX.get_charactistics (item_path);
          new_block : File_Block;
          pog       : Archive.Whitelist.white_features;
+         len       : Natural;
+         file_data : Elf.ELF_File;
+         filetray  : A_Filename := (others => Character'Val (0));
       begin
          --  We only want true directories.  Symbolic links to directories are ignored.
          case features.ftype is
@@ -205,9 +241,40 @@ package body Archive.Pack is
 
          if AS.white_list.whitelist_in_use then
             if not AS.white_list.directory_on_whitelist (item_path) then
+               if adjacent then
+                  Elf.readelf (item_path, file_data);
+                  case file_data.file_type is
+                     when Elf.not_elf => null;
+                     when Elf.executable | Elf.shared_object =>
+                        len := Elf.ASU.Length (file_data.soname);
+                        if len > 0 then
+                           filetray (1 .. len) := Elf.ASU.To_String (file_data.soname);
+                           if not AS.lib_adj.Contains (filetray) then
+                              AS.lib_adj.Append (filetray);
+                           end if;
+                        end if;
+                     when others => null;
+                  end case;
+               end if;
                return;
             end if;
          end if;
+
+         --  Scan for provided and required libraries
+         Elf.readelf (item_path, file_data);
+         case file_data.file_type is
+            when Elf.not_elf => null;
+            when Elf.executable | Elf.shared_object =>
+               len := Elf.ASU.Length (file_data.soname);
+               if len > 0 then
+                  filetray (1 .. len) := Elf.ASU.To_String (file_data.soname);
+                  if not AS.lib_prov.Contains (filetray) then
+                     AS.lib_prov.Append (filetray);
+                  end if;
+               end if;
+               file_data.libs_needed.Iterate (add_to_needed_libraries'Access);
+            when others => null;
+         end case;
 
          pog := AS.white_list.get_file_features (item_path,
                                                  features.owner,
@@ -244,7 +311,7 @@ package body Archive.Pack is
          AS.print (debug, "perms =" & features.perms'Img & "   mod =" & features.mtime'Img);
          AS.print (verbose, "Record directory " & item_path);
 
-         AS.scan_directory (item_path, AS.dtrack, timestamp);
+         AS.scan_directory (item_path, AS.dtrack, timestamp, adjacent);
       exception
          when failed : others =>
             AS.print (normal, "walkdir exception => " & EX.Exception_Information (failed) &
@@ -954,7 +1021,7 @@ package body Archive.Pack is
          AS.print (verbose, "Metadata unexpectedly contains abi field; not overwriting.");
       else
          if abi = "" then
-            tree.insert (KEY_ABI, "*:*:0");
+            tree.insert (KEY_ABI, Misc.determine_abi);
          else
             tree.insert (KEY_ABI, abi);
          end if;
@@ -987,6 +1054,16 @@ package body Archive.Pack is
       KEY_FLATSIZE : constant String := "flatsize";
       KEY_DIRS     : constant String := "directories";
       KEY_SCRIPTS  : constant String := "scripts";
+      KEY_LIBPROV  : constant String := "shlibs_provided";
+      KEY_LIBNEED  : constant String := "shlibs_required";
+      KEY_LIBADJ   : constant String := "shlibs_adjacent";
+
+      procedure push_library (Position : libraries_crate.Cursor)
+      is
+         thislib : constant String := trim_trailing_zeros (libraries_crate.Element (Position));
+      begin
+         tree.insert ("", thislib);
+      end push_library;
    begin
       AS.meta_size := 0;
       AS.flat_meta := 0;
@@ -1133,6 +1210,33 @@ package body Archive.Pack is
             tree.close_object;
          end if;
       end;
+
+      --  Set provided libraries
+      if tree.key_exists (KEY_LIBPROV) then
+         AS.print (verbose, "Metadata contains provided libraries field; not overwriting.");
+      else
+         tree.start_array (KEY_LIBPROV);
+         AS.lib_prov.Iterate (push_library'Access);
+         tree.close_array;
+      end if;
+
+      --  Set required libraries
+      if tree.key_exists (KEY_LIBNEED) then
+         AS.print (verbose, "Metadata contains required libraries field; not overwriting.");
+      else
+         tree.start_array (KEY_LIBNEED);
+         AS.lib_need.Iterate (push_library'Access);
+         tree.close_array;
+      end if;
+
+      --  Set adjacent libraries
+      if tree.key_exists (KEY_LIBADJ) then
+         AS.print (verbose, "Metadata contains adjacent libraries field; not overwriting.");
+      else
+         tree.start_array (KEY_LIBADJ);
+         AS.lib_adj.Iterate (push_library'Access);
+         tree.close_array;
+      end if;
 
       declare
          out_succ : Boolean;
