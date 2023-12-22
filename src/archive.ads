@@ -11,6 +11,7 @@ package Archive is
                              dragonfly,
                              netbsd,
                              openbsd,
+                             midnightbsd,
                              linux,
                              solaris,
                              omnios);

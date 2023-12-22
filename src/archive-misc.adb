@@ -140,6 +140,7 @@ package body Archive.Misc is
    begin
       case platform is
          when generic_unix |
+              midnightbsd  |
               dragonfly    |
               freebsd      |
               openbsd      |
