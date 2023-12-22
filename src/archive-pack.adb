@@ -63,8 +63,9 @@ package body Archive.Pack is
          declare
             subpackage : constant String := metadata_tree.get_base_value ("subpackage");
          begin
-            --  skip adjacent on complete, single, dev, docs, nls, lang, examples, man
+            --  skip adjacent on complete, single, dev, docs, nls, lang, examples, man, primary
             if subpackage /= "complete" and then
+              subpackage /= "primary" and then
               subpackage /= "single" and then
               subpackage /= "dev" and then
               subpackage /= "man" and then
