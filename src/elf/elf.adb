@@ -42,6 +42,11 @@ package body Elf is
             TIO.Put_Line (tray & " " & tray2 & " " & tray3);
          end if;
       end print_note;
+
+      procedure print_library (Position : library_crate.Cursor) is
+      begin
+         TIO.Put_Line (ASU.To_String (library_crate.Element (Position)));
+      end print_library;
    begin
       readelf (file_path, fdata);
       case fdata.file_type is
@@ -69,6 +74,17 @@ package body Elf is
       TIO.Put_Line ("NOTES");
       TIO.Put_Line ("-------------------------------------------------------");
       fdata.notes.Iterate (print_note'Access);
+      TIO.Put_Line ("");
+      if ASU.Length (fdata.soname) > 0 then
+         TIO.Put_Line ("SONAME:       " & ASU.To_String (fdata.soname));
+      end if;
+      if ASU.Length (fdata.run_path) > 0 then
+         TIO.Put_Line ("RUNPATH:      " & ASU.To_String (fdata.run_path));
+      end if;
+      TIO.Put_Line ("");
+      TIO.Put_Line ("LIBRARIES NEEDED");
+      TIO.Put_Line ("-------------------------------------------------------");
+      fdata.libs_needed.Iterate (print_library'Access);
 
    end print_elf_information;
 
@@ -233,16 +249,37 @@ package body Elf is
       if valid then
          declare
             xsect : Extracted_Sections;
+            xdata : Relevant_Dynamic_Data.Vector;
          begin
-            read_sections (elf_handle => elf_handle,
-                           elf_stmaxs => elf_stmaxs,
-                           file_data  => file_data,
-                           sections   => xsect);
+            read_sections
+              (elf_handle => elf_handle,
+               elf_stmaxs => elf_stmaxs,
+               file_data  => file_data,
+               sections   => xsect);
 
-            store_note_definitions (elf_handle => elf_handle,
-                                    elf_stmaxs => elf_stmaxs,
-                                    file_data  => file_data,
-                                    sections   => xsect);
+            store_note_definitions
+              (elf_handle => elf_handle,
+               elf_stmaxs => elf_stmaxs,
+               file_data  => file_data,
+               sections   => xsect);
+
+            if xsect.found_dynamic and then
+              xsect.found_string_table
+            then
+               scan_dynamic_data
+                 (elf_handle => elf_handle,
+                  elf_stmaxs => elf_stmaxs,
+                  file_data  => file_data,
+                  dynsection => xsect.dynamic,
+                  dyn_data   => xdata);
+
+               populate_dynamic_data
+                 (elf_handle => elf_handle,
+                  elf_stmaxs => elf_stmaxs,
+                  file_data  => file_data,
+                  strtable   => xsect.strtab,
+                  dyn_data   => xdata);
+            end if;
          end;
       end if;
 
@@ -349,11 +386,20 @@ package body Elf is
                   ELF_Section_Header_32'Read (elf_stmaxs, sechead);
                   section_type_id := value (lect, sechead.sh_type);
                   case section_type_id is
-                     when 6 =>
+                     when SHT_DYNAMIC =>
                         sections.dynamic.important_section := dynamic;
                         sections.dynamic.file_offset := offset_64 (value (lect, sechead.sh_offset));
                         sections.dynamic.data_size   := offset_64 (value (lect, sechead.sh_size));
-                     when 7 =>
+                        sections.found_dynamic := True;
+                     when SHT_STRTAB =>
+                        if not sections.found_string_table then
+                           sections.strtab.important_section := string_table;
+                           sections.strtab.file_offset :=
+                             offset_64 (value (lect, sechead.sh_offset));
+                           sections.strtab.data_size   := offset_64 (value (lect, sechead.sh_size));
+                           sections.found_string_table := True;
+                        end if;
+                     when SHT_NOTE =>
                         new_note.important_section := note;
                         new_note.file_offset := offset_64 (value (lect, sechead.sh_offset));
                         new_note.data_size   := offset_64 (value (lect, sechead.sh_size));
@@ -374,11 +420,19 @@ package body Elf is
                   ELF_Section_Header_64'Read (elf_stmaxs, sechead);
                   section_type_id := value (lect, sechead.sh_type);
                   case section_type_id is
-                     when 6 =>
+                     when SHT_DYNAMIC =>
                         sections.dynamic.important_section := dynamic;
                         sections.dynamic.file_offset := value (lect, sechead.sh_offset);
                         sections.dynamic.data_size   := value (lect, sechead.sh_size);
-                     when 7 =>
+                        sections.found_dynamic := True;
+                     when SHT_STRTAB =>
+                        if not sections.found_string_table then
+                           sections.strtab.important_section := string_table;
+                           sections.strtab.file_offset := value (lect, sechead.sh_offset);
+                           sections.strtab.data_size   := value (lect, sechead.sh_size);
+                           sections.found_string_table := True;
+                        end if;
+                     when SHT_NOTE =>
                         new_note.important_section := note;
                         new_note.file_offset := value (lect, sechead.sh_offset);
                         new_note.data_size   := value (lect, sechead.sh_size);
@@ -528,5 +582,116 @@ package body Elf is
 
       return result;
    end char2hex;
+
+
+   -------------------------
+   --  scan_dynamic_data  --
+   -------------------------
+   procedure scan_dynamic_data
+     (elf_handle : SIO.File_Type;
+      elf_stmaxs : SIO.Stream_Access;
+      file_data  : ELF_File;
+      dynsection : generic_elf_section;
+      dyn_data   : in out Relevant_Dynamic_Data.Vector)
+   is
+      bytes_read : offset_64 := 0;
+   begin
+      SIO.Set_Index (elf_handle, SIO.Positive_Count (dynsection.file_offset + 1));
+      loop
+         declare
+            data32 : Dynamic_Structure32;
+            data64 : Dynamic_Structure;
+         begin
+            case file_data.format is
+               when format32 =>
+                  Dynamic_Structure32'Read (elf_stmaxs, data32);
+                  data64.d_tag := offset_64 (data32.d_tag);
+                  data64.d_val := offset_64 (data32.d_val);
+                  bytes_read := bytes_read + 8;
+               when format64 =>
+                  Dynamic_Structure'Read (elf_stmaxs, data64);
+                  bytes_read := bytes_read + 16;
+            end case;
+            case data64.d_tag is
+               when DT_SONAME | DT_NEEDED | DT_RPATH | DT_RUNPATH =>
+                  dyn_data.Append (data64);
+               when DT_NULL =>
+                  exit;
+               when others => null;
+            end case;
+            exit when bytes_read >= dynsection.data_size;
+         end;
+      end loop;
+   end scan_dynamic_data;
+
+
+   -----------------------------
+   --  populate_dynamic_data  --
+   -----------------------------
+   procedure populate_dynamic_data
+     (elf_handle : SIO.File_Type;
+      elf_stmaxs : SIO.Stream_Access;
+      file_data  : in out ELF_File;
+      strtable   : generic_elf_section;
+      dyn_data   : Relevant_Dynamic_Data.Vector)
+   is
+      type canvas_type is array (1 .. Natural (strtable.data_size)) of elf_byte;
+      canvas : canvas_type;
+
+      function extract_string (table_offset : offset_64) return String
+      is
+         last_index : Natural;
+         result_size : Natural;
+         offset : constant Natural := Natural (table_offset);
+      begin
+         if table_offset > canvas'Length - 1 then
+            return "";
+         end if;
+         if Natural (canvas (offset + 1)) = 0 then
+            return "";
+         end if;
+
+         last_index := offset + 1;
+         result_size := 1;
+         loop
+            exit when last_index + 1 > canvas'Last;
+            exit when Natural (canvas (last_index + 1)) = 0;
+            last_index := last_index + 1;
+            result_size := result_size + 1;
+         end loop;
+         declare
+            result : String (1 .. result_size);
+            index  : Natural := offset + 1;
+         begin
+            for x in 1 .. result_size loop
+               result (x) := Character'Val (Integer (canvas (index)));
+               index := index + 1;
+            end loop;
+            return result;
+         end;
+      end extract_string;
+
+      procedure process (Position : Relevant_Dynamic_Data.Cursor)
+      is
+         table_offset : offset_64 renames Relevant_Dynamic_Data.Element (Position).d_val;
+         data_value   : constant String := extract_string (table_offset);
+      begin
+         case Relevant_Dynamic_Data.Element (Position).d_tag is
+            when DT_SONAME =>
+               file_data.soname := ASU.To_Unbounded_String (data_value);
+            when DT_NEEDED =>
+               file_data.libs_needed.Append (ASU.To_Unbounded_String (data_value));
+            when DT_RPATH | DT_RUNPATH =>
+               file_data.run_path := ASU.To_Unbounded_String (data_value);
+            when others =>
+               null;  -- should not be possible
+         end case;
+      end process;
+   begin
+      SIO.Set_Index (elf_handle, SIO.Positive_Count (strtable.file_offset + 1));
+      canvas_type'Read (elf_stmaxs, canvas);
+      dyn_data.Iterate (Process'Access);
+   end populate_dynamic_data;
+
 
 end Elf;

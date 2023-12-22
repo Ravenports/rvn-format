@@ -14,6 +14,7 @@ package Elf is
    type elf_class is (format32, format64);
    subtype elf_version is Positive range 1 .. 1;
    type offset_64 is mod 2 ** 64;
+   type offset_32 is mod 2 ** 32;
    type os_abi is (system_v, hp_ux, netbsd, linux, hurd, solaris, aix, irix, freebsd, tru64,
                    novell_modesto, openbsd, openvms, nonstop_kernel, aros, fenix,
                    nuxi_cloudabi, openvos);
@@ -76,14 +77,18 @@ private
    type elf_octo is array (1 .. 8) of elf_byte;
    type pad_type is array (1 .. 4) of elf_byte;
    type sixteen  is array (1 .. 16) of elf_byte;
-   type an_important_section is (dynamic, note);
+   type an_important_section is (dynamic, note, string_table);
    subtype hexrep is String (1 .. 2);
 
-   DT_NULL     : constant Natural := 0;
-   DT_NEEDED   : constant Natural := 1;
-   DT_SONAME   : constant Natural := 14;
-   DT_RPATH    : constant Natural := 15;
-   DT_RUNPANTH : constant Natural := 29;
+   DT_NULL     : constant offset_64 := 0;
+   DT_NEEDED   : constant offset_64 := 1;
+   DT_SONAME   : constant offset_64 := 14;
+   DT_RPATH    : constant offset_64 := 15;
+   DT_RUNPATH  : constant offset_64 := 29;
+
+   SHT_STRTAB  : constant Natural := 3;
+   SHT_DYNAMIC : constant Natural := 6;
+   SHT_NOTE    : constant Natural := 7;
 
    type ELF_Header is
       record
@@ -193,8 +198,27 @@ private
    type Extracted_Sections is
       record
          dynamic : generic_elf_section;
+         strtab  : generic_elf_section;
          notes   : note_sections.Vector;
+         found_dynamic      : Boolean := False;
+         found_string_table : Boolean := False;
       end record;
+
+   type Dynamic_Structure is
+      record
+         d_tag : offset_64;
+         d_val : offset_64;
+      end record;
+
+   type Dynamic_Structure32 is
+      record
+         d_tag : offset_32;
+         d_val : offset_32;
+      end record;
+
+   package Relevant_Dynamic_Data is new CON.Vectors
+     (Index_Type   => Natural,
+      Element_Type => Dynamic_Structure);
 
    procedure read_sections
      (elf_handle : SIO.File_Type;
@@ -208,5 +232,18 @@ private
       file_data  : in out ELF_File;
       sections   : Extracted_Sections);
 
+   procedure scan_dynamic_data
+     (elf_handle : SIO.File_Type;
+      elf_stmaxs : SIO.Stream_Access;
+      file_data  : ELF_File;
+      dynsection : generic_elf_section;
+      dyn_data   : in out Relevant_Dynamic_Data.Vector);
+
+   procedure populate_dynamic_data
+     (elf_handle : SIO.File_Type;
+      elf_stmaxs : SIO.Stream_Access;
+      file_data  : in out ELF_File;
+      strtable   : generic_elf_section;
+      dyn_data   : Relevant_Dynamic_Data.Vector);
 
 end Elf;
