@@ -230,9 +230,6 @@ package body Archive.Pack is
          features  : constant UNX.File_Characteristics := UNX.get_charactistics (item_path);
          new_block : File_Block;
          pog       : Archive.Whitelist.white_features;
-         len       : Natural;
-         file_data : Elf.ELF_File;
-         filetray  : A_Filename := (others => Character'Val (0));
       begin
          --  We only want true directories.  Symbolic links to directories are ignored.
          case features.ftype is
@@ -243,39 +240,13 @@ package body Archive.Pack is
          if AS.white_list.whitelist_in_use then
             if not AS.white_list.directory_on_whitelist (item_path) then
                if adjacent then
-                  Elf.readelf (item_path, file_data);
-                  case file_data.file_type is
-                     when Elf.not_elf => null;
-                     when Elf.executable | Elf.shared_object =>
-                        len := Elf.ASU.Length (file_data.soname);
-                        if len > 0 then
-                           filetray (1 .. len) := Elf.ASU.To_String (file_data.soname);
-                           if not AS.lib_adj.Contains (filetray) then
-                              AS.lib_adj.Append (filetray);
-                           end if;
-                        end if;
-                     when others => null;
-                  end case;
+                  --  We are looking for adjacent libraries so don't filter anything
+                  --  (but don't record the irrelevant directory in the archive either!)
+                  AS.scan_directory (item_path, AS.dtrack, timestamp, adjacent);
                end if;
                return;
             end if;
          end if;
-
-         --  Scan for provided and required libraries
-         Elf.readelf (item_path, file_data);
-         case file_data.file_type is
-            when Elf.not_elf => null;
-            when Elf.executable | Elf.shared_object =>
-               len := Elf.ASU.Length (file_data.soname);
-               if len > 0 then
-                  filetray (1 .. len) := Elf.ASU.To_String (file_data.soname);
-                  if not AS.lib_prov.Contains (filetray) then
-                     AS.lib_prov.Append (filetray);
-                  end if;
-               end if;
-               file_data.libs_needed.Iterate (add_to_needed_libraries'Access);
-            when others => null;
-         end case;
 
          pog := AS.white_list.get_file_features (item_path,
                                                  features.owner,
@@ -326,6 +297,9 @@ package body Archive.Pack is
          filename  : constant String := item.simple_name;
          features  : constant UNX.File_Characteristics := UNX.get_charactistics (item_path);
          pog       : Archive.Whitelist.white_features;
+         len       : Natural;
+         file_data : Elf.ELF_File;
+         filetray  : A_Filename := (others => Character'Val (0));
       begin
          --  Reject directories, but accept symlinks to directories
          case features.ftype is
@@ -334,13 +308,55 @@ package body Archive.Pack is
                AS.print
                  (normal, "NOTICE: Unsupported file " & item_path & " ignored.");
                return;
-            when others =>
+            when symlink | hardlink | fifo =>
                if AS.white_list.whitelist_in_use then
                   if not AS.white_list.file_on_whitelist (item_path) then
                      return;
                   end if;
                end if;
+            when regular =>
+               if AS.white_list.whitelist_in_use then
+                  if not AS.white_list.file_on_whitelist (item_path) then
+                     if adjacent then
+                        Elf.readelf (item_path, file_data);
+                        case file_data.file_type is
+                           when Elf.not_elf => null;
+                           when Elf.executable | Elf.shared_object =>
+                              len := Elf.ASU.Length (file_data.soname);
+                              if len > 0 then
+                                 filetray (1 .. len) := Elf.ASU.To_String (file_data.soname);
+                                 if not AS.lib_adj.Contains (filetray) then
+                                    AS.lib_adj.Append (filetray);
+                                 end if;
+                              end if;
+                           when others => null;
+                        end case;
+                     end if;
+                     return;
+                  end if;
+               end if;
          end case;
+
+         --  Scan for provided and required libraries
+         case features.ftype is
+            when regular =>
+               Elf.readelf (item_path, file_data);
+               case file_data.file_type is
+                  when Elf.not_elf => null;
+                  when Elf.executable | Elf.shared_object =>
+                     len := Elf.ASU.Length (file_data.soname);
+                     if len > 0 then
+                        filetray (1 .. len) := Elf.ASU.To_String (file_data.soname);
+                        if not AS.lib_prov.Contains (filetray) then
+                           AS.lib_prov.Append (filetray);
+                        end if;
+                     end if;
+                     file_data.libs_needed.Iterate (add_to_needed_libraries'Access);
+                  when others => null;
+               end case;
+            when others => null;
+         end case;
+
          pog := AS.white_list.get_file_features (item_path,
                                                  features.owner,
                                                  features.group,
