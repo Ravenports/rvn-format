@@ -6,6 +6,15 @@ package Archive is
    type info_level is (silent, normal, verbose, debug);
    type file_type is (directory, regular, symlink, hardlink, fifo, unsupported);
 
+   type Operating_System is (generic_unix,
+                             freebsd,
+                             dragonfly,
+                             netbsd,
+                             openbsd,
+                             linux,
+                             solaris,
+                             omnios);
+
    subtype ownergroup is String (1 .. 32);
 
    type one_byte    is mod 2 ** 8;
@@ -122,6 +131,7 @@ package Archive is
    KB512 : constant Natural := 524_288;
    format_version : constant one_byte := 3;
    null_owngrp : constant ownergroup := (others => Character'Val (0));
+   platform    : constant Operating_System := Operating_System'First;
 
 private
 

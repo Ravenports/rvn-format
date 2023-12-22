@@ -130,4 +130,25 @@ package body Archive.Misc is
       end if;
    end int2str;
 
+
+   -----------------------
+   --  get_interpreter  --
+   -----------------------
+   function get_interpreter return String
+   is
+      standard_interpreter : constant String := "/bin/sh";
+   begin
+      case platform is
+         when generic_unix |
+              dragonfly    |
+              freebsd      |
+              openbsd      |
+              netbsd       => return standard_interpreter;
+         when linux        => return standard_interpreter;
+         when omnios       |
+              solaris      => return "/usr/xpg4/bin/sh";
+      end case;
+   end get_interpreter;
+
+
 end Archive.Misc;

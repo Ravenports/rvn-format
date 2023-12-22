@@ -33,4 +33,7 @@ package Archive.Misc is
       old_string : String;
       new_string : String) return ASU.Unbounded_String;
 
+   --  This is operating-system specific (normally /bin/sh though)
+   function get_interpreter return String;
+
 end Archive.Misc;
