@@ -10,6 +10,7 @@ with Ada.Exceptions;
 with Ada.IO_Exceptions;
 with Ada.Strings.Fixed;
 with Archive.Communication;
+with Archive.Misc;
 with ThickUCL.Files;
 with Bourne;
 with Lua;
@@ -859,8 +860,7 @@ package body Archive.Unpack is
       set_perms     : Boolean;
       set_modtime   : Boolean;
       skip_scripts  : Boolean;
-      upgrading     : Boolean;
-      interpreter   : String) return Boolean
+      upgrading     : Boolean) return Boolean
    is
       procedure extract (position : file_block_crate.Cursor);
       procedure second_pass (position : file_block_crate.Cursor);
@@ -875,6 +875,7 @@ package body Archive.Unpack is
       metadata_tree   : ThickUCL.UclTree;
       scripts_index   : ThickUCL.object_index := 0;
       meta_scripts    : Boolean := False;
+      interpreter     : constant String := Misc.get_interpreter;
 
 
       procedure extract (position : file_block_crate.Cursor)

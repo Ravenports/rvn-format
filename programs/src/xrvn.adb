@@ -297,8 +297,7 @@ begin
                                                   set_perms     => set_perms,
                                                   set_modtime   => set_modtime,
                                                   skip_scripts  => False,
-                                                  upgrading     => False,
-                                                  interpreter   => "/bin/sh");
+                                                  upgrading     => False);
 
             if not success then
                if not opt_quiet then

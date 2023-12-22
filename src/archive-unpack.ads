@@ -82,8 +82,7 @@ package Archive.Unpack is
       set_perms     : Boolean;
       set_modtime   : Boolean;
       skip_scripts  : Boolean;
-      upgrading     : Boolean;
-      interpreter   : String) return Boolean;
+      upgrading     : Boolean) return Boolean;
 
    --  This function sends some of the values of the uncompressed block 1 to standard out.
    procedure print_magic_block (DS : DArc);
