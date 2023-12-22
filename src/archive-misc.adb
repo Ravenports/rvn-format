@@ -2,10 +2,14 @@
 --  Reference: /License.txt
 
 with Ada.Strings.Fixed;
+with Ada.Environment_Variables;
+with Archive.Unix;
+with Elf;
 
 package body Archive.Misc is
 
-   package AS renames Ada.Strings;
+   package AS  renames Ada.Strings;
+   package ENV renames Ada.Environment_Variables;
 
    ------------------
    --  count_char  --
@@ -151,5 +155,228 @@ package body Archive.Misc is
       end case;
    end get_interpreter;
 
+
+   -------------------------------------
+   --  select_abi_determination_file  --
+   -------------------------------------
+   function select_abi_determination_file return String
+   is
+      env_name : constant String := "ABI_FILE";
+      hostname : constant String := "/bin/hostname";
+      sol_libc : constant String := "/lib/64/libc.so.1";
+   begin
+      if ENV.Exists (env_name) then
+         if Unix.file_exists (ENV.Value (env_name)) then
+            return ENV.Value (env_name);
+         end if;
+      end if;
+
+      case platform is
+         when generic_unix |
+              midnightbsd  |
+              dragonfly    |
+              freebsd      |
+              openbsd      |
+              netbsd       |
+              linux        =>
+            if Unix.file_exists (hostname) then
+               return hostname;
+            end if;
+         when solaris      |
+              omnios       =>
+            if Unix.file_exists (sol_libc) then
+               return sol_libc;
+            end if;
+      end case;
+      --  top choice doesn't exist, fall back to interpreter program
+      return get_interpreter;
+   end select_abi_determination_file;
+
+
+   --------------------------
+   --  convert_doubleword  --
+   --------------------------
+   function convert_doubleword (big_endian : Boolean; dw : doubleword) return Natural
+   is
+      A_byte : constant Natural := Character'Pos (dw (dw'First));
+      B_byte : constant Natural := Character'Pos (dw (dw'First + 1));
+      C_byte : constant Natural := Character'Pos (dw (dw'First + 2));
+      D_byte : constant Natural := Character'Pos (dw (dw'First + 3));
+      result : Natural;
+   begin
+      if big_endian then
+         result := D_byte + (C_byte * 256) + (B_byte * 65_536) + (A_byte * 16_777_216);
+      else
+         result := A_byte + (B_byte * 256) + (C_byte * 65_536) + (D_byte * 16_777_216);
+      end if;
+      return result;
+   exception
+      when Constraint_Error =>
+         return 16#7FFF_FFFF#;
+   end convert_doubleword;
+
+
+   ---------------------
+   --  determine_abi  --
+   ---------------------
+   function determine_abi return String
+   is
+      abi_file : constant String := select_abi_determination_file;
+      elf_data : Elf.ELF_File;
+
+      function get_arch return String is
+      begin
+         case elf_data.machine is
+            when Elf.x86       => return "x86";
+            when Elf.x86_64    => return "x86_64";
+            when Elf.arm       => return "arm";
+            when Elf.aarch64   => return "arm64";
+            when Elf.powerpc   => return "powerpc";
+            when Elf.powerpc64 => return "powerpc64";
+            when Elf.no_instruction     => return "no_instruction";
+            when Elf.some_random_system => return "unsupported_arch";
+         end case;
+      end get_arch;
+
+      --  Rather than determine OSNAME from the elf note, assume the ABI file is
+      --  from the operating system defined at build time.  That's a great assumption.
+      function get_osname return String is
+      begin
+         case platform is
+            when freebsd      => return "freebsd";
+            when dragonfly    => return "dragonfly";
+            when netbsd       => return "netbsd";
+            when openbsd      => return "openbsd";
+            when solaris      => return "solaris";
+            when omnios       => return "omnios";
+            when midnightbsd  => return "midnightbsd";
+            when generic_unix => return "unix";
+            when linux        => return "linux";
+         end case;
+      end get_osname;
+
+      --  TODO: solaris 11, OmniOS: determine tag contents and adjust version accordingly
+      function get_release return String
+      is
+         release : Elf.ASU.Unbounded_String := Elf.ASU.Null_Unbounded_String;
+
+         procedure process_note (Position : Elf.note_crate.Cursor)
+         is
+            note : Elf.ELF_Note renames Elf.note_crate.Element (Position);
+            is_big_endian : Boolean;
+         begin
+            if Elf.ASU.Length (release) > 0 then
+               return;
+            end if;
+            case elf_data.dialect is
+               when Elf.big_endian    => is_big_endian := True;
+               when Elf.little_endian => is_big_endian := False;
+            end case;
+            if note.note_type = Elf.NT_GNU_ABI_TAG and then
+              Elf.ASU.To_String (note.name) = "GNU"
+            then
+               --  NT_GNU_ABI_TAG
+               --  Operating system (OS) ABI information.  The desc field contains 4 words:
+               --  word 0: OS descriptor (ELF_NOTE_OS_LINUX, ELF_NOTE_OS_GNU, etc)
+               --  word 1: major version of the ABI
+               --  word 2: minor version of the ABI
+               --  word 3: subminor version of the ABI
+               declare
+                  major : Natural;
+                  minor : Natural;
+                  point : Natural;
+                  description : constant String := Elf.ASU.To_String (note.description);
+                  F : constant Natural := description'First;
+               begin
+                  if description'Length < 16 then
+                     release := Elf.ASU.To_Unbounded_String ("0.0.0");
+                     return;
+                  end if;
+                  major := convert_doubleword (is_big_endian, description (F +  4 .. F +  7));
+                  minor := convert_doubleword (is_big_endian, description (F +  8 .. F + 11));
+                  point := convert_doubleword (is_big_endian, description (F + 12 .. F + 15));
+                  release := Elf.ASU.To_Unbounded_String
+                    (int2str (major) & "." & int2str (minor) & "." & int2str (point));
+                  return;
+               end;
+            end if;
+            if note.note_type = Elf.NT_VERSION then
+               declare
+                  name_str : constant String := Elf.ASU.To_String (note.name);
+                  ver_str  : constant String := Elf.ASU.To_String (note.description);
+                  version  : Natural;
+                  major    : Natural;
+                  minor    : Natural;
+               begin
+                  if ver_str'Length = 4 then
+                     if name_str = "DragonFly" or else
+                       name_str = "FreeBSD" or else
+                       name_str = "NetBSD" or else
+                       name_str = "OpenBSD" or else
+                       name_str = "MidnightBSD"
+                     then
+                        version := convert_doubleword (is_big_endian, ver_str);
+                        case platform is
+                           when netbsd =>
+                              major := (version + 1_000_000) / 100_000_000;
+                              release := Elf.ASU.To_Unbounded_String (int2str (major));
+                              return;
+                           when freebsd | midnightbsd =>
+                              major := version / 100_000;
+                              release := Elf.ASU.To_Unbounded_String (int2str (major));
+                              return;
+                           when dragonfly =>
+                              major := version / 100_000;
+                              minor := (((version / 100) mod 1000) + 1) / 2;
+                              release := Elf.ASU.To_Unbounded_String (int2str (major) & '.' &
+                                                                        int2str (minor));
+                              return;
+                           when openbsd =>
+                              --  as of OpenBSD 7.4, it has an NT_VERSION tag with name "OpenBSD"
+                              --  but the description is "0000" (no version info"
+                              --  We will not get here because OpenBSD is handled earlier below
+                              release := Elf.ASU.To_Unbounded_String ("0");
+                           when omnios | solaris | generic_unix | linux =>
+                              --  we should not get here
+                              null;
+                        end case;
+                     end if;
+                  end if;
+               end;
+            end if;
+         end process_note;
+      begin
+         elf_data.notes.Iterate (process_note'Access);
+         if Elf.ASU.Length (release) = 0 then
+            return "0";
+         end if;
+         return Elf.ASU.To_String (release);
+      end get_release;
+   begin
+      Elf.readelf (abi_file, elf_data);
+      case elf_data.file_type is
+         when Elf.not_elf =>
+            return get_osname & ":*:0";
+         when others => null;
+      end case;
+
+      if elf_data.notes.Is_Empty then
+         case platform is
+            when solaris =>
+               --  solaris 11 supports notes, but 10 did not.  This is probably 10 (which
+               --  Ravenports has basically marked EOL anyway.
+               return get_osname & ":" & get_arch & ":10";
+            when openbsd =>
+               --  OpenBSD 7.4 has NT_VERSION tag, but it's set to 0.
+               --  Hardcode for now (OpenBSD isn't supported by Ravenports yet).
+               --  Determine an ironclad way to get built version later.
+               return get_osname & ":" & get_arch & ":7.4";
+            when others =>
+               return get_osname & ":" & get_arch & ":0";
+         end case;
+      end if;
+
+      return get_osname & ":" & get_arch & ":" & get_release;
+   end determine_abi;
 
 end Archive.Misc;

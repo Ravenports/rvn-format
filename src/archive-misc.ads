@@ -36,4 +36,20 @@ package Archive.Misc is
    --  This is operating-system specific (normally /bin/sh though)
    function get_interpreter return String;
 
+   --  This is operating system specific.  It can be overridden with ABI_FILE in
+   --  the environment.  Each option is validated for existence.
+   function select_abi_determination_file return String;
+
+   --  This function reads the ELF notes of the abi determination file and assembles
+   --  the ABI based on the note's contents.
+   --  The algorithm is platform specific.
+   function determine_abi return String;
+
+private
+
+   subtype doubleword is String (1 .. 4);
+
+   --  This can overflow, make it return 7FFF_FFFF as the maximum
+   function convert_doubleword (big_endian : Boolean; dw : doubleword) return Natural;
+
 end Archive.Misc;

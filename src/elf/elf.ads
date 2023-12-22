@@ -23,6 +23,9 @@ package Elf is
    type machine_type is (no_instruction, x86, x86_64, powerpc, powerpc64, arm, aarch64,
                          some_random_system);
 
+   NT_GNU_ABI_TAG : constant Natural := 1;
+   NT_VERSION     : constant Natural := 1;
+
    type ELF_Note is
       record
          name        : ASU.Unbounded_String;
