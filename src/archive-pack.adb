@@ -1037,11 +1037,7 @@ package body Archive.Pack is
       if tree.key_exists (KEY_ABI) then
          AS.print (verbose, "Metadata unexpectedly contains abi field; not overwriting.");
       else
-         if abi = "" then
-            tree.insert (KEY_ABI, Misc.determine_abi);
-         else
-            tree.insert (KEY_ABI, abi);
-         end if;
+         tree.insert (KEY_ABI, abi);
       end if;
 
       if not tree.key_exists (KEY_NAMEBASE) then
