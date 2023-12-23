@@ -327,7 +327,7 @@ package body Archive.Misc is
                               return;
                            when dragonfly =>
                               major := version / 100_000;
-                              minor := (((version / 100) mod 1000) + 1) / 2;
+                              minor := ((((version / 100) mod 1000) + 1) / 2) * 2;
                               release := Elf.ASU.To_Unbounded_String (int2str (major) & '.' &
                                                                         int2str (minor));
                               return;
