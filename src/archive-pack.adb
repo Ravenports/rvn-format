@@ -1383,7 +1383,7 @@ package body Archive.Pack is
 
       for dirpath in 1 .. total_paths loop
          declare
-            candidate : constant String := Misc.specific_field (base_paths, 1, ":") & "/" &
+            candidate : constant String := Misc.specific_field (base_paths, dirpath, ":") & "/" &
               library_file;
          begin
             if Unix.file_exists (candidate) then
