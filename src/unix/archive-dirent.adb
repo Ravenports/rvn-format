@@ -22,6 +22,15 @@ package body Archive.Dirent is
    end full_path;
 
 
+   ------------------------
+   --  parent_directory  --
+   ------------------------
+   function parent_directory (item : Directory_Entity) return String is
+   begin
+      return ASU.To_String (item.directory);
+   end parent_directory;
+
+
    ---------------------
    --  create_entity  --
    ---------------------

@@ -13,6 +13,9 @@ package Archive.Dirent is
    --  Returns the absolute path of the directory entity
    function full_path (item : Directory_Entity) return String;
 
+   --  Returns the absolute path of the parent directory
+   function parent_directory (item : Directory_Entity) return String;
+
    --  Returns a new Directory_Entity object
    function create_entity
      (directory : String;
