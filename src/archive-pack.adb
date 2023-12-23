@@ -12,7 +12,6 @@ with ThickUCL.Files;
 with ThickUCL.Emitter;
 with Blake_3;
 with Ucl;
-with Elf;
 
 package body Archive.Pack is
 
@@ -38,6 +37,7 @@ package body Archive.Pack is
       output_file         : String;
       fixed_timestamp     : filetime;
       verbosity           : info_level;
+      record_base_libs    : Boolean;
       optional_pipe       : Unix.File_Descriptor := Unix.not_connected)
       return Boolean
    is
@@ -97,7 +97,8 @@ package body Archive.Pack is
       --  metadata.run_prepacking_actions;
 
       metadata.initialize_archive_file (output_file);
-      metadata.scan_directory (top_level_directory, 0, fixed_timestamp, set_adjacent);
+      metadata.scan_directory (top_level_directory, 0, fixed_timestamp, set_adjacent,
+                               record_base_libs);
       metadata.finalize_archive_file;
 
       if metadata.serror then
@@ -204,21 +205,24 @@ package body Archive.Pack is
       dir_path  : String;
       dir_index : index_type;
       timestamp : filetime;
-      adjacent  : Boolean)
+      adjacent  : Boolean;
+      record_base_libs : Boolean)
    is
       dirfiles  : SCN.dscan_crate.Vector;
       override_mtime : constant Boolean := timestamp > 0;
+      last_reg_format : Elf.elf_class := Elf.format64;
 
       procedure add_to_needed_libraries (Position : Elf.library_crate.Cursor)
       is
-         library : Elf.ASU.Unbounded_String renames Elf.library_crate.Element (Position);
-         len2    : Natural;
+         library : constant String := Elf.ASU.To_String (Elf.library_crate.Element (Position));
+         len2    : constant Natural := library'Length;
          ftray2  : A_Filename := (others => Character'Val (0));
       begin
-         len2 := Elf.ASU.Length (library);
-         ftray2 (1 .. len2) := Elf.ASU.To_String (library);
-         if not AS.lib_need.Contains (ftray2) then
-            AS.lib_need.Append (ftray2);
+         if record_library (library, record_base_libs, last_reg_format) then
+            ftray2 (1 .. len2) := library;
+            if not AS.lib_need.Contains (ftray2) then
+               AS.lib_need.Append (ftray2);
+            end if;
          end if;
       end add_to_needed_libraries;
 
@@ -242,7 +246,7 @@ package body Archive.Pack is
                if adjacent then
                   --  We are looking for adjacent libraries so don't filter anything
                   --  (but don't record the irrelevant directory in the archive either!)
-                  AS.scan_directory (item_path, AS.dtrack, timestamp, adjacent);
+                  AS.scan_directory (item_path, AS.dtrack, timestamp, adjacent, record_base_libs);
                end if;
                return;
             end if;
@@ -283,7 +287,7 @@ package body Archive.Pack is
          AS.print (debug, "perms =" & features.perms'Img & "   mod =" & features.mtime'Img);
          AS.print (verbose, "Record directory " & item_path);
 
-         AS.scan_directory (item_path, AS.dtrack, timestamp, adjacent);
+         AS.scan_directory (item_path, AS.dtrack, timestamp, adjacent, record_base_libs);
       exception
          when failed : others =>
             AS.print (normal, "walkdir exception => " & EX.Exception_Information (failed) &
@@ -322,6 +326,7 @@ package body Archive.Pack is
                         case file_data.file_type is
                            when Elf.not_elf => null;
                            when Elf.executable | Elf.shared_object =>
+                              last_reg_format := file_data.format;
                               len := Elf.ASU.Length (file_data.soname);
                               if len > 0 then
                                  filetray (1 .. len) := Elf.ASU.To_String (file_data.soname);
@@ -1323,5 +1328,75 @@ package body Archive.Pack is
       end if;
       return dir_is_writable;
    end able_to_write_rvn_archive;
+
+
+   ----------------------
+   --  record_library  --
+   ----------------------
+   function record_library
+     (library_file     : String;
+      record_base_libs : Boolean;
+      file_format      : Elf.elf_class) return Boolean
+   is
+      function get_base_paths return String is
+      begin
+         case file_format is
+            when Elf.format64 =>
+               case platform is
+                  when dragonfly             => return "/lib:/usr/lib";
+                  when freebsd | midnightbsd => return "/lib:/usr/lib";
+                  when netbsd | openbsd      => return "/lib:/usr/lib";
+                  when solaris | omnios      => return "/usr/lib/amd64:/usr/lib:/lib";
+                  when generic_unix          => return "/lib:/usr/lib";
+                  when linux =>
+                     return "/usr/lib/x86_64-linux-gnu:/usr/lib:/usr/lib64:/lib:/lib64";
+               end case;
+            when Elf.format32 =>
+               case platform is
+                  when dragonfly             => return "";
+                  when openbsd               => return "";
+                  when freebsd | midnightbsd => return "/lib:/usr/lib32:/usr/lib";
+                  when netbsd                => return "/lib:/usr/lib32:/usr/lib";
+                  when solaris | omnios      => return "/usr/lib:/lib";
+                  when generic_unix          => return "/lib:/usr/lib";
+                  when linux =>
+                     return "/usr/lib/i386-linux-gnu:/usr/lib:/usr/lib32:/lib:/lib32";
+               end case;
+         end case;
+      end get_base_paths;
+
+      base_paths : constant String := get_base_paths;
+      total_paths : Natural := 0;
+   begin
+      if record_base_libs then
+         return True;
+      end if;
+
+      if base_paths /= "" then
+         total_paths := Misc.count_char (base_paths, ':') + 1;
+      end if;
+
+      if total_paths = 0 then
+         --  No system library paths are defined, allow everything
+         return True;
+      end if;
+
+      for dirpath in 1 .. total_paths loop
+         declare
+            candidate : constant String := Misc.specific_field (base_paths, 1, ":") & "/" &
+              library_file;
+         begin
+            if Unix.file_exists (candidate) then
+               --  This is a system library.  Don't record it.
+               return False;
+            end if;
+         end;
+      end loop;
+
+      --  This is not a system library.  Record it.
+      return True;
+
+   end record_library;
+
 
 end Archive.Pack;

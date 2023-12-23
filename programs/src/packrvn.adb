@@ -355,7 +355,8 @@ begin
                                      keyword_dir         => ASU.To_String (arg_keyword),
                                      fixed_timestamp     => provide_timestamp (arg_timestamp),
                                      output_file         => rvn_file,
-                                     verbosity           => level)
+                                     verbosity           => level,
+                                     record_base_libs    => False)
       then
          error ("Archive creation failed.");
          exitcode := CLI.Exit_Status (-1);

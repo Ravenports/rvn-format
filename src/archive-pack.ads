@@ -7,7 +7,7 @@ with Archive.Whitelist;
 with Archive.Unix;
 with Zstandard;
 with ThickUCL;
-
+with Elf;
 
 package Archive.Pack is
 
@@ -28,6 +28,7 @@ package Archive.Pack is
       output_file         : String;
       fixed_timestamp     : filetime;
       verbosity           : info_level;
+      record_base_libs    : Boolean;
       optional_pipe       : Unix.File_Descriptor := Unix.not_connected)
       return Boolean;
 
@@ -144,7 +145,8 @@ private
       dir_path  : String;
       dir_index : index_type;
       timestamp : filetime;
-      adjacent  : Boolean);
+      adjacent  : Boolean;
+      record_base_libs : Boolean);
 
    --  Keep track of the compression directory
    procedure record_directory (AS : in out Arc_Structure; top_directory : String);
@@ -214,5 +216,15 @@ private
       prefix           : String;
       abi              : String;
       tree             : in out ThickUCL.UclTree);
+
+   --  Provides a filter for which DT_NEEDED entries should be recorded in database
+   --  If record_base_libs is true, return True immediately (filter nothing)
+   --  Otherwise check the known standard library paths (system-specific).  If the
+   --  library is present on one of them, return False.
+   --  If the library is not found on any known path, return true
+   function record_library
+     (library_file     : String;
+      record_base_libs : Boolean;
+      file_format      : Elf.elf_class) return Boolean;
 
 end Archive.Pack;
