@@ -106,6 +106,8 @@ package body Archive.Pack is
          return False;
       end if;
 
+      metadata.analyze_missing_required_libraries;
+
       metadata.initialize_index_file (output_file);
       metadata.write_owngrp_blocks;                  --  block FA and FB
       metadata.write_link_block;                     --  block FC
@@ -211,19 +213,40 @@ package body Archive.Pack is
       dirfiles  : SCN.dscan_crate.Vector;
       override_mtime : constant Boolean := timestamp > 0;
       last_reg_format : Elf.elf_class := Elf.format64;
+      stage_directory : constant String := AS.tlevel (1 .. AS.tlsize);
+      last_runpath : Elf.ASU.Unbounded_String;
+      last_dirpath : Elf.ASU.Unbounded_String;
+      last_fullpath : Elf.ASU.Unbounded_String;
+      --  last_is_shlib : Boolean;
 
       procedure add_to_needed_libraries (Position : Elf.library_crate.Cursor)
       is
          library : constant String := Elf.ASU.To_String (Elf.library_crate.Element (Position));
          len2    : constant Natural := library'Length;
          ftray2  : A_Filename := (others => Character'Val (0));
+         file_runpath : constant String := Elf.ASU.To_String (last_runpath);
+         file_dirpath : constant String := Elf.ASU.To_String (last_dirpath);
+         original    : constant String := Elf.ASU.To_String (last_fullpath);
       begin
+         ftray2 (1 .. len2) := library;
+         if AS.need_seen.Contains (ftray2) then
+            return;
+         end if;
          if record_library (library, record_base_libs, last_reg_format) then
-            ftray2 (1 .. len2) := library;
             if not AS.lib_need.Contains (ftray2) then
                AS.lib_need.Append (ftray2);
             end if;
+            --  if not last_is_shlib then  --  Don't do link checks on libraries (unclear why not)
+            if not found_on_runpath (library, file_runpath, file_dirpath, stage_directory, original)
+            then
+               --  Make sure this is not a system library with ALLOW_BASE_SHLIBS=TRUE case
+               if record_library (library, False, last_reg_format) then
+                  AS.not_found.Append (ftray2);
+               end if;
+            end if;
+            --  end if;
          end if;
+         AS.need_seen.Append (ftray2);
       end add_to_needed_libraries;
 
       procedure walkdir (position : SCN.dscan_crate.Cursor)
@@ -326,7 +349,6 @@ package body Archive.Pack is
                         case file_data.file_type is
                            when Elf.not_elf => null;
                            when Elf.executable | Elf.shared_object =>
-                              last_reg_format := file_data.format;
                               len := Elf.ASU.Length (file_data.soname);
                               if len > 0 then
                                  filetray (1 .. len) := Elf.ASU.To_String (file_data.soname);
@@ -346,6 +368,11 @@ package body Archive.Pack is
          case features.ftype is
             when regular =>
                Elf.readelf (item_path, file_data);
+               last_reg_format := file_data.format;
+               last_runpath := file_data.run_path;
+               --  last_is_shlib := Elf.ASU.Length (file_data.soname) > 0;
+               last_dirpath := Elf.ASU.To_Unbounded_String (item.parent_directory);
+               last_fullpath := Elf.ASU.To_Unbounded_String (item_path);
                case file_data.file_type is
                   when Elf.not_elf => null;
                   when Elf.executable | Elf.shared_object =>
@@ -1398,5 +1425,81 @@ package body Archive.Pack is
 
    end record_library;
 
+
+   ------------------------
+   --  found_on_runpath  --
+   ------------------------
+   function found_on_runpath
+     (library_file     : String;
+      runpath          : String;
+      origin_directory : String;
+      stage_directory  : String;
+      original_file    : String) return Boolean
+   is
+      total_paths : Natural := 0;
+   begin
+      if runpath /= "" then
+         total_paths := Misc.count_char (runpath, ':') + 1;
+      end if;
+      if total_paths = 0 then
+         --  No paths given, so search automatically fails
+         return False;
+      end if;
+
+      for dirpath in 1 .. total_paths loop
+         declare
+            segment : constant String := Misc.specific_field (runpath, dirpath, ":") & "/" &
+              library_file;
+            candidate : constant String := Elf.ASU.To_String
+              (Misc.replace_substring
+                 (Elf.ASU.To_Unbounded_String (segment), "$ORIGIN", origin_directory));
+         begin
+            if Unix.file_exists (candidate) then
+               --  installed library from a dependency package
+               --  Also will catch this packages libraries if $ORIGIN is used.
+               return True;
+            end if;
+            if Unix.file_exists (stage_directory & candidate) then
+               --  The library was located in the stage directory.
+               --  We don't know if the library is on the whitelist though -- only that the
+               --  runpath will allow the linker to find it.
+               --  We can't return "true" when file exists, but we can squawk if it doesn't.
+               return False;
+            end if;
+         end;
+      end loop;
+
+      --  We didn't find it on the runpath or stage/runpath
+      SQW.emit_debug (original_file & " - required shared library " & library_file &
+                        " not found [" & runpath & "]");
+
+      return False;
+
+   end found_on_runpath;
+
+
+   ------------------------------------------
+   --  analyze_missing_required_libraries  --
+   ------------------------------------------
+   procedure analyze_missing_required_libraries (AS : in out Arc_Structure)
+   is
+      procedure check (Position : libraries_crate.Cursor)
+      is
+         missing_library : A_Filename renames libraries_crate.Element (Position);
+      begin
+         if AS.lib_prov.Contains (missing_library) then
+            --  This package provides this library!
+            return;
+         end if;
+         if AS.lib_adj.Contains (missing_library) then
+            --  A sister subpackage provides this library
+            return;
+         end if;
+         SQW.emit_notice ("The linked " & trim_trailing_zeros (missing_library) &
+                         " library could not be located.");
+      end check;
+   begin
+      AS.not_found.iterate (check'Access);
+   end analyze_missing_required_libraries;
 
 end Archive.Pack;

@@ -104,6 +104,8 @@ private
          lib_prov   : libraries_crate.Vector;
          lib_need   : libraries_crate.Vector;
          lib_adj    : libraries_crate.Vector;
+         not_found  : libraries_crate.Vector;
+         need_seen  : libraries_crate.Vector;
       end record;
 
    --  Given the string representation of the owner, return the index on the list.
@@ -226,5 +228,21 @@ private
      (library_file     : String;
       record_base_libs : Boolean;
       file_format      : Elf.elf_class) return Boolean;
+
+   --  Returns true if library is found on the given runpath concatenation
+   function found_on_runpath
+     (library_file     : String;
+      runpath          : String;
+      origin_directory : String;
+      stage_directory  : String;
+      original_file    : String) return Boolean;
+
+   --  We have a list of libraries that couldn't be found installed.
+   --  So of them are installed by this archive.
+   --  Others are installed by sister subpackages.
+   --  If the missing library is present in the "provided" container, or if it's present
+   --  in the "adjacent" container, ignore.  Otherwise emit a notice.
+   procedure analyze_missing_required_libraries
+     (AS : in out Arc_Structure);
 
 end Archive.Pack;
