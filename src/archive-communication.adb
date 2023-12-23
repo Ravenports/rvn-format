@@ -48,7 +48,11 @@ package body Archive.Communication is
    is
       --  Do not send messages to event pipe
    begin
-      TIO.Put_Line (message);
+      case squawk_level is
+         when silent => null;
+         when others =>
+            TIO.Put_Line (message);
+      end case;
    end emit_message;
 
 
@@ -63,7 +67,11 @@ package body Archive.Communication is
             json_objectpair ("data", json_pair ("msg", message))));
    begin
       pipe_event (jmsg);
-      TIO.Put_Line (message);
+      case squawk_level is
+         when silent => null;
+         when others =>
+            TIO.Put_Line (message);
+      end case;
    end emit_notice;
 
 
@@ -88,7 +96,12 @@ package body Archive.Communication is
    procedure emit_debug    (message : String)
    is
    begin
-      warnx ("DEBUG: " & message);
+      case squawk_level is
+         when debug =>
+            warnx ("DEBUG: " & message);
+         when others =>
+            null;
+      end case;
    end emit_debug;
 
 
