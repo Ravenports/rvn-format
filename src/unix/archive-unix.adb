@@ -821,4 +821,45 @@ package body Archive.Unix is
       IC.Strings.Free (msg);
    end push_to_event_pipe;
 
+
+   ------------------------------
+   --  get_time_charactistics  --
+   ------------------------------
+   function get_time_characteristics (path : String) return Time_Characteristics
+   is
+      result : Time_Characteristics;
+      sb     : aliased Unix.struct_stat;
+      tspec  : time_specification;
+   begin
+      result.ftype := unsupported;
+      result.mtime := 0;
+      result.mnsec := 0;
+      result.error := True;
+      begin
+         if Unix.stat_ok (path, sb'Unchecked_Access) then
+            tspec := file_modification_time (sb'Unchecked_Access);
+            result.ftype := type_of_file (sb'Unchecked_Access);
+            result.mtime := tspec.epoch;
+            result.mnsec := tspec.nsecs;
+            result.error := False;
+         end if;
+      exception
+         when others =>
+            null;
+      end;
+      return result;
+   end get_time_characteristics;
+
+
+   -------------------
+   --  tag_expired  --
+   -------------------
+   function tag_expired (mtime : filetime) return Boolean
+   is
+      current_time : constant filetime := arc_time (null);
+   begin
+      return current_time > mtime;
+   end tag_expired;
+
+
 end Archive.Unix;

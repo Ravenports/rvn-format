@@ -35,6 +35,14 @@ package Archive.Unix is
          TRUNC     : Boolean := False;
       end record;
 
+   type Time_Characteristics is
+      record
+         ftype : file_type;
+         mtime : filetime;
+         mnsec : nanoseconds;
+         error : Boolean;
+      end record;
+
    type metadata_rc is mod 2 ** 5;
    type File_Descriptor is new Integer;
    not_connected : constant File_Descriptor := -1;
@@ -116,6 +124,12 @@ package Archive.Unix is
    --  Send log down file descriptor of event pipe
    procedure push_to_event_pipe (fd : File_Descriptor; message : String);
 
+      --  Return file modification time given the path to a file or a directory
+   function get_time_characteristics (path : String) return Time_Characteristics;
+
+   --  Returns True if the given file has a modification time in the past
+   function tag_expired (mtime : filetime) return Boolean;
+
 private
 
    function success (rc : IC.int) return Boolean;
@@ -184,6 +198,9 @@ private
 
    function arc_get_file_size (sb : struct_stat_Access) return IC.unsigned_long_long;
    pragma Import (C, arc_get_file_size, "get_size");
+
+   function arc_time (tloc : access filetime) return filetime;
+   pragma Import (C, arc_time, "time");
 
    function symlink (path1, path2 : IC.char_array) return IC.int;
    pragma Import (C, symlink);
