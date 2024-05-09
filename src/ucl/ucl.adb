@@ -580,6 +580,9 @@ package body Ucl is
       res : IC.unsigned_char;
       c_data : array (data'Range) of aliased IC.unsigned_char;
    begin
+      if data'Length = 0 then
+         return False;
+      end if;
       for x in data'Range loop
          c_data (x) := IC.unsigned_char (Character'Pos (data (x)));
       end loop;
