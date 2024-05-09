@@ -16,9 +16,9 @@ private
    --  that character is eliminated.  Also eliminate ASCII > 126
    function format_key (raw : String) return String;
 
-   --  If string contains \n newline, wrap it between "<<EOD\n" and "\nEOD"
-   --  Otherwise escape single quotes and then write it in single quotes.
-   function format_string_value (raw : String) return String;
+   --  If heredoc is true, and string contains \n newline, wrap it between "<<EOD\n" and "\nEOD"
+   --  Otherwise escape special characters and then write it in single quotes.
+   function format_string_value (raw : String; heredoc : Boolean) return String;
 
    --  Returns "true" or "false"
    function format_boolean_value (raw : Boolean) return String;

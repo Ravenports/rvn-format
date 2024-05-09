@@ -34,7 +34,7 @@ package body ThickUCL.Emitter is
                --  This should not be possible
                ASU.Append (canvas, "null");
             when data_string =>
-               ASU.Append (canvas, format_string_value (tree.get_base_value (raw_key)));
+               ASU.Append (canvas, format_string_value (tree.get_base_value (raw_key), True));
             when data_boolean =>
                ASU.Append (canvas, format_boolean_value (tree.get_base_value (raw_key)));
             when data_integer =>
@@ -68,14 +68,14 @@ package body ThickUCL.Emitter is
                   when data_not_present =>
                      null;  -- should be impossible
                   when data_integer =>
-                     ASU.Append (canvas, indent & format_string_value
+                     ASU.Append (canvas, indent & format_integer_value
                                  (tree.get_array_element_value (vndx, elndx)));
                   when data_float =>
                      ASU.Append (canvas, indent & format_float_value
                                  (tree.get_array_element_value (vndx, elndx)));
                   when data_string =>
                      ASU.Append (canvas, indent & format_string_value
-                                 (tree.get_array_element_value (vndx, elndx)));
+                                 (tree.get_array_element_value (vndx, elndx), True));
                   when data_boolean =>
                      ASU.Append (canvas, indent & format_boolean_value
                                  (tree.get_array_element_value (vndx, elndx)));
@@ -125,7 +125,7 @@ package body ThickUCL.Emitter is
                               (tree.get_object_value (vndx, this_key)));
                when data_string =>
                   ASU.Append (canvas, format_string_value
-                              (tree.get_object_value (vndx, this_key)));
+                              (tree.get_object_value (vndx, this_key), True));
                when data_time =>
                   ASU.Append (canvas, format_time_value
                               (tree.get_object_value (vndx, this_key)));
@@ -233,25 +233,35 @@ package body ThickUCL.Emitter is
    ---------------------------
    --  format_string_value  --
    ---------------------------
-   function format_string_value (raw : String) return String
+   function format_string_value (raw : String; heredoc : Boolean) return String
    is
+      backspace : constant Character := Character'Val (8);
+      tabchar   : constant Character := Character'Val (9);
+      formfeed  : constant Character := Character'Val (12);
+      carriage  : constant Character := Character'Val (13);
       SQ        : constant Character := Character'Val (39);
-      newline   : constant String (1 .. 1) := (1 => Character'Val (10));
-      SQpattern : constant String (1 .. 1) := (1 => SQ);
+      backslash : constant Character := Character'Val (92);
+      newline   : constant String (1 .. 1) := (1 => LF);
    begin
-      if ASF.Index (raw, newline) > 0 then
-         if raw (raw'Last) = newline (newline'First) then
-            return "<<EOD" & newline & raw & "EOD" & LF;
-         else
-            return "<<EOD" & newline & raw & newline & "EOD" & LF;
+      if heredoc then
+         if ASF.Index (raw, newline) > 0 then
+            if raw (raw'Last) = newline (newline'First) then
+               return "<<EOD" & newline & raw & "EOD" & LF;
+            else
+               return "<<EOD" & newline & raw & newline & "EOD" & LF;
+            end if;
          end if;
       end if;
-      if ASF.Index (raw, SQpattern) = 0 then
-         return SQ & raw & SQ & LF;
-      end if;
+
       declare
          procedure single_copy (char : Character);
          procedure escape_quote;
+         procedure escape_linefeed;
+         procedure escape_formfeed;
+         procedure escape_tab;
+         procedure escape_backspace;
+         procedure escape_backslash;
+         procedure escape_cr;
 
          canvas : String (1 .. raw'Length * 2);
          canlen : Natural := 0;
@@ -264,14 +274,57 @@ package body ThickUCL.Emitter is
 
          procedure escape_quote is
          begin
-            single_copy ('\');
+            single_copy (backslash);
             single_copy (SQ);
          end escape_quote;
+
+         procedure escape_linefeed is
+         begin
+            single_copy (backslash);
+            single_copy ('n');
+         end escape_linefeed;
+
+         procedure escape_formfeed is
+         begin
+            single_copy (backslash);
+            single_copy ('f');
+         end escape_formfeed;
+
+         procedure escape_tab is
+         begin
+            single_copy (backslash);
+            single_copy ('t');
+         end escape_tab;
+
+         procedure escape_backspace is
+         begin
+            single_copy (backslash);
+            single_copy ('b');
+         end escape_backspace;
+
+         procedure escape_backslash is
+         begin
+            single_copy (backslash);
+            single_copy (backslash);
+         end escape_backslash;
+
+         procedure escape_cr is
+         begin
+            single_copy (backslash);
+            single_copy ('r');
+         end escape_cr;
+
       begin
          single_copy (SQ);
          for k in raw'Range loop
             case raw (k) is
-               when SQ => escape_quote;
+               when SQ        => escape_quote;
+               when LF        => escape_linefeed;
+               when formfeed  => escape_formfeed;
+               when tabchar   => escape_tab;
+               when backspace => escape_backspace;
+               when carriage  => escape_cr;
+               when backslash => escape_backslash;
                when others => single_copy (raw (k));
             end case;
          end loop;
