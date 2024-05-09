@@ -151,22 +151,166 @@ package body ThickUCL.Emitter is
    end emit_ucl;
 
 
+   ------------------------
+   --  emit_compact_ucl  --
+   ------------------------
+   function emit_compact_ucl (tree : UclTree) return String
+   is
+      procedure scan_key (Position : jar_string.Cursor);
+      procedure dive_into_array (vndx : array_index);
+      procedure dive_into_object (vndx : object_index);
+
+      canvas : ASU.Unbounded_String;
+      stumpkeys : jar_string.Vector;
+      cm : constant Character := ',';
+
+      procedure scan_key (Position : jar_string.Cursor)
+      is
+         raw_key : constant String := ASU.To_String (jar_string.Element (Position).payload);
+         valtype : Leaf_type;
+      begin
+         ASU.Append (canvas, format_key (raw_key) & ":");
+         valtype := tree.get_data_type (raw_key);
+         case valtype is
+            when data_not_present =>
+               --  This should not be possible
+               ASU.Append (canvas, "null" & cm);
+            when data_string =>
+               ASU.Append (canvas, format_string_value (tree.get_base_value (raw_key), False, cm));
+            when data_boolean =>
+               ASU.Append (canvas, format_boolean_value (tree.get_base_value (raw_key), cm));
+            when data_integer =>
+               ASU.Append (canvas, format_integer_value (tree.get_base_value (raw_key), cm));
+            when data_float =>
+               ASU.Append (canvas, format_float_value (tree.get_base_value (raw_key), cm));
+            when data_time =>
+               ASU.Append (canvas, format_time_value (tree.get_base_value (raw_key), cm));
+            when data_array =>
+               ASU.Append (canvas, '[');
+               dive_into_array (tree.get_index_of_base_array (raw_key));
+               ASU.Append (canvas, ']' & cm);
+            when data_object =>
+               ASU.Append (canvas, '{');
+               dive_into_object (tree.get_index_of_base_ucl_object (raw_key));
+               ASU.Append (canvas, '}' & cm);
+         end case;
+      end scan_key;
+
+      procedure dive_into_array (vndx : array_index)
+      is
+         array_len : constant Natural := tree.get_number_of_array_elements (vndx);
+      begin
+         for elndx in 0 .. array_len - 1 loop
+            declare
+               valtype : Leaf_type;
+            begin
+               valtype := tree.get_array_element_type (vndx, elndx);
+               case valtype is
+                  when data_not_present =>
+                     null;  -- should be impossible
+                  when data_integer =>
+                     ASU.Append (canvas, format_integer_value
+                                 (tree.get_array_element_value (vndx, elndx), cm));
+                  when data_float =>
+                     ASU.Append (canvas, format_float_value
+                                 (tree.get_array_element_value (vndx, elndx), cm));
+                  when data_string =>
+                     ASU.Append (canvas, format_string_value
+                                 (tree.get_array_element_value (vndx, elndx), False, cm));
+                  when data_boolean =>
+                     ASU.Append (canvas, format_boolean_value
+                                 (tree.get_array_element_value (vndx, elndx), cm));
+                  when data_time =>
+                     ASU.Append (canvas, format_time_value
+                                 (tree.get_array_element_value (vndx, elndx), cm));
+                  when data_array =>
+                     ASU.Append (canvas, '[');
+                     dive_into_array (tree.get_array_element_vector_index (vndx, elndx));
+                     ASU.Append (canvas, ']' & cm);
+                  when data_object =>
+                     ASU.Append (canvas, '{');
+                     dive_into_object (tree.get_array_element_object (vndx, elndx));
+                     ASU.Append (canvas, '}' & cm);
+               end case;
+            end;
+         end loop;
+      end dive_into_array;
+
+      procedure dive_into_object (vndx : object_index)
+      is
+         procedure scan_deeper_key (Position : jar_string.Cursor);
+
+         keys   : jar_string.Vector;
+
+         procedure scan_deeper_key (Position : jar_string.Cursor)
+         is
+            this_key : constant String := ASU.To_String (jar_string.Element (Position).payload);
+            valtype  : Leaf_type;
+         begin
+            valtype := tree.get_object_data_type (vndx, this_key);
+            ASU.Append (canvas,  format_key (this_key) & ":");
+            case valtype is
+               when data_not_present =>
+                  ASU.Append (canvas, "null" & cm);  -- should be impossible
+               when data_boolean =>
+                  ASU.Append (canvas, format_boolean_value
+                              (tree.get_object_value (vndx, this_key), cm));
+               when data_float =>
+                  ASU.Append (canvas, format_float_value
+                              (tree.get_object_value (vndx, this_key), cm));
+               when data_integer =>
+                  ASU.Append (canvas, format_integer_value
+                              (tree.get_object_value (vndx, this_key), cm));
+               when data_string =>
+                  ASU.Append (canvas, format_string_value
+                              (tree.get_object_value (vndx, this_key), False, cm));
+               when data_time =>
+                  ASU.Append (canvas, format_time_value
+                              (tree.get_object_value (vndx, this_key), cm));
+               when data_array =>
+                  ASU.Append (canvas, '[');
+                  dive_into_array (tree.get_object_array (vndx, this_key));
+                  ASU.Append (canvas, ']' & cm);
+               when data_object =>
+                  ASU.Append (canvas, '{');
+                  dive_into_object (tree.get_object_object (vndx, this_key));
+                  ASU.Append (canvas, '}' & cm);
+            end case;
+         end scan_deeper_key;
+      begin
+         tree.get_object_object_keys (vndx, keys);
+         keys.Iterate (scan_deeper_key'Access);
+      end dive_into_object;
+
+   begin
+      ASU.Append (canvas, '{');
+      tree.get_base_object_keys (stumpkeys);
+      stumpkeys.Iterate (scan_key'Access);
+      if ASU.Element (canvas, ASU.Length (canvas)) = cm then
+         ASU.Replace_Element (canvas, ASU.Length (canvas), '}');
+      else
+         ASU.Append (canvas, '}');
+      end if;
+      return ASU.To_String (canvas);
+   end emit_compact_ucl;
+
+
    -------------------------
    --  format_time_value  --
    -------------------------
-   function format_time_value (raw : RT.Time_Span) return String
+   function format_time_value (raw : RT.Time_Span; terminator : Character := LF) return String
    is
       rawduration : Duration;
    begin
       rawduration := RT.To_Duration (raw);
-      return ASF.Trim (rawduration'Img, Ada.Strings.Left) & 's' & LF;
+      return ASF.Trim (rawduration'Img, Ada.Strings.Left) & 's' & terminator;
    end format_time_value;
 
 
    --------------------------
    --  format_float_value  --
    --------------------------
-   function format_float_value (raw : Float) return String
+   function format_float_value (raw : Float; terminator : Character := LF) return String
    is
       function trimzero (decimal_string : String) return String;
 
@@ -197,9 +341,9 @@ package body ThickUCL.Emitter is
          sdec_part : constant String := ASF.Trim (dec_part'Img, Ada.Strings.Left);
       begin
          if negative then
-            return '-' & sint_part & "." & trimzero (sdec_part) & LF;
+            return '-' & sint_part & "." & trimzero (sdec_part) & terminator;
          end if;
-         return sint_part & "." & trimzero (sdec_part) & LF;
+         return sint_part & "." & trimzero (sdec_part) & terminator;
       end;
    end format_float_value;
 
@@ -207,25 +351,25 @@ package body ThickUCL.Emitter is
    ----------------------------
    --  format_integer_value  --
    ----------------------------
-   function format_integer_value (raw : Ucl.ucl_integer) return String
+   function format_integer_value (raw : Ucl.ucl_integer; terminator : Character := LF) return String
    is
       raw_image : constant String := raw'Img;
    begin
       if raw < 0 then
-         return raw_image & LF;
+         return raw_image & terminator;
       end if;
-      return raw_image (raw_image'First + 1 .. raw_image'Last) & LF;
+      return raw_image (raw_image'First + 1 .. raw_image'Last) & terminator;
    end format_integer_value;
 
 
    ----------------------------
    --  format_boolean_value  --
    ----------------------------
-   function format_boolean_value (raw : Boolean) return String is
+   function format_boolean_value (raw : Boolean; terminator : Character := LF) return String is
    begin
       case raw is
-         when True  => return "true" & LF;
-         when False => return "false" & LF;
+         when True  => return "true" & terminator;
+         when False => return "false" & terminator;
       end case;
    end format_boolean_value;
 
@@ -233,7 +377,10 @@ package body ThickUCL.Emitter is
    ---------------------------
    --  format_string_value  --
    ---------------------------
-   function format_string_value (raw : String; heredoc : Boolean) return String
+   function format_string_value
+     (raw : String;
+      heredoc : Boolean;
+      terminator : Character := LF) return String
    is
       backspace : constant Character := Character'Val (8);
       tabchar   : constant Character := Character'Val (9);
@@ -245,10 +392,10 @@ package body ThickUCL.Emitter is
    begin
       if heredoc then
          if ASF.Index (raw, newline) > 0 then
-            if raw (raw'Last) = newline (newline'First) then
-               return "<<EOD" & newline & raw & "EOD" & LF;
+            if raw (raw'Last) = LF then
+               return "<<EOD" & LF & raw & "EOD" & LF;
             else
-               return "<<EOD" & newline & raw & newline & "EOD" & LF;
+               return "<<EOD" & LF & raw & LF & "EOD" & LF;
             end if;
          end if;
       end if;
@@ -329,7 +476,7 @@ package body ThickUCL.Emitter is
             end case;
          end loop;
          single_copy (SQ);
-         return canvas (1 .. canlen) & LF;
+         return canvas (1 .. canlen) & terminator;
       end;
    end format_string_value;
 

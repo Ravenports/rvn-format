@@ -4,7 +4,12 @@
 package ThickUCL.Emitter is
 
    --  Given a UclTree structure, return a pretty-printed UCL representation of it as a string.
+   --  The root object is not wrapped in curly braces
    function emit_ucl (tree : UclTree) return String;
+
+   --  Given a UclTree structure, return the string representation as a single line.
+   --  The root object is wrapped in curly braces, removing any trailing commas
+   function emit_compact_ucl (tree : UclTree) return String;
 
 private
 
@@ -18,18 +23,29 @@ private
 
    --  If heredoc is true, and string contains \n newline, wrap it between "<<EOD\n" and "\nEOD"
    --  Otherwise escape special characters and then write it in single quotes.
-   function format_string_value (raw : String; heredoc : Boolean) return String;
+   function format_string_value
+     (raw : String;
+      heredoc : Boolean;
+      terminator : Character := LF) return String;
 
    --  Returns "true" or "false"
-   function format_boolean_value (raw : Boolean) return String;
+   function format_boolean_value
+     (raw : Boolean;
+      terminator : Character := LF) return String;
 
    --  Converts integer value to a string
-   function format_integer_value (raw : Ucl.ucl_integer) return String;
+   function format_integer_value
+     (raw : Ucl.ucl_integer;
+      terminator : Character := LF) return String;
 
    --  Converts float value to a string
-   function format_float_value (raw : Float) return String;
+   function format_float_value
+     (raw : Float;
+     terminator : Character := LF) return String;
 
    --  Converts time value to a string (seconds)
-   function format_time_value (raw : RT.Time_Span) return String;
+   function format_time_value
+     (raw : RT.Time_Span;
+      terminator : Character := LF) return String;
 
 end ThickUCL.Emitter;
