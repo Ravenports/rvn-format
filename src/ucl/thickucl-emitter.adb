@@ -159,10 +159,21 @@ package body ThickUCL.Emitter is
       procedure scan_key (Position : jar_string.Cursor);
       procedure dive_into_array (vndx : array_index);
       procedure dive_into_object (vndx : object_index);
+      procedure close_structure (bracket : Character);
 
       canvas : ASU.Unbounded_String;
       stumpkeys : jar_string.Vector;
       cm : constant Character := ',';
+
+      procedure close_structure (bracket : Character) is
+      begin
+         if ASU.Element (canvas, ASU.Length (canvas)) = cm then
+            ASU.Replace_Element (canvas, ASU.Length (canvas), bracket);
+            ASU.Append (canvas, cm);
+         else
+            ASU.Append (canvas, bracket & cm);
+         end if;
+      end close_structure;
 
       procedure scan_key (Position : jar_string.Cursor)
       is
@@ -188,11 +199,11 @@ package body ThickUCL.Emitter is
             when data_array =>
                ASU.Append (canvas, '[');
                dive_into_array (tree.get_index_of_base_array (raw_key));
-               ASU.Append (canvas, ']' & cm);
+               close_structure (']');
             when data_object =>
                ASU.Append (canvas, '{');
                dive_into_object (tree.get_index_of_base_ucl_object (raw_key));
-               ASU.Append (canvas, '}' & cm);
+               close_structure ('}');
          end case;
       end scan_key;
 
@@ -226,11 +237,11 @@ package body ThickUCL.Emitter is
                   when data_array =>
                      ASU.Append (canvas, '[');
                      dive_into_array (tree.get_array_element_vector_index (vndx, elndx));
-                     ASU.Append (canvas, ']' & cm);
+                     close_structure (']');
                   when data_object =>
                      ASU.Append (canvas, '{');
                      dive_into_object (tree.get_array_element_object (vndx, elndx));
-                     ASU.Append (canvas, '}' & cm);
+                     close_structure ('}');
                end case;
             end;
          end loop;
@@ -270,11 +281,11 @@ package body ThickUCL.Emitter is
                when data_array =>
                   ASU.Append (canvas, '[');
                   dive_into_array (tree.get_object_array (vndx, this_key));
-                  ASU.Append (canvas, ']' & cm);
+                  close_structure (']');
                when data_object =>
                   ASU.Append (canvas, '{');
                   dive_into_object (tree.get_object_object (vndx, this_key));
-                  ASU.Append (canvas, '}' & cm);
+                  close_structure ('}');
             end case;
          end scan_deeper_key;
       begin
@@ -286,11 +297,7 @@ package body ThickUCL.Emitter is
       ASU.Append (canvas, '{');
       tree.get_base_object_keys (stumpkeys);
       stumpkeys.Iterate (scan_key'Access);
-      if ASU.Element (canvas, ASU.Length (canvas)) = cm then
-         ASU.Replace_Element (canvas, ASU.Length (canvas), '}');
-      else
-         ASU.Append (canvas, '}');
-      end if;
+      close_structure ('}');
       return ASU.To_String (canvas);
    end emit_compact_ucl;
 
