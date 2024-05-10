@@ -3,6 +3,7 @@
 
 with Ada.Text_IO;
 with Ada.Strings.Fixed;
+with Ada.Exceptions;
 with System;
 
 package body ThickUCL.Files is
@@ -21,6 +22,9 @@ package body ThickUCL.Files is
                       isfile  => True,
                       ucldata => path,
                       nvpairs => nvpairs);
+   exception
+      when problem : ucl_data_unparseable =>
+         TIO.Put_Line ("Failed to parse UCL: " & Ada.Exceptions.Exception_Message (problem));
    end parse_ucl_file;
 
 
@@ -36,6 +40,9 @@ package body ThickUCL.Files is
                       isfile  => False,
                       ucldata => ucldata,
                       nvpairs => nvpairs);
+   exception
+      when problem : ucl_data_unparseable =>
+         TIO.Put_Line ("Failed to parse UCL: " & Ada.Exceptions.Exception_Message (problem));
    end parse_ucl_string;
 
 
