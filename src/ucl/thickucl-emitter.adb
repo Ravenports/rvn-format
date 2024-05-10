@@ -297,7 +297,11 @@ package body ThickUCL.Emitter is
       ASU.Append (canvas, '{');
       tree.get_base_object_keys (stumpkeys);
       stumpkeys.Iterate (scan_key'Access);
-      close_structure ('}');
+      if ASU.Element (canvas, ASU.Length (canvas)) = cm then
+         ASU.Replace_Element (canvas, ASU.Length (canvas), '}');
+      else
+         ASU.Append (canvas, '}');
+      end if;
       return ASU.To_String (canvas);
    end emit_compact_ucl;
 
