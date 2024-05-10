@@ -72,6 +72,7 @@ package body Archive.Pack is
               subpackage /= "nls" and then
               subpackage /= "docs" and then
               subpackage /= "lang" and then
+              subpackage /= "info" and then
               subpackage /= "examples"
             then
                set_adjacent := True;
@@ -1499,7 +1500,7 @@ package body Archive.Pack is
                          " library could not be located.");
       end check;
    begin
-      AS.not_found.iterate (check'Access);
+      AS.not_found.Iterate (check'Access);
    end analyze_missing_required_libraries;
 
 end Archive.Pack;
