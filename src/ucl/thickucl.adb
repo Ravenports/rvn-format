@@ -1566,4 +1566,19 @@ package body ThickUCL is
             return ASU."<" (left.payload, right.payload);
    end "<";
 
+
+   -------------------------
+   --  drop_base_keypair  --
+   -------------------------
+   procedure drop_base_keypair
+     (tree : in out UclTree;
+      key  : String)
+   is
+      keystring : constant ASU.Unbounded_String := ASU.To_Unbounded_String (key);
+   begin
+      if key_exists (tree, key) then
+         tree.tree_stump.Delete (keystring);
+      end if;
+   end drop_base_keypair;
+
 end ThickUCL;

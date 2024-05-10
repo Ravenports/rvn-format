@@ -96,9 +96,9 @@ package ThickUCL is
      (tree : in out UclTree);
 
 
-   ---------------------------------------------
-   --  Methods to query top level UCL object  --
-   ---------------------------------------------
+   -----------------------------------
+   --  Methods to query UCL object  --
+   -----------------------------------
 
    ucl_type_mismatch  : exception;
    ucl_key_not_found  : exception;
@@ -312,6 +312,16 @@ package ThickUCL is
 
    --  Returns true if the jar_string container contains the given key string
    function key_found (key_container : jar_string.Vector; key : String) return Boolean;
+
+
+   ---------------------------------------
+   --  Methods to prune the UCL object  --
+   ---------------------------------------
+
+   --  If key pair is defined at the stump level, the data is removed
+   procedure drop_base_keypair
+     (tree : in out UclTree;
+      key  : String);
 
 
 private
