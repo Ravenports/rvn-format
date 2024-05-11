@@ -1019,6 +1019,7 @@ package body Archive.Pack is
    begin
       if metadata_path = "" then
          AS.print (debug, "No metadata file has been provided.");
+         return;
       else
          if DIR.Exists (metadata_path) then
             dossier_size := ZST.File_Size (DIR.Size (metadata_path));
@@ -1119,6 +1120,12 @@ package body Archive.Pack is
          AS.print (verbose, "Metadata unexpectedly contains flatsize field; not overwriting.");
       else
          tree.insert (KEY_FLATSIZE, archive_size);
+      end if;
+
+      --  Determine if external metadata file was previously provided.
+      --  If the namebase is not defined, it wasn't, so it's not a normal package.
+      if not tree.key_exists ("namebase") then
+         goto Metadata_Block;
       end if;
 
       --  augment directories
@@ -1284,6 +1291,7 @@ package body Archive.Pack is
          tree.close_array;
       end if;
 
+      <<Metadata_Block>>
       declare
          out_succ : Boolean;
          out_size : ZST.File_Size;
