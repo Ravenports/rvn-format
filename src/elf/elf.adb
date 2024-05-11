@@ -482,14 +482,14 @@ package body Elf is
          elf_string'Read (elf_stmaxs, datastring);
 
          loop
-            name_size := elf_quad (DataString (esx + 0 .. esx + 3));
-            desc_size := elf_quad (DataString (esx + 4 .. esx + 7));
-            note_type := elf_quad (DataString (esx + 8 .. esx + 11));
+            name_size := elf_quad (datastring (esx + 0 .. esx + 3));
+            desc_size := elf_quad (datastring (esx + 4 .. esx + 7));
+            note_type := elf_quad (datastring (esx + 8 .. esx + 11));
             name_index := esx + 12;
 
-            name_size_nat := Value (file_data.dialect, name_size);
-            desc_size_nat := Value (file_data.dialect, desc_size);
-            new_elf_note.note_type   := Value (file_data.dialect, note_type);
+            name_size_nat := value (file_data.dialect, name_size);
+            desc_size_nat := value (file_data.dialect, desc_size);
+            new_elf_note.note_type   := value (file_data.dialect, note_type);
             new_elf_note.name        := ASU.Null_Unbounded_String;
             new_elf_note.description := ASU.Null_Unbounded_String;
 
@@ -502,7 +502,7 @@ package body Elf is
                begin
                   for x in 0 .. name_size_nat - 2 loop
                      ds_index := name_index + x;
-                     name_string (x + 1) := Character'Val (Integer (DataString (ds_index)));
+                     name_string (x + 1) := Character'Val (Integer (datastring (ds_index)));
                   end loop;
                   new_elf_note.name := ASU.To_Unbounded_String (name_string);
                end;
@@ -529,7 +529,7 @@ package body Elf is
                begin
                   for x in 0 .. desc_size_nat - 1 loop
                      ds_index := name_index + x;
-                     desc_string (x + 1) := Character'Val (Integer (DataString (ds_index)));
+                     desc_string (x + 1) := Character'Val (Integer (datastring (ds_index)));
                   end loop;
                   new_elf_note.description := ASU.To_Unbounded_String (desc_string);
                end;
@@ -557,7 +557,7 @@ package body Elf is
       type fullbyte is mod 2 ** 8;
       function halfbyte_to_hex (value : halfbyte) return Character;
 
-      std_byte  : interfaces.Unsigned_8;
+      std_byte  : Interfaces.Unsigned_8;
       work_4bit : halfbyte;
       result    : hexrep;
 
@@ -573,8 +573,8 @@ package body Elf is
       end halfbyte_to_hex;
 
    begin
-      std_byte   := interfaces.Unsigned_8 (Character'Pos (quattro));
-      work_4bit  := halfbyte (interfaces.Shift_Right (std_byte, 4));
+      std_byte   := Interfaces.Unsigned_8 (Character'Pos (quattro));
+      work_4bit  := halfbyte (Interfaces.Shift_Right (std_byte, 4));
       result (1) := halfbyte_to_hex (work_4bit);
 
       work_4bit  := halfbyte (fullbyte (Character'Pos (quattro)) and 2#1111#);
@@ -690,7 +690,7 @@ package body Elf is
    begin
       SIO.Set_Index (elf_handle, SIO.Positive_Count (strtable.file_offset + 1));
       canvas_type'Read (elf_stmaxs, canvas);
-      dyn_data.Iterate (Process'Access);
+      dyn_data.Iterate (process'Access);
    end populate_dynamic_data;
 
 
