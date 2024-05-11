@@ -421,7 +421,7 @@ package body ThickUCL.Emitter is
          procedure escape_backslash;
          procedure escape_cr;
 
-         canvas : String (1 .. raw'Length * 2);
+         canvas : String (1 .. raw'Length * 2 + 2);
          canlen : Natural := 0;
 
          procedure single_copy (char : Character) is

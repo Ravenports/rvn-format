@@ -1314,8 +1314,9 @@ package body Archive.Pack is
               TUC.index_out_of_range =>
             AS.print (normal, "As error occurred with the UCL emitter for the metadata.");
             AS.print (normal, EX.Exception_Information (uclerror));
-         when others =>
+         when unknown : others =>
             AS.print (normal, "An error occurred while inserting the metadata.");
+            AS.print (normal, EX.Exception_Information (unknown));
       end;
    end write_metadata_block;
 
