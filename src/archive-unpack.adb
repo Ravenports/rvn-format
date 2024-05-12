@@ -36,6 +36,7 @@ package body Archive.Unpack is
    begin
       DS.valid := False;
       DS.set_verbosity (verbosity);
+      SQW.initialize (verbosity, optional_pipe);
       if DIR.Exists (rvn_archive) then
          case DIR.Kind (rvn_archive) is
             when DIR.Ordinary_File =>
