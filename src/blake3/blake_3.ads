@@ -5,12 +5,15 @@ private with Interfaces.C;
 
 package Blake_3 is
 
+   invalid_hex_hash : exception;
+
    subtype blake3_hash is String (1 .. 32);
    subtype blake3_hash_hex is String (1 .. 64);
 
    function file_digest (path : String; power : Positive := 16) return blake3_hash;
    function digest (input_string : String) return blake3_hash;
    function hex (hash : blake3_hash) return blake3_hash_hex;
+   function reverse_hex (hash : blake3_hash_hex) return blake3_hash;
 
    function b3_hashsize return Natural;
 
@@ -71,5 +74,6 @@ private
    pragma Import (C, C_b3hasher_finalize, "blake3_hasher_finalize");
 
    function char2hex (quattro : Character) return hexrep;
+   function hex2char (ocho : hexrep) return Character;
 
 end Blake_3;

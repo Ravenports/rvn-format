@@ -92,6 +92,56 @@ package body Blake_3 is
 
 
    --------------------------------------------------------------------
+   --  hex2char
+   --------------------------------------------------------------------
+   function hex2char (ocho : hexrep) return Character
+   is
+      type halfbyte is mod 2 ** 4;
+      function valid_zerofox (value : Character) return Boolean;
+      function zerofox_to_halfbyte (value : Character) return halfbyte;
+
+      std_byte : INT.Unsigned_8;
+      nibble_0 : halfbyte;
+      nibble_1 : halfbyte;
+
+      function valid_zerofox (value : Character) return Boolean is
+      begin
+         case value is
+            when '0' .. '9' | 'A' .. 'F' | 'a' .. 'f' => return True;
+            when others => return False;
+         end case;
+      end valid_zerofox;
+
+      function zerofox_to_halfbyte (value : Character) return halfbyte
+      is
+         zero     : constant Natural := Character'Pos ('0');
+         uppalpha : constant Natural := Character'Pos ('A') - 10;
+         lowalpha : constant Natural := Character'Pos ('a') - 10;
+      begin
+         case value is
+            when '0' .. '9' => return halfbyte (Character'Pos (value) - zero);
+            when 'A' .. 'F' => return halfbyte (Character'Pos (value) - uppalpha);
+            when 'a' .. 'f' => return halfbyte (Character'Pos (value) - lowalpha);
+            when others => return 0;  --  impossible
+         end case;
+      end zerofox_to_halfbyte;
+
+      use type INT.Unsigned_8;
+   begin
+      if not valid_zerofox (ocho (1)) or else not valid_zerofox (ocho (2)) then
+         raise invalid_hex_hash;
+      end if;
+
+      nibble_0 := zerofox_to_halfbyte (ocho (2));
+      nibble_1 := zerofox_to_halfbyte (ocho (1));
+      std_byte := INT.Unsigned_8 (nibble_0) + (INT.Unsigned_8 (nibble_1) * 16);
+
+      return Character'Val (std_byte);
+
+   end hex2char;
+
+
+   --------------------------------------------------------------------
    --  hex
    --------------------------------------------------------------------
    function hex (hash : blake3_hash) return blake3_hash_hex
@@ -105,6 +155,24 @@ package body Blake_3 is
       end loop;
       return result;
    end hex;
+
+
+   -------------------
+   --  reverse_hex  --
+   -------------------
+   function reverse_hex (hash : blake3_hash_hex) return blake3_hash
+   is
+      --  allow invalid_hex_hash exception to pass
+
+      result : blake3_hash;
+      hex_index  : Positive := 1;
+   begin
+      for z in blake3_hash'Range loop
+         result (z) := hex2char (hexrep (hash (hex_index .. hex_index + 1)));
+         hex_index := hex_index + 2;
+      end loop;
+      return result;
+   end reverse_hex;
 
 
    --------------------------------------------------------------------
