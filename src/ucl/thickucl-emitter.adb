@@ -505,6 +505,7 @@ package body ThickUCL.Emitter is
       canlen : Natural := 0;
       quotes : Boolean := False;
       SQ     : constant Character := Character'Val (39);
+      DQ     : constant Character := '"';
 
       procedure single_copy (char : Character) is
       begin
@@ -540,7 +541,7 @@ package body ThickUCL.Emitter is
          end case;
       end loop;
       if quotes then
-         return SQ & canvas (1 .. canlen) & SQ;
+         return DQ & canvas (1 .. canlen) & DQ;
       end if;
       return canvas (1 .. canlen);
    end format_key;
