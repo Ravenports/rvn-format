@@ -397,7 +397,7 @@ package body ThickUCL.Emitter is
       tabchar   : constant Character := Character'Val (9);
       formfeed  : constant Character := Character'Val (12);
       carriage  : constant Character := Character'Val (13);
-      SQ        : constant Character := Character'Val (39);
+      DQ        : constant Character := '"';
       backslash : constant Character := Character'Val (92);
       newline   : constant String (1 .. 1) := (1 => LF);
    begin
@@ -433,7 +433,7 @@ package body ThickUCL.Emitter is
          procedure escape_quote is
          begin
             single_copy (backslash);
-            single_copy (SQ);
+            single_copy (DQ);
          end escape_quote;
 
          procedure escape_linefeed is
@@ -473,10 +473,10 @@ package body ThickUCL.Emitter is
          end escape_cr;
 
       begin
-         single_copy (SQ);
+         single_copy (DQ);
          for k in raw'Range loop
             case raw (k) is
-               when SQ        => escape_quote;
+               when DQ        => escape_quote;
                when LF        => escape_linefeed;
                when formfeed  => escape_formfeed;
                when tabchar   => escape_tab;
@@ -486,7 +486,7 @@ package body ThickUCL.Emitter is
                when others => single_copy (raw (k));
             end case;
          end loop;
-         single_copy (SQ);
+         single_copy (DQ);
          return canvas (1 .. canlen) & terminator;
       end;
    end format_string_value;
