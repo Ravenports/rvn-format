@@ -392,7 +392,6 @@ package body Archive.Whitelist.Keywords is
       keyword.file_found := False;
       keyword.deprecated := False;
       keyword.deprecated_message   := ASU.Null_Unbounded_String;
-      keyword.messages (always)    := ASU.Null_Unbounded_String;
       keyword.messages (install)   := ASU.Null_Unbounded_String;
       keyword.messages (deinstall) := ASU.Null_Unbounded_String;
       keyword.messages (upgrade)   := ASU.Null_Unbounded_String;
@@ -472,16 +471,14 @@ package body Archive.Whitelist.Keywords is
                                              begin
                                                 if tstr = "upgrade" then
                                                    keyword.messages (upgrade) := msg;
-                                                elsif tstr = "install" then
-                                                   keyword.messages (install) := msg;
                                                 elsif tstr = "remove" then
                                                    keyword.messages (deinstall) := msg;
                                                 else
-                                                   keyword.messages (always) := msg;
+                                                   keyword.messages (install) := msg;
                                                 end if;
                                              end;
                                           when TUC.data_not_present =>
-                                             keyword.messages (always) := msg;
+                                             keyword.messages (install) := msg;
                                           when others => null;
                                        end case;
                                     end;

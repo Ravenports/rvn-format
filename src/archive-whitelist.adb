@@ -932,7 +932,6 @@ package body Archive.Whitelist is
    function get_message_key (msgtype : Message_Type) return String is
    begin
       case msgtype is
-         when always    => return "always";
          when deinstall => return "remove";
          when install   => return "install";
          when upgrade   => return "upgrade";

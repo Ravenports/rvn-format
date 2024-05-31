@@ -1211,59 +1211,45 @@ package body Archive.Pack is
          end if;
       end;
 
-      --  Build up message object
-      --  If the object already exists, don't complain, append it.
-      --  If the object's key values are arrays, append them.
+      --  Build up message array
+      --  If the array already exists, don't complain, but append to it.
+      --  It must be an array of objects. Each object consists of a type (install, remove, upgrade)
+      --  and a message.
       declare
          messages_key : constant String := "messages";
          keep_going   : Boolean := True;
-         inner_type   : TUC.Leaf_type;
-         vndx         : TUC.object_index;
          msg_count    : Natural;
       begin
          if tree.key_exists (messages_key) then
             case tree.get_data_type (messages_key) is
-               when TUC.data_object =>
-                  tree.reopen_object (messages_key);
+               when TUC.data_array =>
+                  tree.reopen_array (messages_key);
                when others =>
                   keep_going := False;
-                  AS.print (verbose, "Metadata unexpectedly contains a non-object messages "
-                            & "field; no messages will be written.");
+                  AS.print (verbose, "Metadata unexpectedly contains non-array messages field;" &
+                              "no messages will be written.");
             end case;
          else
-            tree.start_object (messages_key);
+            tree.start_array (messages_key);
          end if;
 
          if keep_going then
-            vndx := tree.get_index_of_base_ucl_object (messages_key);
             for mtype in Archive.Whitelist.Message_Type'Range loop
                msg_count := AS.white_list.message_count (mtype);
                if msg_count > 0 then
                   declare
-                     key2 : constant String := Archive.Whitelist.get_message_key (mtype);
+                     message_type : constant String := Archive.Whitelist.get_message_key (mtype);
                   begin
-                     inner_type := tree.get_object_data_type (vndx, key2);
-                     case inner_type is
-                        when TUC.data_not_present =>
-                           tree.start_array (key2);
-                           for m in 0 .. msg_count - 1 loop
-                              tree.insert ("", AS.white_list.get_message (mtype, m));
-                           end loop;
-                           tree.close_array;
-                        when TUC.data_array =>
-                           tree.reopen_array (key2);
-                           for m in 0 .. msg_count - 1 loop
-                              tree.insert ("", AS.white_list.get_message (mtype, m));
-                           end loop;
-                           tree.close_array;
-                        when others =>
-                           AS.print (verbose, key2 & " messages in unexpectedly not an array; "
-                                     & "no messages of this type will be added:" & msg_count'Img);
-                     end case;
+                     for m in 0 .. msg_count - 1 loop
+                        tree.start_object ("");
+                        tree.insert ("type", message_type);
+                        tree.insert ("message",  AS.white_list.get_message (mtype, m));
+                        tree.close_object;
+                     end loop;
                   end;
                end if;
             end loop;
-            tree.close_object;
+            tree.close_array;
          end if;
       end;
 

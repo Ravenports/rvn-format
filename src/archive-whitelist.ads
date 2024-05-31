@@ -27,7 +27,7 @@ package Archive.Whitelist is
       post_deinstall,
       post_deinstall_lua);
 
-   type Message_Type is (always, install, deinstall, upgrade);
+   type Message_Type is (install, deinstall, upgrade);
 
    --  Returns true if archive should only archive specifically designated files.
    --  Likewise, returns false if all files in the root directory should be archived.
