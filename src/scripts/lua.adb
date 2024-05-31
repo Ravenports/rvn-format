@@ -114,10 +114,32 @@ package body Lua is
    ------------------------------
    --  show_post_run_messages  --
    ------------------------------
-   procedure show_post_run_messages (msg_outfile : String) is
+   procedure show_post_run_messages
+     (msg_outfile : String;
+      namebase    : String;
+      subpackage  : String;
+      variant     : String)
+   is
+      use type TIO.File_Access;
    begin
       --  Provide delayed message text if it exists
       if DIR.Exists (msg_outfile) then
+         if TIO.Current_Output /= TIO.Standard_Output then
+            declare
+               divlength : constant Natural := 75;
+               partone : constant String := namebase & '-' & subpackage & '-' & variant &
+                 "  Lua script messages  ";
+               divider : String (1 .. divlength) := (others => '-');
+            begin
+               if partone'Length > divlength then
+                  divider := partone (partone'First .. partone'First + divlength - 1);
+               else
+                  divider (divider'First .. divider'First + partone'Length - 1) := partone;
+               end if;
+               TIO.Put_Line (divider);
+            end;
+         end if;
+
          declare
             handle : TIO.File_Type;
          begin

@@ -1442,6 +1442,10 @@ package body Archive.Unpack is
       num_scripts  : constant Natural := tree.get_number_of_array_elements (vndx);
       error_prefix : constant String := phase_key & " Bourne shell script number";
       msg_outfile  : constant String := Bourne.unique_msgfile_path;
+      z_namebase   : constant String := get_meta_string (tree, "namebase");
+      z_subpackage : constant String := get_meta_string (tree, "subpackage");
+      z_variant    : constant String := get_meta_string (tree, "variant");
+      z_prefix     : constant String := get_meta_string (tree, "prefix");
       vndx2        : ThickUCL.object_index;
       script_good  : Boolean;
 
@@ -1487,10 +1491,10 @@ package body Archive.Unpack is
                begin
                   if script_good then
                      Bourne.run_shell_script
-                       (namebase    => get_meta_string (tree, "namebase"),
-                        subpackage  => get_meta_string (tree, "subpackage"),
-                        variant     => get_meta_string (tree, "variant"),
-                        prefix      => get_meta_string (tree, "prefix"),
+                       (namebase    => z_namebase,
+                        subpackage  => z_subpackage,
+                        variant     => z_variant,
+                        prefix      => z_prefix,
                         root_dir    => root_dir,
                         upgrading   => upgrading,
                         interpreter => interpreter,
@@ -1506,7 +1510,7 @@ package body Archive.Unpack is
             when others => SQW.emit_error (error_prefix & index'Img & " not of type object");
          end case;
       end loop;
-      Bourne.show_post_run_messages (msg_outfile);
+      Bourne.show_post_run_messages (msg_outfile, z_namebase, z_subpackage, z_variant);
    end execute_bourne_scripts;
 
 
@@ -1524,6 +1528,10 @@ package body Archive.Unpack is
       num_scripts  : constant Natural := tree.get_number_of_array_elements (vndx);
       error_prefix : constant String := phase_key & " Lua script number";
       msg_outfile  : constant String := Lua.unique_msgfile_path;
+      z_namebase   : constant String := get_meta_string (tree, "namebase");
+      z_subpackage : constant String := get_meta_string (tree, "subpackage");
+      z_variant    : constant String := get_meta_string (tree, "variant");
+      z_prefix     : constant String := get_meta_string (tree, "prefix");
       vndx2        : ThickUCL.object_index;
       script_good  : Boolean;
 
@@ -1578,10 +1586,10 @@ package body Archive.Unpack is
                begin
                   if script_good then
                      Lua.run_lua_script
-                       (namebase    => get_meta_string (tree, "namebase"),
-                        subpackage  => get_meta_string (tree, "subpackage"),
-                        variant     => get_meta_string (tree, "variant"),
-                        prefix      => get_meta_string (tree, "prefix"),
+                       (namebase    => z_namebase,
+                        subpackage  => z_subpackage,
+                        variant     => z_variant,
+                        prefix      => z_prefix,
                         root_dir    => root_dir,
                         upgrading   => upgrading,
                         script      => script,
@@ -1596,7 +1604,7 @@ package body Archive.Unpack is
             when others => SQW.emit_error (error_prefix & index'Img & " not of type object");
          end case;
       end loop;
-      Lua.show_post_run_messages (msg_outfile);
+      Lua.show_post_run_messages (msg_outfile, z_namebase, z_subpackage, z_variant);
    end execute_lua_scripts;
 
 

@@ -35,7 +35,11 @@ package Bourne is
    function unique_msgfile_path return String;
 
    --  Disable any postrun messages and remove the temporary file
-   procedure show_post_run_messages (msg_outfile : String);
+   procedure show_post_run_messages
+     (msg_outfile : String;
+      namebase    : String;
+      subpackage  : String;
+      variant     : String);
 
    interpreter_missing : exception;
    ginormous_script    : exception;

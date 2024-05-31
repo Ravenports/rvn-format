@@ -149,7 +149,7 @@ package body Archive.Whitelist.Keywords is
             result := False;
             SQW.emit_error ("Fail to apply keyword '" & keyword & "'");
          end if;
-         Lua.show_post_run_messages (msg_outfile);
+         Lua.show_post_run_messages (msg_outfile, namebase, subpackage, variant);
       end if;
 
       if result then
