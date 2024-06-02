@@ -663,7 +663,8 @@ package body Archive.Unpack is
          declare
             testdir : constant String := Unix.real_path (install_root);
          begin
-            if testdir = "" then
+            if testdir = "" or else testdir = "/"
+            then
                return "/";
             end if;
             return testdir & "/";
