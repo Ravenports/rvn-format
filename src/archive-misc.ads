@@ -45,6 +45,11 @@ package Archive.Misc is
    --  The algorithm is platform specific.
    function determine_abi return String;
 
+   --  If first part is "/", returns "/<second_part>"  (avoids double slash)
+   --  If first part is blank, returns "/<second_part>"
+   --  If first part is not blank, returns "<first_part>/<second_part>"
+   function join_path (first_part : String; second_part : String) return String;
+
 private
 
    subtype doubleword is String (1 .. 4);

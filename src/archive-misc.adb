@@ -379,4 +379,16 @@ package body Archive.Misc is
       return get_osname & ":" & get_arch & ":" & get_release;
    end determine_abi;
 
+
+   -----------------
+   --  join_path  --
+   -----------------
+   function join_path (first_part : String; second_part : String) return String is
+   begin
+      if first_part = "/" or else first_part = "" then
+         return "/" & second_part;
+      end if;
+      return first_part & "/" & second_part;
+   end join_path;
+
 end Archive.Misc;

@@ -976,8 +976,9 @@ package body Archive.Unpack is
 
       procedure make_directory (directory_id : Positive)
       is
-         full_path : constant String := top_directory &
-           "/" & ASU.To_String (DS.folders.Element (directory_id).directory);
+         full_path : constant String :=
+           Misc.join_path (top_directory,
+                           ASU.To_String (DS.folders.Element (directory_id).directory));
       begin
          if DIR.Exists (full_path) then
             case DIR.Kind (full_path) is
@@ -1045,7 +1046,8 @@ package body Archive.Unpack is
 
       procedure make_hardlink (duplicate : String; link_len : max_path)
       is
-         source : constant String := top_directory & "/" & DS.retrieve_link_target (link_len);
+         source : constant String := Misc.join_path (top_directory,
+                                                     DS.retrieve_link_target (link_len));
       begin
          DS.prepare_for_overwrite (duplicate);
          if Unix.create_hardlink (actual_file => source,
@@ -1087,16 +1089,21 @@ package body Archive.Unpack is
       is
       begin
          if parent_dir = 0 then
-            return top_directory & "/" & file_name;
+            return Misc.join_path (top_directory, file_name);
          else
-            return top_directory &
-              "/" & ASU.To_String (DS.folders.Element (Positive (parent_dir)).directory) &
-              "/" & file_name;
+            return Misc.join_path
+              (top_directory,
+               ASU.To_String (DS.folders.Element (Positive (parent_dir)).directory) &
+                 "/" & file_name);
          end if;
       end absolute_path;
 
       use type SIO.Count;
    begin
+      if top_directory = "" then
+         DS.print (normal, "top_directory is blank.  Perhaps '.' or '/' was intended?");
+         return False;
+      end if;
       if not Unix.file_is_writable (top_directory) then
          DS.print (normal, "You do not have permission to write to " & top_directory);
          return False;
