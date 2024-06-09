@@ -9,17 +9,21 @@ package ThickUCL.Emitter is
 
    --  Given a UclTree structure, return the string representation as a single line.
    --  The root object is wrapped in curly braces, removing any trailing commas
-   function emit_compact_ucl (tree : UclTree) return String;
+   --  Set as_json as true to emit as JSON format instead
+   function emit_compact_ucl (tree : UclTree; as_json : Boolean := False) return String;
 
 private
 
    LF : constant Character := Character'Val (10);
 
-   --  Wrap key in single quotes if it contains a space, comma, colon, single or double quote.
-   --  (single quotes are escaped)
+   --  Wrap key in double quotes if it contains a space, comma, colon, period, or several
+   --  other non-alphanumeric characters.  Single quotes are escaped.
+   --  If as_json is set, key is always wrapped in double quotes.
    --  If the raw string contains a new line (or any character with ASCII < 32),
    --  that character is eliminated.  Also eliminate ASCII > 126
-   function format_key (raw : String) return String;
+   function format_key
+     (raw : String;
+      as_json : Boolean) return String;
 
    --  If heredoc is true, and string contains \n newline, wrap it between "<<EOD\n" and "\nEOD"
    --  Otherwise escape special characters and then write it in single quotes.

@@ -27,7 +27,7 @@ package body ThickUCL.Emitter is
          raw_key : constant String := ASU.To_String (jar_string.Element (Position).payload);
          valtype : Leaf_type;
       begin
-         ASU.Append (canvas, format_key (raw_key) & ": ");
+         ASU.Append (canvas, format_key (raw_key, False) & ": ");
          valtype := tree.get_data_type (raw_key);
          case valtype is
             when data_not_present =>
@@ -110,7 +110,7 @@ package body ThickUCL.Emitter is
             valtype  : Leaf_type;
          begin
             valtype := tree.get_object_data_type (vndx, this_key);
-            ASU.Append (canvas, indent & format_key (this_key) & ": ");
+            ASU.Append (canvas, indent & format_key (this_key, False) & ": ");
             case valtype is
                when data_not_present =>
                   ASU.Append (canvas, "null");  -- should be impossible
@@ -154,7 +154,7 @@ package body ThickUCL.Emitter is
    ------------------------
    --  emit_compact_ucl  --
    ------------------------
-   function emit_compact_ucl (tree : UclTree) return String
+   function emit_compact_ucl (tree : UclTree; as_json : Boolean := False) return String
    is
       procedure scan_key (Position : jar_string.Cursor);
       procedure dive_into_array (vndx : array_index);
@@ -180,7 +180,7 @@ package body ThickUCL.Emitter is
          raw_key : constant String := ASU.To_String (jar_string.Element (Position).payload);
          valtype : Leaf_type;
       begin
-         ASU.Append (canvas, format_key (raw_key) & ":");
+         ASU.Append (canvas, format_key (raw_key, as_json) & ":");
          valtype := tree.get_data_type (raw_key);
          case valtype is
             when data_not_present =>
@@ -259,7 +259,7 @@ package body ThickUCL.Emitter is
             valtype  : Leaf_type;
          begin
             valtype := tree.get_object_data_type (vndx, this_key);
-            ASU.Append (canvas,  format_key (this_key) & ":");
+            ASU.Append (canvas,  format_key (this_key, as_json) & ":");
             case valtype is
                when data_not_present =>
                   ASU.Append (canvas, "null" & cm);  -- should be impossible
@@ -495,7 +495,7 @@ package body ThickUCL.Emitter is
    ------------------
    --  format_key  --
    ------------------
-   function format_key (raw : String) return String
+   function format_key (raw : String;  as_json : Boolean) return String
    is
       procedure single_copy (char : Character);
       procedure escape_quote;
@@ -526,6 +526,9 @@ package body ThickUCL.Emitter is
          single_copy (char);
       end copy_set_quote;
    begin
+      if as_json then
+         quotes := True;
+      end if;
       for k in raw'Range loop
          case raw (k) is
             when '0' .. '9' | 'A' .. 'Z' | 'a' .. 'z' | '-' | '_' =>
