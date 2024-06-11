@@ -9,6 +9,7 @@ with Ada.Direct_IO;
 with Ada.Text_IO;
 with GNAT.OS_Lib;
 with Archive.Misc;
+with Archive.Unix;
 
 package body Bourne is
 
@@ -91,6 +92,8 @@ package body Bourne is
       success     : out Boolean)
    is
       num_args : Natural;
+      return_code : Integer;
+      execution_output_file : constant String := unique_msgfile_path;
    begin
       if not DIR.Exists (interpreter) then
          raise interpreter_missing;
@@ -140,7 +143,10 @@ package body Bourne is
                GNAT.OS_Lib.Spawn
                  (Program_Name => Args (Args'First).all,
                   Args         => Args (Args'First + 1 .. Args'Last),
-                  Success      => success);
+                  Output_File  => execution_output_file,
+                  Success      => success,
+                  Return_Code  => return_code,
+                  Err_To_Out   => True);
 
                --  Free memory
                for Index in Args'Range loop
@@ -170,7 +176,10 @@ package body Bourne is
             GNAT.OS_Lib.Spawn
               (Program_Name => Args (Args'First).all,
                Args         => Args (Args'First + 1 .. Args'Last),
-               Success      => success);
+               Output_File  => execution_output_file,
+               Success      => success,
+               Return_Code  => return_code,
+               Err_To_Out   => True);
 
             --  Free memory
             for Index in Args'Range loop
@@ -186,6 +195,32 @@ package body Bourne is
       ENV.Clear ("PKG_ROOTDIR");
       ENV.Clear ("PKG_OUTFILE");
       ENV.Clear ("PKG_UPGRADE");
+
+      --  If spawn output file has content, add it to the PKG_OUTFILE.
+      declare
+         features1  : Archive.Unix.File_Characteristics;
+         features2 : Archive.Unix.File_Characteristics;
+      begin
+         features1 := Archive.Unix.get_charactistics (execution_output_file);
+         features2 := Archive.Unix.get_charactistics (msg_outfile);
+         case features1.ftype is
+            when Archive.regular =>
+               if Natural (features1.size) > 10 then
+                  case features2.ftype is
+                     when Archive.unsupported =>
+                        Ada.Directories.Copy_File (execution_output_file, msg_outfile);
+                     when Archive.regular =>
+                        append_file (msg_outfile, execution_output_file);
+                     when others => null;
+                  end case;
+               end if;
+            when others => null;
+         end case;
+         if Archive.Unix.unlink_file (execution_output_file) then
+            null;
+         end if;
+      end;
+
    end run_shell_script;
 
 
@@ -206,7 +241,7 @@ package body Bourne is
             declare
                divlength : constant Natural := 75;
                partone : constant String := namebase & '-' & subpackage & '-' & variant &
-                 "  shell script messages  ";
+                 " shell script messages  ";
                divider : String (1 .. divlength) := (others => '-');
             begin
                if partone'Length > divlength then
@@ -266,5 +301,30 @@ package body Bourne is
          raise file_dump with "unknown error";
    end dump_contents_to_file;
 
+
+   -------------------
+   --  append_file  --
+   -------------------
+   procedure append_file (file_to_write : String; file_to_read : String)
+   is
+      main_file : TIO.File_Type;
+      temp_file : TIO.File_Type;
+   begin
+      TIO.Open (main_file, TIO.In_File, file_to_write);
+      TIO.Open (temp_file, TIO.Out_File, file_to_read);
+      while not TIO.End_Of_File (temp_file) loop
+         TIO.Put_Line (main_file, TIO.Get_Line (temp_file));
+      end loop;
+      TIO.Close (temp_file);
+      TIO.Close (main_file);
+   exception
+      when others =>
+         if TIO.Is_Open (temp_file) then
+            TIO.Close (temp_file);
+         end if;
+         if TIO.Is_Open (main_file) then
+            TIO.Close (main_file);
+         end if;
+   end append_file;
 
 end Bourne;

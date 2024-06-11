@@ -54,4 +54,7 @@ private
    --  Transfers the contents of a string to a file in one pass.
    procedure dump_contents_to_file (contents : String; dossier : String);
 
+   --  Transfers the contents of file_to_read to the end of file_to_write
+   procedure append_file (file_to_write : String; file_to_read : String);
+
 end Bourne;

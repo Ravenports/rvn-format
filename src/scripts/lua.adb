@@ -128,7 +128,7 @@ package body Lua is
             declare
                divlength : constant Natural := 75;
                partone : constant String := namebase & '-' & subpackage & '-' & variant &
-                 "  Lua script messages  ";
+                 " Lua script messages  ";
                divider : String (1 .. divlength) := (others => '-');
             begin
                if partone'Length > divlength then
