@@ -246,6 +246,7 @@ begin
       operation : Archive.Unpack.Darc;
       level     : Archive.info_level := Archive.normal;
       exitcode  : CLI.Exit_Status := 0;
+      dummy     : TIO.File_Type;
    begin
       if not DIR.Exists (filename) then
          error ("The rvn archive (" & filename & ") does not exist.");
@@ -297,7 +298,8 @@ begin
                                                   set_perms     => set_perms,
                                                   set_modtime   => set_modtime,
                                                   skip_scripts  => False,
-                                                  upgrading     => False);
+                                                  upgrading     => False,
+                                                  extract_log   => dummy);
 
             if not success then
                if not opt_quiet then

@@ -6,7 +6,6 @@ with Ada.Strings.Fixed;
 with Ada.Directories;
 with Ada.Real_Time;
 with Ada.Direct_IO;
-with Ada.Text_IO;
 with GNAT.OS_Lib;
 with Archive.Misc;
 with Archive.Unix;
@@ -64,15 +63,34 @@ package body Bourne is
             extension  : constant String := random_extension;
             candidate  : constant String := tmp & ".rvn_outmsg." & extension;
             scriptfile : constant String := tmp & ".rvn_script." & extension;
+            stdoutfile : constant String := tmp & ".rvn_stdout." & extension;
          begin
             if not DIR.Exists (candidate) and then
-              not DIR.Exists (scriptfile)
+              not DIR.Exists (scriptfile) and then
+              not DIR.Exists (stdoutfile)
             then
                return candidate;
             end if;
          end;
       end loop;
    end unique_msgfile_path;
+
+
+   --------------------
+   --  new_filename  --
+   --------------------
+   function new_filename (msg_outfile: String; tftype : temp_file_type) return String
+   is
+      new_file : String := msg_outfile;
+      start_index : constant Natural := Ada.Strings.Fixed.Index (msg_outfile, "outmsg");
+   begin
+      case tftype is
+         when ft_outmsg => null;
+         when ft_script => new_file (start_index .. start_index + 5) := "script";
+         when ft_stdout => new_file (start_index .. start_index + 5) := "stdout";
+      end case;
+      return new_file;
+   end new_filename;
 
 
    ------------------------
@@ -93,7 +111,8 @@ package body Bourne is
    is
       num_args : Natural;
       return_code : Integer;
-      execution_output_file : constant String := unique_msgfile_path;
+      script_file : constant String := new_filename (msg_outfile, ft_script);
+      std_outfile : constant String := new_filename (msg_outfile, ft_stdout);
    begin
       if not DIR.Exists (interpreter) then
          raise interpreter_missing;
@@ -119,43 +138,37 @@ package body Bourne is
          if script'Length > 262_144 then
             raise ginormous_script with "> 256KB";
          end if;
+         dump_contents_to_file (script, script_file);
+
          declare
-            script_file : String := msg_outfile;
-            start_index : constant Natural := Ada.Strings.Fixed.Index (msg_outfile, "outmsg");
+            last_arg : constant Natural := 2 + num_args;
+            Args : GNAT.OS_Lib.Argument_List (1 .. last_arg);
          begin
-            script_file (start_index .. start_index + 5) := "script";
-            dump_contents_to_file (script, script_file);
+            Args (1) := new String'(interpreter);
+            Args (2) := new String'(script_file);
+            for x in 1 .. num_args loop
+               declare
+                  new_arg : constant String := MSC.specific_field (arguments, x);
+               begin
+                  Args (2 + x) := new String'(new_arg);
+               end;
+            end loop;
 
-            declare
-               last_arg : constant Natural := 2 + num_args;
-               Args : GNAT.OS_Lib.Argument_List (1 .. last_arg);
-            begin
-               Args (1) := new String'(interpreter);
-               Args (2) := new String'(script_file);
-               for x in 1 .. num_args loop
-                  declare
-                     new_arg : constant String := MSC.specific_field (arguments, x);
-                  begin
-                     Args (2 + x) := new String'(new_arg);
-                  end;
-               end loop;
-
-               GNAT.OS_Lib.Spawn
-                 (Program_Name => Args (Args'First).all,
-                  Args         => Args (Args'First + 1 .. Args'Last),
-                  Output_File  => execution_output_file,
-                  Success      => success,
-                  Return_Code  => return_code,
-                  Err_To_Out   => True);
+            GNAT.OS_Lib.Spawn
+              (Program_Name => Args (Args'First).all,
+               Args         => Args (Args'First + 1 .. Args'Last),
+               Output_File  => std_outfile,
+               Success      => success,
+               Return_Code  => return_code,
+               Err_To_Out   => True);
 
                --  Free memory
-               for Index in Args'Range loop
-                  GNAT.OS_Lib.Free (Args (Index));
-               end loop;
-            end;
-
-            DIR.Delete_File (script_file);
+            for Index in Args'Range loop
+               GNAT.OS_Lib.Free (Args (Index));
+            end loop;
          end;
+
+         DIR.Delete_File (script_file);
       else
          declare
             last_arg : constant Natural := 4 + num_args;
@@ -176,7 +189,7 @@ package body Bourne is
             GNAT.OS_Lib.Spawn
               (Program_Name => Args (Args'First).all,
                Args         => Args (Args'First + 1 .. Args'Last),
-               Output_File  => execution_output_file,
+               Output_File  => std_outfile,
                Success      => success,
                Return_Code  => return_code,
                Err_To_Out   => True);
@@ -196,31 +209,6 @@ package body Bourne is
       ENV.Clear ("PKG_OUTFILE");
       ENV.Clear ("PKG_UPGRADE");
 
-      --  If spawn output file has content, add it to the PKG_OUTFILE.
-      declare
-         features1  : Archive.Unix.File_Characteristics;
-         features2 : Archive.Unix.File_Characteristics;
-      begin
-         features1 := Archive.Unix.get_charactistics (execution_output_file);
-         features2 := Archive.Unix.get_charactistics (msg_outfile);
-         case features1.ftype is
-            when Archive.regular =>
-               if Natural (features1.size) > 10 then
-                  case features2.ftype is
-                     when Archive.unsupported =>
-                        Ada.Directories.Copy_File (execution_output_file, msg_outfile);
-                     when Archive.regular =>
-                        append_file (msg_outfile, execution_output_file);
-                     when others => null;
-                  end case;
-               end if;
-            when others => null;
-         end case;
-         if Archive.Unix.unlink_file (execution_output_file) then
-            null;
-         end if;
-      end;
-
    end run_shell_script;
 
 
@@ -231,42 +219,76 @@ package body Bourne is
      (msg_outfile : String;
       namebase    : String;
       subpackage  : String;
-      variant     : String)
+      variant     : String;
+      extract_log : Ada.Text_IO.File_Type)
    is
-      use type TIO.File_Access;
-   begin
-      --  Provide delayed message text if it exists
-      if DIR.Exists (msg_outfile) then
-         if TIO.Current_Output /= TIO.Standard_Output then
-            declare
-               divlength : constant Natural := 75;
-               partone : constant String := namebase & '-' & subpackage & '-' & variant &
-                 " shell script messages  ";
-               divider : String (1 .. divlength) := (others => '-');
-            begin
-               if partone'Length > divlength then
-                  divider := partone (partone'First .. partone'First + divlength - 1);
-               else
-                  divider (divider'First .. divider'First + partone'Length - 1) := partone;
-               end if;
-               TIO.Put_Line (divider);
-            end;
-         end if;
+      redirected : constant Boolean := TIO.Is_Open (extract_log);
+      std_outfile : constant String := new_filename (msg_outfile, ft_stdout);
+      features1 : Archive.Unix.File_Characteristics;
+      features2 : Archive.Unix.File_Characteristics;
+      msg_file_exists : Boolean := False;
+      std_file_exists : Boolean := False;
 
-         declare
-            handle : TIO.File_Type;
-         begin
-            TIO.Open (File => handle,
-                      Mode => TIO.In_File,
-                      Name => msg_outfile);
-            while not TIO.End_Of_File (handle) loop
+      procedure display_and_delete_file (filename : String)
+      is
+         handle : TIO.File_Type;
+      begin
+         TIO.Open (File => handle,
+                   Mode => TIO.In_File,
+                   Name => msg_outfile);
+         while not TIO.End_Of_File (handle) loop
+            if redirected then
+               TIO.Put_Line (extract_log, TIO.Get_Line (handle));
+            else
                TIO.Put_Line (TIO.Get_Line (handle));
-            end loop;
-         exception
-            when others => null;
-         end;
-         DIR.Delete_File (msg_outfile);
+            end if;
+         end loop;
+         DIR.Delete_File (filename);
+      exception
+         when others => null;
+      end display_and_delete_file;
+   begin
+      features1 := Archive.Unix.get_charactistics (msg_outfile);
+      features2 := Archive.Unix.get_charactistics (std_outfile);
+
+      case features1.ftype is
+         when Archive.regular =>
+            msg_file_exists := True;
+         when others => null;
+      end case;
+
+      if Archive.">" (features2.size, Archive.exabytes (1)) then
+         std_file_exists := True;
       end if;
+
+      if not msg_file_exists and then not std_file_exists then
+         return;
+      end if;
+
+      if redirected then
+         declare
+            divlength : constant Natural := 75;
+            partone : constant String := namebase & '-' & subpackage & '-' & variant &
+              " shell script messages  ";
+            divider : String (1 .. divlength) := (others => '-');
+         begin
+            if partone'Length > divlength then
+               divider := partone (partone'First .. partone'First + divlength - 1);
+            else
+               divider (divider'First .. divider'First + partone'Length - 1) := partone;
+            end if;
+            TIO.Put_Line (extract_log, divider);
+         end;
+      end if;
+
+      if std_file_exists then
+         display_and_delete_file (std_outfile);
+      end if;
+
+      if msg_file_exists then
+         display_and_delete_file (msg_outfile);
+      end if;
+
    end show_post_run_messages;
 
 
@@ -310,8 +332,8 @@ package body Bourne is
       main_file : TIO.File_Type;
       temp_file : TIO.File_Type;
    begin
-      TIO.Open (main_file, TIO.In_File, file_to_write);
-      TIO.Open (temp_file, TIO.Out_File, file_to_read);
+      TIO.Open (main_file, TIO.Append_File, file_to_write);
+      TIO.Open (temp_file, TIO.in_File, file_to_read);
       while not TIO.End_Of_File (temp_file) loop
          TIO.Put_Line (main_file, TIO.Get_Line (temp_file));
       end loop;

@@ -1,7 +1,11 @@
 --  SPDX-License-Identifier: ISC
 --  Reference: /License.txt
 
+with Ada.Text_IO;
+
 package Bourne is
+
+   type temp_file_type is (ft_outmsg, ft_script, ft_stdout);
 
    --  At it's most basic, this procedure runs the given script by the given interpreter
    --  (normally /bin/sh) while setting some environment variables to the values of the
@@ -34,12 +38,16 @@ package Bourne is
    --  Return a randomly-named msgfile path that isn't currently being used.
    function unique_msgfile_path return String;
 
+   --  Replaces "outmsg" with "script" or "stdout" to get similar temporary file name.
+   function new_filename (msg_outfile: String; tftype : temp_file_type) return String;
+
    --  Disable any postrun messages and remove the temporary file
    procedure show_post_run_messages
      (msg_outfile : String;
       namebase    : String;
       subpackage  : String;
-      variant     : String);
+      variant     : String;
+      extract_log : Ada.Text_IO.File_Type);
 
    interpreter_missing : exception;
    ginormous_script    : exception;

@@ -1,6 +1,7 @@
 --  SPDX-License-Identifier: ISC
 --  Reference: /License.txt
 
+with Ada.Text_IO;
 with Ada.Containers.Vectors;
 with Ada.Streams.Stream_IO;
 with Ada.Strings.Unbounded;
@@ -82,7 +83,8 @@ package Archive.Unpack is
       set_perms     : Boolean;
       set_modtime   : Boolean;
       skip_scripts  : Boolean;
-      upgrading     : Boolean) return Boolean;
+      upgrading     : Boolean;
+      extract_log   : Ada.Text_IO.File_Type) return Boolean;
 
    --  This function sends some of the values of the uncompressed block 1 to standard out.
    procedure print_magic_block (DS : DArc);
@@ -250,7 +252,8 @@ private
       phase_key     : String;
       root_dir      : String;
       interpreter   : String;
-      upgrading     : Boolean);
+      upgrading     : Boolean;
+      extract_log   : Ada.Text_IO.File_Type);
 
    --  Executes Lua scripts of the given phase_key.  There could be more than one.
    procedure execute_lua_scripts

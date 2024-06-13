@@ -2,7 +2,6 @@
 --  Reference: /License.txt
 
 with System;
-with Ada.Text_IO;
 with Ada.Direct_IO;
 with Ada.Directories;
 with Ada.Unchecked_Deallocation;
@@ -862,7 +861,8 @@ package body Archive.Unpack is
       set_perms     : Boolean;
       set_modtime   : Boolean;
       skip_scripts  : Boolean;
-      upgrading     : Boolean) return Boolean
+      upgrading     : Boolean;
+      extract_log   : TIO.File_Type) return Boolean
    is
       procedure extract (position : file_block_crate.Cursor);
       procedure second_pass (position : file_block_crate.Cursor);
@@ -1121,7 +1121,8 @@ package body Archive.Unpack is
                   phase_key     => "pre-install",
                   root_dir      => top_directory,
                   interpreter   => interpreter,
-                  upgrading     => upgrading);
+                  upgrading     => upgrading,
+                  extract_log   => extract_log);
             end if;
             if phase_scripts_exists (metadata_tree, scripts_index, "pre-install-lua") then
                execute_lua_scripts
@@ -1153,7 +1154,8 @@ package body Archive.Unpack is
                phase_key     => "post-install",
                root_dir      => top_directory,
                interpreter   => interpreter,
-               upgrading     => upgrading);
+               upgrading     => upgrading,
+               extract_log   => extract_log);
          end if;
          if phase_scripts_exists (metadata_tree, scripts_index, "post-install-lua") then
             execute_lua_scripts
@@ -1444,7 +1446,8 @@ package body Archive.Unpack is
       phase_key     : String;
       root_dir      : String;
       interpreter   : String;
-      upgrading     : Boolean)
+      upgrading     : Boolean;
+      extract_log   : Ada.Text_IO.File_Type)
    is
       vndx : constant ThickUCL.array_index := tree.get_object_array (scripts_index, phase_key);
       num_scripts  : constant Natural := tree.get_number_of_array_elements (vndx);
@@ -1518,7 +1521,7 @@ package body Archive.Unpack is
             when others => SQW.emit_error (error_prefix & index'Img & " not of type object");
          end case;
       end loop;
-      Bourne.show_post_run_messages (msg_outfile, z_namebase, z_subpackage, z_variant);
+      Bourne.show_post_run_messages (msg_outfile, z_namebase, z_subpackage, z_variant, extract_log);
    end execute_bourne_scripts;
 
 
