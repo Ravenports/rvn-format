@@ -3,7 +3,6 @@
 
 with Ada.Strings.Hash;
 with Ada.Strings.Fixed;
-with Ada.Text_IO;
 with Archive.Unix;
 with Archive.Communication;
 with Archive.Whitelist.Keywords;
@@ -77,7 +76,8 @@ package body Archive.Whitelist is
       namebase           : String;
       subpackage         : String;
       variant            : String;
-      level              : info_level) return Boolean
+      level              : info_level;
+      integrate_log      : Ada.Text_IO.File_Type) return Boolean
    is
       type linecat is (jump, external_keyword, file_path, mode_override, key_error);
 
@@ -267,7 +267,8 @@ package body Archive.Whitelist is
                namebase      => namebase,
                subpackage    => subpackage,
                variant       => variant,
-               level         => level)
+               level         => level,
+               extract_log   => integrate_log)
             then
                succeeded := False;
             end if;

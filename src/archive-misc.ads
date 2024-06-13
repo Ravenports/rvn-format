@@ -7,6 +7,7 @@ package Archive.Misc is
 
    package ASU renames Ada.Strings.Unbounded;
 
+   type temp_file_type is (ft_outmsg, ft_script, ft_stdout);
 
    --  Head (keep all but last delimiter and field)
    function head (S : String; delimiter : String) return String;
@@ -49,6 +50,9 @@ package Archive.Misc is
    --  If first part is blank, returns "/<second_part>"
    --  If first part is not blank, returns "<first_part>/<second_part>"
    function join_path (first_part : String; second_part : String) return String;
+
+   --  Replaces "outmsg" with "script" or "stdout" to get similar temporary file name.
+   function new_filename (msg_outfile : String; tftype : temp_file_type) return String;
 
 private
 

@@ -28,7 +28,8 @@ package body Archive.Whitelist.Keywords is
       namebase      : String;
       subpackage    : String;
       variant       : String;
-      level         : info_level) return Boolean
+      level         : info_level;
+      extract_log   : Ada.Text_IO.File_Type) return Boolean
    is
       procedure process_action (Position : action_set.Cursor);
       procedure process_arg (Position : arg_crate.Cursor);
@@ -149,7 +150,7 @@ package body Archive.Whitelist.Keywords is
             result := False;
             SQW.emit_error ("Fail to apply keyword '" & keyword & "'");
          end if;
-         Lua.show_post_run_messages (msg_outfile, namebase, subpackage, variant);
+         Lua.show_post_run_messages (msg_outfile, namebase, subpackage, variant, extract_log);
       end if;
 
       if result then

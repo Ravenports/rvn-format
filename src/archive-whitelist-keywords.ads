@@ -1,6 +1,8 @@
 --  SPDX-License-Identifier: ISC
 --  Reference: /License.txt
 
+with Ada.Text_IO;
+
 private with Ada.Strings.Unbounded;
 private with ThickUCL;
 
@@ -18,7 +20,8 @@ package Archive.Whitelist.Keywords is
       namebase      : String;
       subpackage    : String;
       variant       : String;
-      level         : info_level) return Boolean;
+      level         : info_level;
+      extract_log   : Ada.Text_IO.File_Type) return Boolean;
 
 private
 

@@ -1,6 +1,7 @@
 --  SPDX-License-Identifier: ISC
 --  Reference: /License.txt
 
+with Ada.Text_IO;
 with Blake_3;
 private with Ada.Containers.Hashed_Maps;
 private with Ada.Containers.Vectors;
@@ -50,7 +51,8 @@ package Archive.Whitelist is
       namebase           : String;
       subpackage         : String;
       variant            : String;
-      level              : info_level) return Boolean;
+      level              : info_level;
+      integrate_log      : Ada.Text_IO.File_Type) return Boolean;
 
 
    --  Returns true if given path has been whitelisted (and therefore needs to be archived).

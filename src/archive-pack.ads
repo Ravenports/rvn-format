@@ -1,6 +1,7 @@
 --  SPDX-License-Identifier: ISC
 --  Reference: /License.txt
 
+with Ada.Text_IO;
 with Ada.Containers.Vectors;
 with Ada.Streams.Stream_IO;
 with Archive.Whitelist;
@@ -29,6 +30,7 @@ package Archive.Pack is
       fixed_timestamp     : filetime;
       verbosity           : info_level;
       record_base_libs    : Boolean;
+      integrate_log       : Ada.Text_IO.File_Type;
       optional_pipe       : Unix.File_Descriptor := Unix.not_connected)
       return Boolean;
 

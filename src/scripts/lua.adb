@@ -1,12 +1,12 @@
 --  SPDX-License-Identifier: ISC
 --  Reference: /License.txt
 
-with Ada.Text_IO;
 with Ada.Real_Time;
 with Ada.Exceptions;
 with Ada.Directories;
 with Ada.Strings.Unbounded;
 with Archive.Dirent.Scan;
+with Archive.Misc;
 with GNAT.OS_Lib;
 with Blake_3;
 
@@ -18,6 +18,7 @@ package body Lua is
    package EX  renames Ada.Exceptions;
    package DIR renames Ada.Directories;
    package ASU renames Ada.Strings.Unbounded;
+   package MSC renames Archive.Misc;
 
 
    ----------------------
@@ -80,7 +81,20 @@ package body Lua is
       --  The arguments are concatenated with null characters.
       insert_arguments (state, arg_chain);
 
-      status := Protected_Call (state, 0, MULTRET);
+      declare
+         std_outfile : constant String := MSC.new_filename (msg_outfile, MSC.ft_stdout);
+         handle : TIO.File_Type;
+      begin
+         TIO.Create (File => handle, Name => std_outfile);
+         TIO.Set_Output (handle);
+         status := Protected_Call (state, 0, MULTRET);
+         TIO.Set_Output (TIO.Standard_Output);
+         TIO.Close (handle);
+      exception
+         when others =>
+            TIO.Put_Line (TIO.Standard_Error, "Failed to redirect Lua call to output file");
+            status := LUA_ERRFILE;
+      end;
       case status is
          when LUA_OK =>
             declare
@@ -118,41 +132,74 @@ package body Lua is
      (msg_outfile : String;
       namebase    : String;
       subpackage  : String;
-      variant     : String)
+      variant     : String;
+      extract_log : TIO.File_Type)
    is
-      use type TIO.File_Access;
-   begin
-      --  Provide delayed message text if it exists
-      if DIR.Exists (msg_outfile) then
-         if TIO.Current_Output /= TIO.Standard_Output then
-            declare
-               divlength : constant Natural := 75;
-               partone : constant String := namebase & '-' & subpackage & '-' & variant &
-                 " Lua script messages  ";
-               divider : String (1 .. divlength) := (others => '-');
-            begin
-               if partone'Length > divlength then
-                  divider := partone (partone'First .. partone'First + divlength - 1);
-               else
-                  divider (divider'First .. divider'First + partone'Length - 1) := partone;
-               end if;
-               TIO.Put_Line (divider);
-            end;
-         end if;
+      redirected : constant Boolean := TIO.Is_Open (extract_log);
+      std_outfile : constant String := MSC.new_filename (msg_outfile, MSC.ft_stdout);
+      features1 : Archive.Unix.File_Characteristics;
+      features2 : Archive.Unix.File_Characteristics;
+      msg_file_exists : Boolean := False;
+      std_file_exists : Boolean := False;
 
-         declare
-            handle : TIO.File_Type;
-         begin
-            TIO.Open (File => handle,
-                      Mode => TIO.In_File,
-                      Name => msg_outfile);
-            while not TIO.End_Of_File (handle) loop
+      procedure display_and_delete_file (filename : String)
+      is
+         handle : TIO.File_Type;
+      begin
+         TIO.Open (File => handle,
+                   Mode => TIO.In_File,
+                   Name => msg_outfile);
+         while not TIO.End_Of_File (handle) loop
+            if redirected then
+               TIO.Put_Line (extract_log, TIO.Get_Line (handle));
+            else
                TIO.Put_Line (TIO.Get_Line (handle));
-            end loop;
-         exception
-            when others => null;
+            end if;
+         end loop;
+         DIR.Delete_File (filename);
+      exception
+         when others => null;
+      end display_and_delete_file;
+   begin
+      features1 := Archive.Unix.get_charactistics (msg_outfile);
+      features2 := Archive.Unix.get_charactistics (std_outfile);
+
+      case features1.ftype is
+         when Archive.regular =>
+            msg_file_exists := True;
+         when others => null;
+      end case;
+
+      if Archive.">" (features2.size, Archive.exabytes (1)) then
+         std_file_exists := True;
+      end if;
+
+      if not msg_file_exists and then not std_file_exists then
+         return;
+      end if;
+
+      if redirected then
+         declare
+            divlength : constant Natural := 75;
+            partone : constant String := namebase & '-' & subpackage & '-' & variant &
+              " Lua script messages  ";
+            divider : String (1 .. divlength) := (others => '-');
+         begin
+            if partone'Length > divlength then
+               divider := partone (partone'First .. partone'First + divlength - 1);
+            else
+               divider (divider'First .. divider'First + partone'Length - 1) := partone;
+            end if;
+            TIO.Put_Line (extract_log, divider);
          end;
-         DIR.Delete_File (msg_outfile);
+      end if;
+
+      if std_file_exists then
+         display_and_delete_file (std_outfile);
+      end if;
+
+      if msg_file_exists then
+         display_and_delete_file (msg_outfile);
       end if;
    end show_post_run_messages;
 
@@ -200,8 +247,11 @@ package body Lua is
          declare
             extension  : constant String := random_extension;
             candidate  : constant String := tmp & ".rvn_outmsg." & extension;
+            stdoutfile : constant String := tmp & ".rvn_stdout." & extension;
          begin
-            if not DIR.Exists (candidate) then
+            if not DIR.Exists (candidate) and then
+              not DIR.Exists (stdoutfile)
+            then
                return candidate;
             end if;
          end;

@@ -38,6 +38,7 @@ package body Archive.Pack is
       fixed_timestamp     : filetime;
       verbosity           : info_level;
       record_base_libs    : Boolean;
+      integrate_log       : Ada.Text_IO.File_Type;
       optional_pipe       : Unix.File_Descriptor := Unix.not_connected)
       return Boolean
    is
@@ -89,7 +90,8 @@ package body Archive.Pack is
             namebase           => metadata_tree.get_base_value ("namebase"),
             subpackage         => metadata_tree.get_base_value ("subpackage"),
             variant            => metadata_tree.get_base_value ("variant"),
-            level              => verbosity)
+            level              => verbosity,
+            integrate_log      =>  integrate_log)
          then
             return False;
          end if;

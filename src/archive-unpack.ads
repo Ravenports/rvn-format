@@ -261,6 +261,7 @@ private
       scripts_index : ThickUCL.object_index;
       phase_key     : String;
       root_dir      : String;
-      upgrading     : Boolean);
+      upgrading     : Boolean;
+      extract_log   : Ada.Text_IO.File_Type);
 
 end Archive.Unpack;

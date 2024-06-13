@@ -2,7 +2,6 @@
 --  Reference: /License.txt
 
 with Ada.Environment_Variables;
-with Ada.Strings.Fixed;
 with Ada.Directories;
 with Ada.Real_Time;
 with Ada.Direct_IO;
@@ -76,23 +75,6 @@ package body Bourne is
    end unique_msgfile_path;
 
 
-   --------------------
-   --  new_filename  --
-   --------------------
-   function new_filename (msg_outfile : String; tftype : temp_file_type) return String
-   is
-      new_file : String := msg_outfile;
-      start_index : constant Natural := Ada.Strings.Fixed.Index (msg_outfile, "outmsg");
-   begin
-      case tftype is
-         when ft_outmsg => null;
-         when ft_script => new_file (start_index .. start_index + 5) := "script";
-         when ft_stdout => new_file (start_index .. start_index + 5) := "stdout";
-      end case;
-      return new_file;
-   end new_filename;
-
-
    ------------------------
    --  run_shell_script  --
    ------------------------
@@ -111,8 +93,8 @@ package body Bourne is
    is
       num_args : Natural;
       return_code : Integer;
-      script_file : constant String := new_filename (msg_outfile, ft_script);
-      std_outfile : constant String := new_filename (msg_outfile, ft_stdout);
+      script_file : constant String := MSC.new_filename (msg_outfile, MSC.ft_script);
+      std_outfile : constant String := MSC.new_filename (msg_outfile, MSC.ft_stdout);
    begin
       if not DIR.Exists (interpreter) then
          raise interpreter_missing;
@@ -223,7 +205,7 @@ package body Bourne is
       extract_log : Ada.Text_IO.File_Type)
    is
       redirected : constant Boolean := TIO.Is_Open (extract_log);
-      std_outfile : constant String := new_filename (msg_outfile, ft_stdout);
+      std_outfile : constant String := MSC.new_filename (msg_outfile, MSC.ft_stdout);
       features1 : Archive.Unix.File_Characteristics;
       features2 : Archive.Unix.File_Characteristics;
       msg_file_exists : Boolean := False;

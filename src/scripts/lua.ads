@@ -1,6 +1,8 @@
 --  SPDX-License-Identifier: ISC
 --  Reference: /License.txt
 
+with Ada.Text_IO;
+
 private with System;
 private with Interfaces.C.Strings;
 private with Interfaces.C_Streams;
@@ -57,7 +59,8 @@ package Lua is
      (msg_outfile : String;
       namebase    : String;
       subpackage  : String;
-      variant     : String);
+      variant     : String;
+      extract_log : Ada.Text_IO.File_Type);
 
 private
 

@@ -1130,7 +1130,8 @@ package body Archive.Unpack is
                   scripts_index => scripts_index,
                   phase_key     => "pre-install-lua",
                   root_dir      => top_directory,
-                  upgrading     => upgrading);
+                  upgrading     => upgrading,
+                  extract_log   => extract_log);
             end if;
          end if;
       end if;
@@ -1163,7 +1164,8 @@ package body Archive.Unpack is
                scripts_index => scripts_index,
                phase_key     => "post-install-lua",
                root_dir      => top_directory,
-               upgrading     => upgrading);
+               upgrading     => upgrading,
+               extract_log   => extract_log);
          end if;
       end if;
 
@@ -1533,7 +1535,8 @@ package body Archive.Unpack is
       scripts_index : ThickUCL.object_index;
       phase_key     : String;
       root_dir      : String;
-      upgrading     : Boolean)
+      upgrading     : Boolean;
+      extract_log   : Ada.Text_IO.File_Type)
    is
       vndx : constant ThickUCL.array_index := tree.get_object_array (scripts_index, phase_key);
       num_scripts  : constant Natural := tree.get_number_of_array_elements (vndx);
@@ -1615,7 +1618,7 @@ package body Archive.Unpack is
             when others => SQW.emit_error (error_prefix & index'Img & " not of type object");
          end case;
       end loop;
-      Lua.show_post_run_messages (msg_outfile, z_namebase, z_subpackage, z_variant);
+      Lua.show_post_run_messages (msg_outfile, z_namebase, z_subpackage, z_variant, extract_log);
    end execute_lua_scripts;
 
 

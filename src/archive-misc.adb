@@ -391,4 +391,21 @@ package body Archive.Misc is
       return first_part & "/" & second_part;
    end join_path;
 
+
+   --------------------
+   --  new_filename  --
+   --------------------
+   function new_filename (msg_outfile : String; tftype : temp_file_type) return String
+   is
+      new_file : String := msg_outfile;
+      start_index : constant Natural := Ada.Strings.Fixed.Index (msg_outfile, "outmsg");
+   begin
+      case tftype is
+         when ft_outmsg => null;
+         when ft_script => new_file (start_index .. start_index + 5) := "script";
+         when ft_stdout => new_file (start_index .. start_index + 5) := "stdout";
+      end case;
+      return new_file;
+   end new_filename;
+
 end Archive.Misc;
