@@ -39,7 +39,7 @@ package Bourne is
    function unique_msgfile_path return String;
 
    --  Replaces "outmsg" with "script" or "stdout" to get similar temporary file name.
-   function new_filename (msg_outfile: String; tftype : temp_file_type) return String;
+   function new_filename (msg_outfile : String; tftype : temp_file_type) return String;
 
    --  Disable any postrun messages and remove the temporary file
    procedure show_post_run_messages

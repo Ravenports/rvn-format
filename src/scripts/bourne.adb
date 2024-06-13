@@ -79,7 +79,7 @@ package body Bourne is
    --------------------
    --  new_filename  --
    --------------------
-   function new_filename (msg_outfile: String; tftype : temp_file_type) return String
+   function new_filename (msg_outfile : String; tftype : temp_file_type) return String
    is
       new_file : String := msg_outfile;
       start_index : constant Natural := Ada.Strings.Fixed.Index (msg_outfile, "outmsg");
@@ -235,7 +235,7 @@ package body Bourne is
       begin
          TIO.Open (File => handle,
                    Mode => TIO.In_File,
-                   Name => msg_outfile);
+                   Name => filename);
          while not TIO.End_Of_File (handle) loop
             if redirected then
                TIO.Put_Line (extract_log, TIO.Get_Line (handle));
@@ -243,6 +243,7 @@ package body Bourne is
                TIO.Put_Line (TIO.Get_Line (handle));
             end if;
          end loop;
+         TIO.Close (handle);
          DIR.Delete_File (filename);
       exception
          when others => null;
@@ -333,7 +334,7 @@ package body Bourne is
       temp_file : TIO.File_Type;
    begin
       TIO.Open (main_file, TIO.Append_File, file_to_write);
-      TIO.Open (temp_file, TIO.in_File, file_to_read);
+      TIO.Open (temp_file, TIO.In_File, file_to_read);
       while not TIO.End_Of_File (temp_file) loop
          TIO.Put_Line (main_file, TIO.Get_Line (temp_file));
       end loop;
