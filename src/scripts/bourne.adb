@@ -93,6 +93,7 @@ package body Bourne is
    is
       num_args : Natural;
       return_code : Integer;
+      run_success : Boolean;
       script_file : constant String := MSC.new_filename (msg_outfile, MSC.ft_script);
       std_outfile : constant String := MSC.new_filename (msg_outfile, MSC.ft_stdout);
    begin
@@ -140,7 +141,7 @@ package body Bourne is
               (Program_Name => Args (Args'First).all,
                Args         => Args (Args'First + 1 .. Args'Last),
                Output_File  => std_outfile,
-               Success      => success,
+               Success      => run_success,
                Return_Code  => return_code,
                Err_To_Out   => True);
 
@@ -172,7 +173,7 @@ package body Bourne is
               (Program_Name => Args (Args'First).all,
                Args         => Args (Args'First + 1 .. Args'Last),
                Output_File  => std_outfile,
-               Success      => success,
+               Success      => run_success,
                Return_Code  => return_code,
                Err_To_Out   => True);
 
@@ -190,6 +191,11 @@ package body Bourne is
       ENV.Clear ("PKG_ROOTDIR");
       ENV.Clear ("PKG_OUTFILE");
       ENV.Clear ("PKG_UPGRADE");
+
+      case return_code is
+         when 0 => success := True;
+         when others => success := False;
+      end case;
 
    end run_shell_script;
 
