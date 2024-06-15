@@ -140,6 +140,9 @@ package Archive.Whitelist is
    --  Get the message object key for each type of message
    function get_message_key (msgtype : Message_Type) return String;
 
+   --  Takes a single like "4555" and returns the equivalent as permissions type.
+   --  Must be 3 or 4 characters long, consisting of only '0' .. '7' characters
+   function convert_mode (S : String; success : out Boolean) return permissions;
 
 private
 
@@ -267,11 +270,6 @@ private
      (whitelist : in out A_Whitelist;
       level     : info_level);
 
-
-
-   --  Takes a single like "4555" and returns the equivalent as permissions type.
-   --  Must be 3 or 4 characters long, consisting of only '0' .. '7' characters
-   function convert_mode (S : String; success : out Boolean) return permissions;
 
    --  Trims both sides first.  If there's no space, return the result.
    --  If it does contain a space, return the first word.
