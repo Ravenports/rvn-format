@@ -34,6 +34,7 @@ package body Lua is
       script      : String;
       arg_chain   : String;
       msg_outfile : String;
+      out_handle  : Ada.Text_IO.File_Type;
       success     : out Boolean)
    is
       state  : constant Lua_State := New_State;
@@ -81,15 +82,10 @@ package body Lua is
       --  The arguments are concatenated with null characters.
       insert_arguments (state, arg_chain);
 
-      declare
-         std_outfile : constant String := MSC.new_filename (msg_outfile, MSC.ft_stdout);
-         handle : TIO.File_Type;
       begin
-         TIO.Create (File => handle, Name => std_outfile);
-         TIO.Set_Output (handle);
+         TIO.Set_Output (out_handle);
          status := Protected_Call (state, 0, MULTRET);
          TIO.Set_Output (TIO.Standard_Output);
-         TIO.Close (handle);
       exception
          when others =>
             TIO.Put_Line (TIO.Standard_Error, "Failed to redirect Lua call to output file");

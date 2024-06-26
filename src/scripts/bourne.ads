@@ -31,6 +31,7 @@ package Bourne is
       script      : String;
       arguments   : String;
       msg_outfile : String;
+      out_handle  : Ada.Text_IO.File_Type;
       success     : out Boolean);
 
    --  Return a randomly-named msgfile path that isn't currently being used.

@@ -89,13 +89,14 @@ package body Bourne is
       script      : String;
       arguments   : String;
       msg_outfile : String;
+      out_handle  : Ada.Text_IO.File_Type;
       success     : out Boolean)
    is
       num_args : Natural;
       return_code : Integer;
       run_success : Boolean;
       script_file : constant String := MSC.new_filename (msg_outfile, MSC.ft_script);
-      std_outfile : constant String := MSC.new_filename (msg_outfile, MSC.ft_stdout);
+      tmp_outfile : constant String := MSC.new_filename (msg_outfile, MSC.ft_stdout);
    begin
       if not DIR.Exists (interpreter) then
          raise interpreter_missing;
@@ -140,7 +141,7 @@ package body Bourne is
             GNAT.OS_Lib.Spawn
               (Program_Name => Args (Args'First).all,
                Args         => Args (Args'First + 1 .. Args'Last),
-               Output_File  => std_outfile,
+               Output_File  => tmp_outfile,
                Success      => run_success,
                Return_Code  => return_code,
                Err_To_Out   => True);
@@ -172,7 +173,7 @@ package body Bourne is
             GNAT.OS_Lib.Spawn
               (Program_Name => Args (Args'First).all,
                Args         => Args (Args'First + 1 .. Args'Last),
-               Output_File  => std_outfile,
+               Output_File  => tmp_outfile,
                Success      => run_success,
                Return_Code  => return_code,
                Err_To_Out   => True);
@@ -191,6 +192,21 @@ package body Bourne is
       ENV.Clear ("PKG_ROOTDIR");
       ENV.Clear ("PKG_OUTFILE");
       ENV.Clear ("PKG_UPGRADE");
+
+      declare
+         tmp_handle : Ada.Text_IO.File_Type;
+      begin
+         Ada.Text_IO.Open (tmp_handle, Ada.Text_IO.In_File, tmp_outfile);
+         while not Ada.Text_IO.End_Of_File (tmp_handle) loop
+            Ada.Text_IO.Put_Line (out_handle, Ada.Text_IO.Get_Line (tmp_handle));
+         end loop;
+         Ada.Text_IO.Close (tmp_handle);
+      exception
+         when others =>
+            if Ada.Text_IO.Is_Open (tmp_handle) then
+               Ada.Text_IO.Close (tmp_handle);
+            end if;
+      end;
 
       case return_code is
          when 0 => success := True;

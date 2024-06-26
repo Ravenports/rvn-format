@@ -1455,6 +1455,8 @@ package body Archive.Unpack is
       num_scripts  : constant Natural := tree.get_number_of_array_elements (vndx);
       error_prefix : constant String := phase_key & " Bourne shell script number";
       msg_outfile  : constant String := Bourne.unique_msgfile_path;
+      std_outfile  : constant String := Misc.new_filename (msg_outfile, Misc.ft_stdout);
+      out_handle   : Ada.Text_IO.File_Type;
       z_namebase   : constant String := get_meta_string (tree, "namebase");
       z_subpackage : constant String := get_meta_string (tree, "subpackage");
       z_variant    : constant String := get_meta_string (tree, "variant");
@@ -1492,6 +1494,12 @@ package body Archive.Unpack is
          return "";
       end get_arguments;
    begin
+      begin
+         Ada.Text_IO.Create (File => out_handle, Name => std_outfile);
+      exception
+         when others =>
+            SQW.emit_error ("failed to open standard output file");
+      end;
       for index in 0 .. num_scripts - 1 loop
          case tree.get_array_element_type (vndx, index) is
             when ThickUCL.data_object =>
@@ -1514,6 +1522,7 @@ package body Archive.Unpack is
                         script      => script,
                         arguments   => args,
                         msg_outfile => msg_outfile,
+                        out_handle  => out_handle,
                         success     => success);
                      if not success then
                         SQW.emit_notice (error_prefix & index'Img & " failed");
@@ -1523,6 +1532,7 @@ package body Archive.Unpack is
             when others => SQW.emit_error (error_prefix & index'Img & " not of type object");
          end case;
       end loop;
+      Ada.Text_IO.Close (out_handle);
       Bourne.show_post_run_messages (msg_outfile, z_namebase, z_subpackage, z_variant, extract_log);
    end execute_bourne_scripts;
 
@@ -1542,6 +1552,8 @@ package body Archive.Unpack is
       num_scripts  : constant Natural := tree.get_number_of_array_elements (vndx);
       error_prefix : constant String := phase_key & " Lua script number";
       msg_outfile  : constant String := Lua.unique_msgfile_path;
+      std_outfile  : constant String := Misc.new_filename (msg_outfile, Misc.ft_stdout);
+      out_handle   : Ada.Text_IO.File_Type;
       z_namebase   : constant String := get_meta_string (tree, "namebase");
       z_subpackage : constant String := get_meta_string (tree, "subpackage");
       z_variant    : constant String := get_meta_string (tree, "variant");
@@ -1588,6 +1600,12 @@ package body Archive.Unpack is
          return "";
       end get_arguments;
    begin
+      begin
+         Ada.Text_IO.Create (File => out_handle, Name => std_outfile);
+      exception
+         when others =>
+            SQW.emit_error ("failed to open standard output file");
+      end;
       for index in 0 .. num_scripts - 1 loop
          case tree.get_array_element_type (vndx, index) is
             when ThickUCL.data_object =>
@@ -1609,6 +1627,7 @@ package body Archive.Unpack is
                         script      => script,
                         arg_chain   => args,
                         msg_outfile => msg_outfile,
+                        out_handle  => out_handle,
                         success     => success);
                      if not success then
                         SQW.emit_error (error_prefix & index'Img & " failed");
@@ -1618,6 +1637,7 @@ package body Archive.Unpack is
             when others => SQW.emit_error (error_prefix & index'Img & " not of type object");
          end case;
       end loop;
+      Ada.Text_IO.Close (out_handle);
       Lua.show_post_run_messages (msg_outfile, z_namebase, z_subpackage, z_variant, extract_log);
    end execute_lua_scripts;
 
