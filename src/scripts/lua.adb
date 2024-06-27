@@ -132,7 +132,7 @@ package body Lua is
       extract_log : TIO.File_Type)
    is
       redirected : constant Boolean := TIO.Is_Open (extract_log);
-      std_outfile : constant String := MSC.new_filename (msg_outfile, MSC.ft_stdout);
+      std_outfile : constant String := MSC.new_filename (msg_outfile, MSC.ft_lua);
       features1 : Archive.Unix.File_Characteristics;
       features2 : Archive.Unix.File_Characteristics;
       msg_file_exists : Boolean := False;
