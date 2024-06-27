@@ -41,7 +41,7 @@ package body Archive.Whitelist.Keywords is
 
       KEY_PREPACK : constant String := "prepackaging";
       msg_outfile : constant String := Lua.unique_msgfile_path;
-      std_outfile : constant String := Misc.new_filename (msg_outfile, Misc.ft_stdout);
+      std_outfile : constant String := Misc.new_filename (msg_outfile, Misc.ft_lua);
       out_handle  : Ada.Text_IO.File_Type;
       prepack_success : Boolean;
       script_args     : ASU.Unbounded_String;
@@ -134,35 +134,35 @@ package body Archive.Whitelist.Keywords is
          last_file => last_file,
          stagedir  => real_top_path);
 
-      --  Output Standard output file
-      begin
-         Ada.Text_IO.Create (File => out_handle, Name => std_outfile);
-      exception
-         when others =>
-            return False;
-      end;
-
       --  handle prepackaging now
       keyword_obj.split_args.Iterate (process_arg'Access);
       if keyword_obj.tree.string_field_exists (KEY_PREPACK) then
-         Lua.run_lua_script
-           (namebase    => namebase,
-            subpackage  => subpackage,
-            variant     => variant,
-            prefix      => prefix_dir,
-            root_dir    => real_top_path,
-            upgrading   => False,
-            script      => keyword_obj.tree.get_base_value (KEY_PREPACK),
-            arg_chain   => ASU.To_String (script_args),
-            msg_outfile => msg_outfile,
-            out_handle  => out_handle,
-            success     => prepack_success);
-         if not prepack_success then
-            result := False;
-            SQW.emit_error ("Fail to apply keyword '" & keyword & "'");
-         end if;
-         Ada.Text_IO.Close (out_handle);
-         Lua.show_post_run_messages (msg_outfile, namebase, subpackage, variant, extract_log);
+         --  Output Standard output file
+         begin
+            Ada.Text_IO.Create (File => out_handle, Name => std_outfile);
+            Lua.run_lua_script
+              (namebase    => namebase,
+               subpackage  => subpackage,
+               variant     => variant,
+               prefix      => prefix_dir,
+               root_dir    => real_top_path,
+               upgrading   => False,
+               script      => keyword_obj.tree.get_base_value (KEY_PREPACK),
+               arg_chain   => ASU.To_String (script_args),
+               msg_outfile => msg_outfile,
+               out_handle  => out_handle,
+               success     => prepack_success);
+            Ada.Text_IO.Close (out_handle);
+            if not prepack_success then
+               result := False;
+               SQW.emit_error ("Fail to apply keyword '" & keyword & "'");
+            end if;
+            Lua.show_post_run_messages (msg_outfile, namebase, subpackage, variant, extract_log);
+         exception
+            when others =>
+               result := False;
+               SQW.emit_error ("Fail to open stdout file, prepackaging script skipped.");
+         end;
       end if;
 
       if result then
