@@ -1552,7 +1552,7 @@ package body Archive.Unpack is
       num_scripts  : constant Natural := tree.get_number_of_array_elements (vndx);
       error_prefix : constant String := phase_key & " Lua script number";
       msg_outfile  : constant String := Lua.unique_msgfile_path;
-      std_outfile  : constant String := Misc.new_filename (msg_outfile, Misc.ft_stdout);
+      std_outfile  : constant String := Misc.new_filename (msg_outfile, Misc.ft_lua);
       out_handle   : Ada.Text_IO.File_Type;
       z_namebase   : constant String := get_meta_string (tree, "namebase");
       z_subpackage : constant String := get_meta_string (tree, "subpackage");

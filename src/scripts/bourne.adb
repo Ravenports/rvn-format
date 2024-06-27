@@ -96,7 +96,7 @@ package body Bourne is
       return_code : Integer;
       run_success : Boolean;
       script_file : constant String := MSC.new_filename (msg_outfile, MSC.ft_script);
-      tmp_outfile : constant String := MSC.new_filename (msg_outfile, MSC.ft_stdout);
+      tmp_outfile : constant String := MSC.new_filename (msg_outfile, MSC.ft_internal);
    begin
       if not DIR.Exists (interpreter) then
          raise interpreter_missing;
@@ -195,12 +195,16 @@ package body Bourne is
 
       declare
          tmp_handle : Ada.Text_IO.File_Type;
+         use type DIR.File_Size;
       begin
-         Ada.Text_IO.Open (tmp_handle, Ada.Text_IO.In_File, tmp_outfile);
-         while not Ada.Text_IO.End_Of_File (tmp_handle) loop
-            Ada.Text_IO.Put_Line (out_handle, Ada.Text_IO.Get_Line (tmp_handle));
-         end loop;
-         Ada.Text_IO.Close (tmp_handle);
+         if DIR.Size (tmp_outfile) > 1 then
+            Ada.Text_IO.Open (tmp_handle, Ada.Text_IO.In_File, tmp_outfile);
+            while not Ada.Text_IO.End_Of_File (tmp_handle) loop
+               Ada.Text_IO.Put_Line (out_handle, Ada.Text_IO.Get_Line (tmp_handle));
+            end loop;
+            Ada.Text_IO.Close (tmp_handle);
+         end if;
+         DIR.Delete_File (tmp_outfile);
       exception
          when others =>
             if Ada.Text_IO.Is_Open (tmp_handle) then

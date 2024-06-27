@@ -404,6 +404,8 @@ package body Archive.Misc is
          when ft_outmsg => null;
          when ft_script => new_file (start_index .. start_index + 5) := "script";
          when ft_stdout => new_file (start_index .. start_index + 5) := "stdout";
+         when ft_lua    => new_file (start_index .. start_index + 5) := "lualua";
+         when ft_internal => new_file (start_index .. start_index + 5) := "intern";
       end case;
       return new_file;
    end new_filename;

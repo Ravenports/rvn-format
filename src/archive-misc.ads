@@ -7,7 +7,7 @@ package Archive.Misc is
 
    package ASU renames Ada.Strings.Unbounded;
 
-   type temp_file_type is (ft_outmsg, ft_script, ft_stdout);
+   type temp_file_type is (ft_outmsg, ft_script, ft_stdout, ft_internal, ft_lua);
 
    --  Head (keep all but last delimiter and field)
    function head (S : String; delimiter : String) return String;
