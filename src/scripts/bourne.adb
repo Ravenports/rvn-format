@@ -236,22 +236,26 @@ package body Bourne is
       features2 : Archive.Unix.File_Characteristics;
       msg_file_exists : Boolean := False;
       std_file_exists : Boolean := False;
+      msg_big_enough  : Boolean := False;
+      std_big_enough  : Boolean := False;
 
-      procedure display_and_delete_file (filename : String)
+      procedure display_and_delete_file (filename : String; big_enough : Boolean)
       is
          handle : TIO.File_Type;
       begin
-         TIO.Open (File => handle,
-                   Mode => TIO.In_File,
-                   Name => filename);
-         while not TIO.End_Of_File (handle) loop
-            if redirected then
-               TIO.Put_Line (extract_log, TIO.Get_Line (handle));
-            else
-               TIO.Put_Line (TIO.Get_Line (handle));
-            end if;
-         end loop;
-         TIO.Close (handle);
+         if big_enough then
+            TIO.Open (File => handle,
+                      Mode => TIO.In_File,
+                      Name => filename);
+            while not TIO.End_Of_File (handle) loop
+               if redirected then
+                  TIO.Put_Line (extract_log, TIO.Get_Line (handle));
+               else
+                  TIO.Put_Line (TIO.Get_Line (handle));
+               end if;
+            end loop;
+            TIO.Close (handle);
+         end if;
          DIR.Delete_File (filename);
       exception
          when others => null;
@@ -265,16 +269,16 @@ package body Bourne is
             msg_file_exists := True;
          when others => null;
       end case;
+      msg_big_enough := Archive.">" (features1.size, Archive.exabytes (1));
 
-      if Archive.">" (features2.size, Archive.exabytes (1)) then
-         std_file_exists := True;
-      end if;
+      case features2.ftype is
+         when Archive.regular =>
+            std_file_exists := True;
+         when others => null;
+      end case;
+      std_big_enough := Archive.">" (features2.size, Archive.exabytes (1));
 
-      if not msg_file_exists and then not std_file_exists then
-         return;
-      end if;
-
-      if redirected then
+      if redirected and then (msg_big_enough or else std_big_enough) then
          declare
             divlength : constant Natural := 75;
             partone : constant String := namebase & '-' & subpackage & '-' & variant &
@@ -291,11 +295,11 @@ package body Bourne is
       end if;
 
       if std_file_exists then
-         display_and_delete_file (std_outfile);
+         display_and_delete_file (std_outfile, std_big_enough);
       end if;
 
       if msg_file_exists then
-         display_and_delete_file (msg_outfile);
+         display_and_delete_file (msg_outfile, msg_big_enough);
       end if;
 
    end show_post_run_messages;
