@@ -84,8 +84,10 @@ package body Lua is
 
       begin
          TIO.Set_Output (out_handle);
+         TIO.Set_Error  (out_handle);
          status := Protected_Call (state, 0, MULTRET);
          TIO.Set_Output (TIO.Standard_Output);
+         TIO.Set_Error  (TIO.Standard_Error);
       exception
          when others =>
             TIO.Put_Line (TIO.Standard_Error, "Failed to redirect Lua call to output file");
