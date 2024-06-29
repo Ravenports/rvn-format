@@ -211,7 +211,7 @@ package body Archive.Whitelist.Keywords is
                        post_deinstall_lua =>
 
                      script.code := ASU.To_Unbounded_String (code);
-                     script.args := script_args_spc;
+                     script.args := script_args;
                end case;
                whitelist.scripts (phase).Append (script);
             end;
