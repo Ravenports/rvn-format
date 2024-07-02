@@ -297,7 +297,7 @@ begin
                                                   set_owners    => set_owners,
                                                   set_perms     => set_perms,
                                                   set_modtime   => set_modtime,
-                                                  skip_scripts  => False,
+                                                  skip_scripts  => True,
                                                   upgrading     => False,
                                                   extract_log   => dummy);
 
