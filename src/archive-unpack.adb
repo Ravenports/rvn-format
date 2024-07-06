@@ -24,6 +24,9 @@ package body Archive.Unpack is
    package SQW renames Archive.Communication;
    package ZST renames Zstandard;
 
+   ------------------------------------------------------------------------------------------
+   --  open_rvn_archive
+   ------------------------------------------------------------------------------------------
    procedure open_rvn_archive
      (DS            : in out DArc;
       rvn_archive   : String;
