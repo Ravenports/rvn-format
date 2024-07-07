@@ -11,17 +11,24 @@ package body Archive.Dirent.Scan is
       crate     : in out dscan_crate.Vector)
    is
       c_directory : constant IC.char_array := IC.To_C (directory);
+      tracker : Natural := 0;
       rc : IC.int;
    begin
       crate.Clear;
-      rc := walkdir_open_folder (c_directory);
-      case rc is
-         when 1 =>
+      loop
+         rc := walkdir_open_folder (c_directory);
+         case rc is
+            when 1 =>
+               tracker := tracker + 1;
+               delay 0.05;
+            when 2 =>
+               raise dscan_folder_already_open;
+            when others => exit;
+         end case;
+         if tracker = 100 then
             raise dscan_open_failure;
-         when 2 =>
-            raise dscan_folder_already_open;
-         when others => null;
-      end case;
+         end if;
+      end loop;
 
       loop
          declare
@@ -43,14 +50,21 @@ package body Archive.Dirent.Scan is
          end;
       end loop;
 
-      rc := walkdir_close_folder;
-      case rc is
-         when 1 =>
+      tracker := 0;
+      loop
+         rc := walkdir_close_folder;
+         case rc is
+            when 1 =>
+               tracker := tracker + 1;
+               delay 0.05;
+            when 2 =>
+               raise dscan_folder_not_open;
+            when others => exit;
+         end case;
+         if tracker = 100 then
             raise dscan_close_failure;
-         when 2 =>
-            raise dscan_folder_not_open;
-         when others => null;
-      end case;
+         end if;
+      end loop;
 
       dscan_sorting.Sort (crate);
 
