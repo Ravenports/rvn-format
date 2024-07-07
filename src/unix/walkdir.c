@@ -8,16 +8,12 @@
 #include <stdio.h>
 #include <dirent.h>
 
-DIR *FOLDER = NULL;
+DIR *FOLDER[128];
 
 int
-walkdir_open_folder (const char * path)
+walkdir_open_folder (const char * path, int zbuilder)
 {
-	if (FOLDER != NULL) {
-		return 2;
-	}
-
-	FOLDER = opendir (path);
+	FOLDER[zbuilder] = opendir (path);
 	if (FOLDER == NULL) {
 		return 1;
 	}
@@ -25,23 +21,23 @@ walkdir_open_folder (const char * path)
 }
 
 int
-walkdir_close_folder ()
+walkdir_close_folder (int zbuilder)
 {
-	if (FOLDER == NULL) {
+	if (FOLDER[zbuilder] == NULL) {
 		return 2;
 	}
-	if (closedir (FOLDER) < 0) {
+	if (closedir (FOLDER[zbuilder]) < 0) {
 		return 1;
 	}
-	FOLDER = NULL;
 	return 0;
 }
 
 char *
-walkdir_next_entry () {
+walkdir_next_entry (int zbuilder)
+{
 	struct dirent *entry;
 
-	entry = readdir (FOLDER);
+	entry = readdir (FOLDER[zbuilder]);
 	if (entry == NULL) {
 		return NULL;
 	}

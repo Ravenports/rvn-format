@@ -8,21 +8,21 @@ package body Archive.Dirent.Scan is
    ----------------------
    procedure scan_directory
      (directory : String;
-      crate     : in out dscan_crate.Vector)
+      crate     : in out dscan_crate.Vector;
+      builder   : Positive := 1)
    is
       c_directory : constant IC.char_array := IC.To_C (directory);
       tracker : Natural := 0;
       rc : IC.int;
+      zbuilder : constant IC.int := IC.int (builder - 1);
    begin
       crate.Clear;
       loop
-         rc := walkdir_open_folder (c_directory);
+         rc := walkdir_open_folder (c_directory, zbuilder);
          case rc is
             when 1 =>
                tracker := tracker + 1;
                delay 0.05;
-            when 2 =>
-               raise dscan_folder_already_open;
             when others => exit;
          end case;
          if tracker = 100 then
@@ -35,7 +35,7 @@ package body Archive.Dirent.Scan is
             use type IC.Strings.chars_ptr;
             centry : IC.Strings.chars_ptr;
          begin
-            centry := walkdir_next_entry;
+            centry := walkdir_next_entry (zbuilder);
             exit when centry = IC.Strings.Null_Ptr;
 
             declare
@@ -52,7 +52,7 @@ package body Archive.Dirent.Scan is
 
       tracker := 0;
       loop
-         rc := walkdir_close_folder;
+         rc := walkdir_close_folder (zbuilder);
          case rc is
             when 1 =>
                tracker := tracker + 1;

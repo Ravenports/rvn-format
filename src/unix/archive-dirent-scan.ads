@@ -16,7 +16,8 @@ package Archive.Dirent.Scan is
    --  container is sorted before the procedure returns.
    procedure scan_directory
      (directory : String;
-      crate     : in out dscan_crate.Vector);
+      crate     : in out dscan_crate.Vector;
+      builder   : Positive := 1);
 
    dscan_folder_already_open : exception;
    dscan_folder_not_open     : exception;
@@ -28,13 +29,13 @@ private
    package IC renames Interfaces.C;
    package dscan_sorting is new dscan_crate.Generic_Sorting;
 
-   function walkdir_open_folder (path : IC.char_array) return IC.int;
+   function walkdir_open_folder (path : IC.char_array; zbuilder : IC.int) return IC.int;
    pragma Import (C, walkdir_open_folder);
 
-   function walkdir_close_folder return IC.int;
+   function walkdir_close_folder (zbuilder : IC.int) return IC.int;
    pragma Import (C, walkdir_close_folder);
 
-   function walkdir_next_entry return IC.Strings.chars_ptr;
+   function walkdir_next_entry (zbuilder : IC.int) return IC.Strings.chars_ptr;
    pragma Import (C, walkdir_next_entry);
 
 end Archive.Dirent.Scan;
