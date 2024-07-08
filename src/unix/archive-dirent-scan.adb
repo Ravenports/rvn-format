@@ -1,6 +1,8 @@
 --  SPDX-License-Identifier: ISC
 --  Reference: /License.txt
 
+with Archive.Unix;
+
 package body Archive.Dirent.Scan is
 
    ----------------------
@@ -15,8 +17,15 @@ package body Archive.Dirent.Scan is
       tracker : Natural := 0;
       rc : IC.int;
       zbuilder : constant IC.int := IC.int (builder - 1);
+      features : Unix.File_Characteristics;
    begin
       crate.Clear;
+      features := Unix.get_charactistics (directory);
+      case features.ftype is
+         when Archive.directory => null;
+         when others =>
+            return;
+      end case;
       loop
          rc := walkdir_open_folder (c_directory, zbuilder);
          case rc is
