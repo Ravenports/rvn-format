@@ -12,6 +12,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <limits.h>
+#include <time.h>
 
 #ifndef S_ISUID
 #define S_ISUID 0
