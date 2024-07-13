@@ -130,6 +130,9 @@ package Archive.Unix is
    --  Returns True if the given file has a modification time in the past
    function tag_expired (mtime : filetime) return Boolean;
 
+   --  self-explanatory
+   procedure delete_file_if_it_exists (filename : String);
+
 private
 
    function success (rc : IC.int) return Boolean;

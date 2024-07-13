@@ -253,6 +253,25 @@ package body Archive.Unix is
 
 
    ------------------------------------------------------------------------------------------
+   --  delete_file_if_it_exists
+   ------------------------------------------------------------------------------------------
+   procedure delete_file_if_it_exists (filename : String)
+   is
+      features : File_Characteristics;
+   begin
+      features := get_charactistics (filename);
+      case features.ftype is
+         when unsupported => null;
+         when directory => null;
+         when regular | hardlink | symlink | fifo =>
+            if unlink_file (filename) then
+               null;
+            end if;
+      end case;
+   end delete_file_if_it_exists;
+
+
+   ------------------------------------------------------------------------------------------
    --  link_target
    ------------------------------------------------------------------------------------------
    function link_target (symlink_path : String) return String
@@ -291,6 +310,7 @@ package body Archive.Unix is
       if actual_file = "" or else link_to_create = "" then
          return False;
       end if;
+      delete_file_if_it_exists (link_to_create);
       result := symlink (path1, path2);
 
       return result = 0;
@@ -347,6 +367,7 @@ package body Archive.Unix is
       if fifo_path = "" then
          return False;
       end if;
+      delete_file_if_it_exists (fifo_path);
       result := mkfifo (path, mode);
 
       return result = 0;

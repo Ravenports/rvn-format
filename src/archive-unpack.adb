@@ -906,6 +906,7 @@ package body Archive.Unpack is
             when directory =>
                make_directory (Positive (block.directory_id));
             when regular =>
+               Unix.delete_file_if_it_exists (file_path);
                DS.extract_regular_file (file_path => file_path, file_len  => block.file_size_tb);
             when symlink =>
                make_symlink (link_path => file_path, link_len => block.link_length);
