@@ -306,10 +306,28 @@ package body Archive.Unix is
       path1  : constant IC.char_array := IC.To_C (actual_file);
       path2  : constant IC.char_array := IC.To_C (destination);
       result : IC.int;
+
+      feat1  : File_Characteristics;
+      feat2  : File_Characteristics;
    begin
       if actual_file = "" or else destination = "" then
          return False;
       end if;
+      feat1 := get_charactistics (actual_file);
+      case feat1.ftype is
+         when regular | hardlink => null;
+         when unsupported | symlink | fifo | directory => return False;
+      end case;
+      feat2 := get_charactistics (destination);
+      case feat2.ftype is
+         when unsupported => null;
+         when directory => return False;
+         when regular | hardlink | symlink | fifo =>
+            if not unlink_file (destination) then
+               return False;
+            end if;
+      end case;
+
       result := link (path1, path2);
 
       return result = 0;
