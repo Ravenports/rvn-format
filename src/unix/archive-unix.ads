@@ -225,8 +225,8 @@ private
       resolvedname : out IC.char_array) return IC.Strings.chars_ptr;
    pragma Import (C, realpath);
 
-   function C_dprint2 (fd : IC.int; msg : IC.Strings.chars_ptr) return IC.int;
-   pragma Import (C, C_dprint2, "dprint2");
+   function C_write (fd : IC.int; msg : IC.Strings.chars_ptr; nbytes : IC.size_t) return IC.long;
+   pragma Import (C, C_write, "write");
 
    function geteuid return uid_t;
    pragma Import (C, geteuid);

@@ -850,13 +850,17 @@ package body Archive.Unix is
    --------------------------
    procedure push_to_event_pipe (fd : File_Descriptor; message : String)
    is
-      msg    : IC.Strings.chars_ptr;
-      result : IC.int;
+      msg : IC.Strings.chars_ptr;
+      cfd : IC.int;
+      msg_length : IC.size_t;
+      bytes_written : IC.long;
 
-      pragma Unreferenced (result);
+      pragma Unreferenced (bytes_written);
    begin
+      cfd := IC.int (fd);
       msg := IC.Strings.New_String (message & LAT.LF);
-      result := C_dprint2 (IC.int (fd), msg);  -- returns #chars printed
+      msg_length := IC.size_t (message'Length);
+      bytes_written := C_write (cfd, msg, msg_length);
       IC.Strings.Free (msg);
    end push_to_event_pipe;
 
