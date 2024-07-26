@@ -322,4 +322,30 @@ cformat_file_time (time_t mtime_epoch, char * restrict buf, size_t maxsize) {
   return strftime(buf, maxsize, "%Y-%m-%d %H:%M", &ts);
 }
 
+/*
+ * To solve NetBSD issues, create wrappers
+ *
+ * /raven/toolchain/bin/ld: /construction/rvn/rvn-0.2.9/src/rvn-format/programs/obj/archive-unix.o:
+ * in function `archive__unix__tag_expired':
+ * archive-unix.adb:(.text+0x41e5): warning:
+ * warning: reference to compatibility time(); include <time.h> for correct reference
+ *
+ * /raven/toolchain/bin/ld: /construction/rvn/rvn-0.2.9/src/rvn-format/programs/obj/archive-unix.o:
+ * in function `archive__unix__stat_ok':
+ * archive-unix.adb:(.text+0x149): warning:
+ * warning: reference to compatibility lstat(); include <sys/stat.h> to generate correct reference
+ */
+
+
+int
+rf_lstat(const char *path, struct stat *sb) {
+   lstat(path, sb);
+}
+
+
+time_t
+rf_time(time_t *tloc) {
+   time(tloc);
+}
+
 #endif /* __WIN32 */

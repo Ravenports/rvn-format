@@ -167,7 +167,7 @@ private
    function arc_stat
      (path : IC.Strings.chars_ptr;
       sb   : struct_stat_Access) return IC.int;
-   pragma Import (C, arc_stat, "lstat");
+   pragma Import (C, arc_stat, "rf_lstat");
 
    function arc_readlink
      (path   : IC.Strings.chars_ptr;
@@ -203,7 +203,7 @@ private
    pragma Import (C, arc_get_file_size, "get_size");
 
    function arc_time (tloc : access filetime) return filetime;
-   pragma Import (C, arc_time, "time");
+   pragma Import (C, arc_time, "rf_time");
 
    function symlink (path1, path2 : IC.char_array) return IC.int;
    pragma Import (C, symlink);
