@@ -298,12 +298,16 @@ package body Archive.Whitelist is
             SQW.emit_message ("The indicated manifest (" & manifest_file & ") does not exist.");
          end if;
          return False;
-      elsif features.ftype /= regular then
-         if level >= normal then
-            SQW.emit_message ("The indicated manifest is not a regular file.");
-         end if;
-         return False;
       end if;
+      case features.ftype is
+         when regular | hardlink => null;
+         when directory | symlink | fifo | unsupported =>
+            if level >= normal then
+               SQW.emit_message
+                 ("The indicated manifest is not a regular file (" & features.ftype'Img & ").");
+            end if;
+            return False;
+      end case;
 
       TIO.Open (File => file_handle,
                 Mode => TIO.In_File,
