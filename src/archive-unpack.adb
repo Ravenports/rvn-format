@@ -896,6 +896,9 @@ package body Archive.Unpack is
 
          use type Unix.metadata_rc;
       begin
+         if DS.fail_init then
+            return;
+         end if;
          block_uid := DS.owners.Element (block.index_owner).id;
          block_gid := DS.groups.Element (block.index_group).id;
          valid_owngrp := (block_uid /= id_not_found) and then (block_gid /= id_not_found);
@@ -1149,6 +1152,10 @@ package body Archive.Unpack is
          SIO.Set_Index (DS.rvn_handle, DS.b4_index);
       end if;
       DS.files.Iterate (extract'Access);
+      if DS.fail_init then
+         good_extraction := False;
+         return good_extraction;
+      end if;
       DS.files.Iterate (second_pass'Access);
 
       if meta_scripts then
@@ -1206,9 +1213,11 @@ package body Archive.Unpack is
             exception
                when ZST.Streaming_Decompression.streaming_decompression_initialization =>
                   DS.print (normal, "Failed to initialize streaming decompression.");
+                  DS.fail_init := True;
                   return;
                when ZST.Streaming_Decompression.streaming_decompression_error =>
                   DS.print (normal, "Failed to decompress archive (needs initialization?)");
+                  DS.fail_init := True;
                   return;
             end;
          else
@@ -1219,6 +1228,11 @@ package body Archive.Unpack is
                                final_size   => ZST.File_Size (DS.header.flat_archive),
                                successful   => decomp_worked));
             DS.print (debug, "One shot archive decompression successful : " & decomp_worked'Img);
+            if not decomp_worked then
+               DS.print (normal, "Failed to decompress archive in one pass.");
+               DS.fail_init := True;
+               return;
+            end if;
          end if;
          DS.buf_remain := ASU.Length (DS.buffer);
          DS.rolled_up := False;
