@@ -1230,6 +1230,7 @@ package body Archive.Unpack is
             DS.print (debug, "One shot archive decompression successful : " & decomp_worked'Img);
             if not decomp_worked then
                DS.print (normal, "Failed to decompress archive in one pass.");
+               DS.print (normal, ASU.To_String (DS.buffer));
                DS.fail_init := True;
                return;
             end if;
