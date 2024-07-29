@@ -5,6 +5,7 @@ with Ada.Unchecked_Conversion;
 with Ada.Directories;
 with Ada.Direct_IO;
 with Ada.IO_Exceptions;
+with Ada.Exceptions;
 with Zstandard.Streaming_Compression;
 
 package body Zstandard is
@@ -123,9 +124,10 @@ package body Zstandard is
                          final_size  => final_size,
                          successful  => successful);
    exception
-      when others =>
+      when problem : others =>
          successful := False;
-         return "Failed to read compressed chunk from archive";
+         return "Failed to read compressed chunk from archive - " &
+           Ada.Exceptions.Exception_Message (problem);
    end Decompress;
 
 

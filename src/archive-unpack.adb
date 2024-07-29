@@ -1204,7 +1204,9 @@ package body Archive.Unpack is
    begin
       if DS.rolled_up then
          --  This is the first time this procedure has been run.  Get first data chunk.
-         if DS.header.size_archive > zstd_size (KB256) then
+         --  Originally it checked if compressed size was less than 256 Kb, but because
+         --  NetBSD has a tiny stack, the one-shot decompression has been limited to 256 Kb flat.
+         if DS.header.flat_archive > exabytes (KB256) then
             --  streaming decompression
             begin
                DS.expander.Initialize (input_stream => DS.rvn_stmaxs);
@@ -1230,7 +1232,7 @@ package body Archive.Unpack is
             DS.print (debug, "One shot archive decompression successful : " & decomp_worked'Img);
             if not decomp_worked then
                DS.print (normal, "Failed to decompress archive in one pass.");
-               DS.print (normal, ASU.To_String (DS.buffer));
+               DS.print (verbose, ASU.To_String (DS.buffer));
                DS.fail_init := True;
                return;
             end if;
