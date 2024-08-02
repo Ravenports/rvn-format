@@ -91,7 +91,7 @@ package body Archive.Pack is
             subpackage         => metadata_tree.get_base_value ("subpackage"),
             variant            => metadata_tree.get_base_value ("variant"),
             level              => verbosity,
-            integrate_log      =>  integrate_log)
+            integrate_log      => integrate_log)
          then
             return False;
          end if;

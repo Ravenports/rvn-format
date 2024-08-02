@@ -340,6 +340,7 @@ begin
       top_level : constant String := Archive.Unix.real_path (ASU.To_String (arg_rootdir));
       level     : Archive.info_level := Archive.normal;
       exitcode  : CLI.Exit_Status := 0;
+      dummy     : TIO.File_Type;
    begin
       if opt_verbose then
          level := Archive.verbose;
@@ -356,7 +357,8 @@ begin
                                      fixed_timestamp     => provide_timestamp (arg_timestamp),
                                      output_file         => rvn_file,
                                      verbosity           => level,
-                                     record_base_libs    => False)
+                                     record_base_libs    => False,
+                                     integrate_log       => dummy)
       then
          error ("Archive creation failed.");
          exitcode := CLI.Exit_Status (-1);
