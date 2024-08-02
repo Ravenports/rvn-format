@@ -3,6 +3,7 @@
 
 with Ada.Text_IO;
 with Ada.Directories;
+with Ada.Unchecked_Deallocation;
 with Interfaces;
 
 package body Elf is
@@ -636,7 +637,11 @@ package body Elf is
       dyn_data   : Relevant_Dynamic_Data.Vector)
    is
       type canvas_type is array (1 .. Natural (strtable.data_size)) of elf_byte;
-      canvas : canvas_type;
+      type canvas_access is access canvas_type;
+
+      procedure delete_canvas is new Ada.Unchecked_Deallocation (canvas_type, canvas_access);
+
+      canvas : canvas_access := new canvas_type;
 
       function extract_string (table_offset : offset_64) return String
       is
@@ -644,18 +649,18 @@ package body Elf is
          result_size : Natural;
          offset : constant Natural := Natural (table_offset);
       begin
-         if table_offset > canvas'Length - 1 then
+         if table_offset > canvas.all'Length - 1 then
             return "";
          end if;
-         if Natural (canvas (offset + 1)) = 0 then
+         if Natural (canvas.all (offset + 1)) = 0 then
             return "";
          end if;
 
          last_index := offset + 1;
          result_size := 1;
          loop
-            exit when last_index + 1 > canvas'Last;
-            exit when Natural (canvas (last_index + 1)) = 0;
+            exit when last_index + 1 > canvas.all'Last;
+            exit when Natural (canvas.all (last_index + 1)) = 0;
             last_index := last_index + 1;
             result_size := result_size + 1;
          end loop;
@@ -664,7 +669,7 @@ package body Elf is
             index  : Natural := offset + 1;
          begin
             for x in 1 .. result_size loop
-               result (x) := Character'Val (Integer (canvas (index)));
+               result (x) := Character'Val (Integer (canvas.all (index)));
                index := index + 1;
             end loop;
             return result;
@@ -689,8 +694,9 @@ package body Elf is
       end process;
    begin
       SIO.Set_Index (elf_handle, SIO.Positive_Count (strtable.file_offset + 1));
-      canvas_type'Read (elf_stmaxs, canvas);
+      canvas_type'Read (elf_stmaxs, canvas.all);
       dyn_data.Iterate (process'Access);
+      delete_canvas (canvas);
    end populate_dynamic_data;
 
 
