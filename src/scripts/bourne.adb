@@ -2,6 +2,7 @@
 --  Reference: /License.txt
 
 with Ada.Environment_Variables;
+with Ada.Characters.Latin_1;
 with Ada.Directories;
 with Ada.Real_Time;
 with Ada.Direct_IO;
@@ -14,6 +15,7 @@ package body Bourne is
    package RT  renames Ada.Real_Time;
    package DIR renames Ada.Directories;
    package ENV renames Ada.Environment_Variables;
+   package LAT renames Ada.Characters.Latin_1;
    package TIO renames Ada.Text_IO;
    package MSC renames Archive.Misc;
 
@@ -281,7 +283,7 @@ package body Bourne is
       if redirected and then (msg_big_enough or else std_big_enough) then
          declare
             divlength : constant Natural := 75;
-            partone : constant String := namebase & '-' & subpackage & '-' & variant &
+            partone : constant String := namebase & LAT.Tilde & subpackage & LAT.Tilde & variant &
               " shell script messages  ";
             divider : String (1 .. divlength) := (others => '-');
          begin

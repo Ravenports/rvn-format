@@ -5,6 +5,7 @@ with Ada.Real_Time;
 with Ada.Exceptions;
 with Ada.Directories;
 with Ada.Strings.Unbounded;
+with Ada.Characters.Latin_1;
 with Archive.Dirent.Scan;
 with Archive.Misc;
 with GNAT.OS_Lib;
@@ -18,6 +19,7 @@ package body Lua is
    package EX  renames Ada.Exceptions;
    package DIR renames Ada.Directories;
    package ASU renames Ada.Strings.Unbounded;
+   package LAT renames Ada.Characters.Latin_1;
    package MSC renames Archive.Misc;
 
 
@@ -184,7 +186,7 @@ package body Lua is
       if redirected and then (msg_big_enough or else std_big_enough) then
          declare
             divlength : constant Natural := 75;
-            partone : constant String := namebase & '-' & subpackage & '-' & variant &
+            partone : constant String := namebase & LAT.Tilde & subpackage & LAT.Tilde & variant &
               " Lua script messages  ";
             divider : String (1 .. divlength) := (others => '-');
          begin
