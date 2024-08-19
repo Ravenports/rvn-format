@@ -240,7 +240,9 @@ package body Archive.Unpack is
       if DS.header.size_metadata = 0 then
          return "";
       end if;
-      if SIO.Index (DS.rvn_handle) /= DS.b2_index then
+      if SIO.Index (DS.rvn_handle) /= DS.b2_index and then
+        DS.b2_index > 0
+      then
          SIO.Set_Index (DS.rvn_handle, DS.b2_index);
       end if;
       return ZST.Decompress (archive_saxs => DS.rvn_stmaxs,
