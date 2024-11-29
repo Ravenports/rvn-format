@@ -1249,7 +1249,10 @@ package body Archive.Unpack is
          end if;
       end if;
 
-      if size_type (DS.buf_remain) >= file_len then
+      if file_len = 0 then
+         DS.direct_file_creation (file_path, "");
+         DS.print (verbose, "Extracted [R] " & file_path);
+      elsif size_type (DS.buf_remain) >= file_len then
          --  Write file in a single pass
          declare
             high : constant Natural := DS.buf_arrow + Natural (file_len) - 1;
