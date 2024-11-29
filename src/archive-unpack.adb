@@ -1224,6 +1224,9 @@ package body Archive.Unpack is
                   DS.fail_init := True;
                   return;
             end;
+         elsif DS.header.flat_archive = 0 then
+            DS.print (debug, "Uncompressed archive is zero-byte; skip decompression step");
+            DS.buffer := ASU.Null_Unbounded_String;
          else
             --  single-shot decompression
             DS.buffer := ASU.To_Unbounded_String
