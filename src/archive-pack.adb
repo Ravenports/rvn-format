@@ -1366,6 +1366,9 @@ package body Archive.Pack is
       record_base_libs : Boolean;
       file_format      : Elf.elf_class) return Boolean
    is
+      linux64 : constant String := "/lib/x86_64-linux-gnu";
+      linux32 : constant String := "/lib/i386-linux-gnu";
+
       function get_base_paths return String is
       begin
          case file_format is
@@ -1377,7 +1380,7 @@ package body Archive.Pack is
                   when solaris | omnios      => return "/usr/lib/amd64:/usr/lib:/lib";
                   when generic_unix          => return "/lib:/usr/lib";
                   when linux =>
-                     return "/usr/lib/x86_64-linux-gnu:/usr/lib:/usr/lib64:/lib:/lib64";
+                     return linux64 & ":/lib64:/lib:/usr" & linux64 & ":/usr/lib64:/usr/lib";
                end case;
             when Elf.format32 =>
                case platform is
@@ -1388,7 +1391,7 @@ package body Archive.Pack is
                   when solaris | omnios      => return "/usr/lib:/lib";
                   when generic_unix          => return "/lib:/usr/lib";
                   when linux =>
-                     return "/usr/lib/i386-linux-gnu:/usr/lib:/usr/lib32:/lib:/lib32";
+                     return linux32 & ":/lib32:/lib:/usr" & linux32 & ":/usr/lib32:/usr/lib";
                end case;
          end case;
       end get_base_paths;
