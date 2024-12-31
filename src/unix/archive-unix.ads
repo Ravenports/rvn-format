@@ -118,6 +118,9 @@ package Archive.Unix is
    --  Use libc's open function to retrieve file descriptor
    function open_file (filename : String; flags : T_Open_Flags) return File_Descriptor;
 
+   --  Use file descriptor with libc's close function
+   procedure close_file (fd : File_Descriptor);
+
    --  Return True if fd /= -1
    function file_connected (fd : File_Descriptor) return Boolean;
 
@@ -227,6 +230,9 @@ private
 
    function C_write (fd : IC.int; msg : IC.Strings.chars_ptr; nbytes : IC.size_t) return IC.long;
    pragma Import (C, C_write, "write");
+
+   function C_close (fd : IC.int) return IC.int;
+   pragma Import (C, C_close, "close");
 
    function geteuid return uid_t;
    pragma Import (C, geteuid);
