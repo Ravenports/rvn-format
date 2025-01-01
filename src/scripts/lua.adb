@@ -1140,11 +1140,26 @@ package body Lua is
 
       tablen := Natural (API_lua_rawlen (State, 1));
       declare
-         Args : GNAT.OS_Lib.Argument_List (1 .. tablen);
-         succeeded : Boolean;
+         package UNX renames Archive.Unix;
+
+         Args         : GNAT.OS_Lib.Argument_List (1 .. tablen);
+         fd           : UNX.File_Descriptor;
+         retcode      : Integer;
+         msgfile      : constant String := Get_Global_String (State, "msgfile_path");
          exec_success : constant Integer := 0;
          exec_failure : constant Integer := 1;
+         fmsg_failure : constant Integer := 2;
+         flags        : constant UNX.T_Open_Flags := (WRONLY => True,
+                                                      CREAT  => True,
+                                                      APPEND => True,
+                                                      others => False);
       begin
+         fd := UNX.open_file (msgfile, flags);
+         if not UNX.file_connected (fd) then
+            Push (State, fmsg_failure);
+            return 1;
+         end if;
+
          for index in 1 .. tablen loop
             Raw_Geti (State, 1, index);
             if not is_string (State, top_slot) then
@@ -1155,21 +1170,24 @@ package body Lua is
          end loop;
 
          GNAT.OS_Lib.Spawn
-           (Program_Name => Args (Args'First).all,
-            Args         => Args (Args'First + 1 .. Args'Last),
-            Success      => succeeded);
+           (Program_Name           => Args (Args'First).all,
+            Args                   => Args (Args'First + 1 .. Args'Last),
+            Output_File_Descriptor => GNAT.OS_Lib.File_Descriptor (fd),
+            Return_Code            => retcode,
+            Err_To_Out             => True);
+
+         UNX.close_file (fd);
 
          for Index in Args'Range loop
             GNAT.OS_Lib.Free (Args (Index));
          end loop;
 
-         if succeeded then
+         if retcode = 0 then
             Push (State, exec_success);
-            return 0;
          else
             Push (State, exec_failure);
-            return 1;
          end if;
+         return retcode;
       end;
    end custom_exec;
 

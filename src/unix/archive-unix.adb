@@ -845,6 +845,22 @@ package body Archive.Unix is
    end open_file;
 
 
+   ------------------
+   --  close_file  --
+   ------------------
+   procedure close_file (fd : File_Descriptor)
+   is
+      c_fd : constant IC.int := IC.int (fd);
+      res  : IC.int;
+
+      pragma Unreferenced (res);
+   begin
+      if file_connected (fd) then
+         res := C_close (c_fd);
+      end if;
+   end close_file;
+
+
    --------------------------
    --  push_to_event_pipe  --
    --------------------------
