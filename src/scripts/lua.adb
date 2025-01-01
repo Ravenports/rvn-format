@@ -1122,7 +1122,6 @@ package body Lua is
    function custom_exec (State : Lua_State) return Integer
    is
       n       : constant Lua_Index := API_lua_gettop (State);
-      msgfile : constant String := Get_Global_String (State, "msgfile_path");
       valid   : Boolean;
       narg    : Positive := n;
       tablen  : Natural;
@@ -1143,9 +1142,10 @@ package body Lua is
       declare
          package UNX renames Archive.Unix;
 
-         Args : GNAT.OS_Lib.Argument_List (1 .. tablen);
+         Args         : GNAT.OS_Lib.Argument_List (1 .. tablen);
          fd           : UNX.File_Descriptor;
          retcode      : Integer;
+         msgfile      : constant String := Get_Global_String (State, "msgfile_path");
          exec_success : constant Integer := 0;
          exec_failure : constant Integer := 1;
          fmsg_failure : constant Integer := 2;
