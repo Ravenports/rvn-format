@@ -112,13 +112,15 @@ package body Archive.Whitelist.Keywords is
                      result := False;
                   end if;
                when directory_action =>
-                  whitelist.insert_temporary_directory
-                    (dir_path   => act_path,
-                     true_path  => true_path,
-                     attr_owner => keyword_obj.get_owner,
-                     attr_group => keyword_obj.get_group,
-                     attr_perms => keyword_obj.get_permissions,
-                     level      => level);
+                  if not whitelist.directory_on_whitelist (true_path) then
+                     whitelist.insert_temporary_directory
+                       (dir_path   => act_path,
+                        true_path  => true_path,
+                        attr_owner => keyword_obj.get_owner,
+                        attr_group => keyword_obj.get_group,
+                        attr_perms => keyword_obj.get_permissions,
+                        level      => level);
+                  end if;
             end case;
          end;
       end process_action;
