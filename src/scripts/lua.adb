@@ -4,6 +4,7 @@
 with Ada.Real_Time;
 with Ada.Exceptions;
 with Ada.Directories;
+with Ada.IO_Exceptions;
 with Ada.Strings.Unbounded;
 with Ada.Characters.Latin_1;
 with Archive.Dirent.Scan;
@@ -18,6 +19,7 @@ package body Lua is
    package RT  renames Ada.Real_Time;
    package EX  renames Ada.Exceptions;
    package DIR renames Ada.Directories;
+   package IOX renames Ada.IO_Exceptions;
    package ASU renames Ada.Strings.Unbounded;
    package LAT renames Ada.Characters.Latin_1;
    package MSC renames Archive.Misc;
@@ -87,13 +89,57 @@ package body Lua is
       begin
          TIO.Set_Output (out_handle);
          TIO.Set_Error  (out_handle);
+      exception
+         when IOX.Status_Error =>
+            TIO.Put_Line (TIO.Standard_Error,
+                          "Lua call aborted because redirect file not open: " &
+                            MSC.new_filename (msg_outfile, MSC.ft_lua) & LAT.LF &
+                            "[PROGRAM]" & LAT.LF & script);
+            success := False;
+            Close (state);
+            return;
+         when IOX.Mode_Error =>
+            TIO.Put_Line (TIO.Standard_Error,
+                          "Lua call aborted because redirect file is not writeable: " &
+                            MSC.new_filename (msg_outfile, MSC.ft_lua) & LAT.LF &
+                            "[PROGRAM]" & LAT.LF & script);
+            success := False;
+            Close (state);
+            return;
+         when why : others =>
+            TIO.Put_Line (TIO.Standard_Error, "Lua call aborted: " & EX.Exception_Message (why));
+            success := False;
+            Close (state);
+            return;
+      end;
+
+
+      begin
          status := Protected_Call (state, 0, MULTRET);
+      exception
+         when why : others =>
+            --  No exception is expected, but cover the bases
+            TIO.Put_Line (TIO.Standard_Error,
+                          "Lua call failed during execution: " & EX.Exception_Message (why));
+            status := LUA_ERRRUN;
+      end;
+
+      begin
          TIO.Set_Output (TIO.Standard_Output);
          TIO.Set_Error  (TIO.Standard_Error);
       exception
-         when others =>
-            TIO.Put_Line (TIO.Standard_Error, "Failed to redirect Lua call to output file");
-            status := LUA_ERRFILE;
+         when IOX.Status_Error =>
+            TIO.Put_Line
+              (TIO.Standard_Error,
+               "Lua call post-action: failed to restore standard out/err (not open)");
+         when IOX.Mode_Error =>
+            TIO.Put_Line
+              (TIO.Standard_Error,
+               "Lua call post-action: failed to restore standard out/err (not writeable)");
+         when why : others =>
+            TIO.Put_Line
+              (TIO.Standard_Error,
+               "Lua call post action: " & EX.Exception_Message (why));
       end;
       case status is
          when LUA_OK =>
@@ -116,8 +162,9 @@ package body Lua is
             end;
          when others =>
             success := False;
-            TIO.Put_Line (TIO.Standard_Error, "Failed to execute Lua script:" & status'Img);
+            TIO.Put_Line (TIO.Standard_Error, "Lua script execution failed: " & status'Img);
             TIO.Put_Line (TIO.Standard_Error, convert_to_string (state, top_slot));
+            TIO.Put_Line (TIO.Standard_Error, "[PROGRAM]" & LAT.LF & script);
       end case;
 
       Close (state);
