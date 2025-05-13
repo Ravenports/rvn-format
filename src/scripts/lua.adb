@@ -163,7 +163,6 @@ package body Lua is
          when others =>
             success := False;
             TIO.Put_Line (TIO.Standard_Error, "Lua script execution failed: " & status'Img);
-            TIO.Put_Line (TIO.Standard_Error, convert_to_string (state, top_slot));
             TIO.Put_Line (TIO.Standard_Error, "[PROGRAM]" & LAT.LF & script);
       end case;
 
