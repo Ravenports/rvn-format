@@ -113,16 +113,19 @@ package body Zstandard is
       final_size   : File_Size;
       successful   : out Boolean) return String
    is
-      type magazine_type is
-         record
-            data : String (1 .. data_length);
-         end record;
-      magazine : magazine_type;
    begin
-      magazine_type'Read (archive_saxs, magazine);
-      return Decompress (source_data => magazine.data,
-                         final_size  => final_size,
-                         successful  => successful);
+      declare
+         type magazine_type is
+            record
+               data : String (1 .. data_length);
+            end record;
+         magazine : magazine_type;
+      begin
+         magazine_type'Read (archive_saxs, magazine);
+         return Decompress (source_data => magazine.data,
+                            final_size  => final_size,
+                            successful  => successful);
+      end;
    exception
       when problem : others =>
          successful := False;

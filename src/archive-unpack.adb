@@ -240,6 +240,9 @@ package body Archive.Unpack is
       if DS.header.size_metadata = 0 then
          return "";
       end if;
+      if DS.header.flat_metadata > zstd_size (KB512) then
+         return "Invalid rvn archive - metadata longer than 256kb:" & DS.header.flat_metadata'Img;
+      end if;
       if SIO.Index (DS.rvn_handle) /= DS.b2_index and then
         DS.b2_index > 0
       then
