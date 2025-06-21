@@ -26,6 +26,10 @@
 #define S_ISVTX 0
 #endif
 
+#ifndef PATH_MATH
+#define PATH_MAX 1024
+#endif
+
 
 struct timespec
 get_mtime (struct stat *sb)
@@ -235,11 +239,13 @@ set_symlink_metadata (const char *    path,
     }
   }
 
+#if !defined(__sun__)
   if (reset_permissions) {
     if (lchmod (path, new_permissions) < 0) {
       rc += 8;
     }
   }
+#endif
 
   if (reset_modtime)
   {

@@ -1,12 +1,28 @@
 project Rvnprogs is
 
+   type OS_Type is ("solaris", "all_others");
+   opsys : OS_Type := external ("OS_TYPE", "all_others");
+
    for Source_Dirs use ("src", "../src/**");
    for Object_Dir use "obj";
    for Main use ("packrvn.adb", "readelf.adb", "xrvn.adb");
    for Languages use ("Ada", "C");
 
+   Common_Switches := (
+      "-lzstd_pic", 
+      "-lblake3_pic", 
+      "-lucl_pic", 
+      "-llua-5.4_pic", 
+      "-lm"
+   );
+
    package Linker is
-      for Switches ("ada") use ("-lzstd_pic", "-lblake3_pic", "-lucl_pic", "-llua-5.4_pic", "-lm");
+      case opsys is
+         when "all_others" =>
+            for Default_Switches ("ada") use Common_Switches;
+         when "solaris" =>
+            for Default_Switches ("ada") use Common_Switches & ("-lsocket");
+      end case;
    end Linker;
 
    package Compiler is
