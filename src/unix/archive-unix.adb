@@ -57,10 +57,15 @@ package body Archive.Unix is
       tspec  : time_specification;
    begin
       result.ftype := unsupported;
+      result.owner := str2owngrp ("xxx");
+      result.group := str2owngrp ("xxx");
       result.mtime := 0;
+      result.mnsec := 0;
       result.perms := 0;
       result.inode := 0;
       result.size  := 0;
+      result.uid   := 0;
+      result.gid   := 0;
       result.error := True;
       begin
          if Unix.stat_ok (path, sb'Unchecked_Access) then
@@ -76,9 +81,6 @@ package body Archive.Unix is
             result.uid   := owngrp_id (arc_get_owner_id (sb'Unchecked_Access));
             result.gid   := owngrp_id (arc_get_group_id (sb'Unchecked_Access));
             result.error := False;
-         else
-            result.owner := str2owngrp ("xxx");
-            result.group := str2owngrp ("xxx");
          end if;
       exception
          when others =>
