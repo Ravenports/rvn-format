@@ -13,23 +13,13 @@ package body Archive.Unix is
    ------------------------------------------------------------------------------------------
    --  success
    ------------------------------------------------------------------------------------------
-   function success (rc : IC.int) return Boolean
-   is
-      use type IC.int;
+   function success (rc : IC.int) return Boolean is
    begin
-      return (rc = IC.int (0));
+      case rc is
+         when 0 => return True;
+         when others => return False;
+      end case;
    end success;
-
-
-   ------------------------------------------------------------------------------------------
-   --  failure
-   ------------------------------------------------------------------------------------------
-   function failure (rc : IC.int) return Boolean
-   is
-      use type IC.int;
-   begin
-      return (rc = IC.int (1));
-   end failure;
 
 
    ------------------------------------------------------------------------------------------

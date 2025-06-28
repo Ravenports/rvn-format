@@ -139,7 +139,6 @@ package Archive.Unix is
 private
 
    function success (rc : IC.int) return Boolean;
-   function failure (rc : IC.int) return Boolean;
 
    type uid_t is new Integer;
 
