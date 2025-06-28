@@ -345,13 +345,13 @@ cformat_file_time (time_t mtime_epoch, char * restrict buf, size_t maxsize) {
 
 int
 rf_lstat(const char *path, struct stat *sb) {
-   lstat(path, sb);
+   return lstat(path, sb);
 }
 
 
 time_t
 rf_time(time_t *tloc) {
-   time(tloc);
+   return time(tloc);
 }
 
 #endif /* __WIN32 */
