@@ -366,7 +366,7 @@ package body Archive.Misc is
                return get_osname & ":" & get_arch & ":10";
             when omnios =>
                --  OmniOS (SunOS 5.11) supports notes, but the system files did not use them.
-               return get_osname & ":" & get_arch & "5.11";
+               return get_osname & ":" & get_arch & ":5.11";
             when openbsd =>
                --  OpenBSD 7.4 has NT_VERSION tag, but it's set to 0.
                --  Hardcode for now (OpenBSD isn't supported by Ravenports yet).
