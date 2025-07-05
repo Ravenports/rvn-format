@@ -248,14 +248,13 @@ package body Archive.Misc is
             when netbsd       => return "netbsd";
             when openbsd      => return "openbsd";
             when solaris      => return "solaris";
-            when omnios       => return "omnios";
+            when omnios       => return "sunos";
             when midnightbsd  => return "midnightbsd";
             when generic_unix => return "unix";
             when linux        => return "linux";
          end case;
       end get_osname;
 
-      --  TODO: solaris 11, OmniOS: determine tag contents and adjust version accordingly
       function get_release return String
       is
          release : Elf.ASU.Unbounded_String := Elf.ASU.Null_Unbounded_String;
@@ -363,9 +362,11 @@ package body Archive.Misc is
       if elf_data.notes.Is_Empty then
          case platform is
             when solaris =>
-               --  solaris 11 supports notes, but 10 did not.  This is probably 10 (which
-               --  Ravenports has basically marked EOL anyway.
+               --  solaris 10 does not support notes
                return get_osname & ":" & get_arch & ":10";
+            when omnios =>
+               --  OmniOS (SunOS 5.11) supports notes, but the system files did not use them.
+               return get_osname & ":" & get_arch & "5.11";
             when openbsd =>
                --  OpenBSD 7.4 has NT_VERSION tag, but it's set to 0.
                --  Hardcode for now (OpenBSD isn't supported by Ravenports yet).
