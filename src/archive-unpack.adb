@@ -949,14 +949,18 @@ package body Archive.Unpack is
 
       procedure second_pass (position : file_block_crate.Cursor)
       is
+         function get_directory_path (directory_id : Positive) return String is
+         begin
+            return Misc.join_path (top_directory,
+                                   ASU.To_String (DS.folders.Element (directory_id).directory));
+         end get_directory_path;
+
          block : Scanned_File_Block renames file_block_crate.Element (position);
          errcode      : Unix.metadata_rc;
          block_uid    : owngrp_id;
          block_gid    : owngrp_id;
          valid_owngrp : Boolean;
          these_perms  : permissions := block.file_perms;
-         file_path    : constant String := absolute_path (parent_dir => block.index_parent,
-                                                          file_name  => extract_filename (block));
 
          use type Unix.metadata_rc;
       begin
@@ -969,7 +973,7 @@ package body Archive.Unpack is
          case block.type_of_file is
             when directory =>
                errcode := Unix.adjust_metadata
-                 (path         => file_path,
+                 (path         => get_directory_path (Positive (block.directory_id)),
                   reset_owngrp => set_owners and valid_owngrp,
                   reset_perms  => True,
                   reset_mtime  => set_modtime,
